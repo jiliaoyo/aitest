@@ -1,0 +1,749 @@
+openapi: 3.0.3
+info:
+  title: AI 刷题 App API
+  version: 0.1.0
+  description: |
+    首版接口契约（阶段 1：可靠刷题闭环 + 学习档案 + 管理端内容维护）。
+    - 前缀 /api/v1；JSON 字段 camelCase，枚举值小写 snake_case。
+    - 时间为 UTC RFC 3339；列表使用游标分页 ?cursor=&limit=（默认 20，最大 100）。
+    - 认证：HttpOnly Cookie（session）；写请求校验 Origin。
+    - 错误统一结构：{"error": {"code", "message", "requestId"}}；前端分支只依赖稳定 code。
+    - 核心边界：提交前接口永不返回答案、解析或判分字段；answer_keys 仅判分与管理端可读。
+servers:
+  - url: /api/v1
+tags:
+  - name: auth
+  - name: learning
+  - name: practice
+  - name: admin
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: 邮箱注册（成功后设置会话 Cookie）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string, minLength: 8 }
+      responses:
+        '201': { description: 注册成功, content: { application/json: { schema: { $ref: '#/components/schemas/MeResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: 登录并设置 Cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/MeResponse' }
+        '401': { description: 凭证错误 invalid_credentials }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: 失效当前会话
+      responses: { '200': { description: OK } }
+  /auth/password-reset/request:
+    post:
+      tags: [auth]
+      summary: 创建找回密码请求（dev 环境返回一次性 resetToken）
+      responses: { '200': { description: OK } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties: { email: { type: string } }
+  /auth/password-reset/confirm:
+    post:
+      tags: [auth]
+      summary: 使用一次性令牌设置新密码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string }
+      responses: { '200': { description: OK } }
+  /me:
+    get:
+      tags: [auth]
+      summary: 当前账号、角色与默认级别
+      responses:
+        '200': { $ref: '#/components/responses/MeResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    patch:
+      tags: [auth]
+      summary: 更新默认级别
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { defaultLevelId: { type: string, nullable: true } }
+      responses:
+        '200': { $ref: '#/components/responses/MeResponse' }
+  /catalog:
+    get:
+      tags: [learning]
+      summary: 考试、级别与科目树
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exams:
+                    type: array
+                    items: { $ref: '#/components/schemas/Exam' }
+  /dashboard:
+    get:
+      tags: [learning]
+      summary: 仪表盘（进行中批次、最近练习、可解释推荐）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+  /knowledge-points:
+    get:
+      tags: [learning]
+      summary: 知识点列表（含个人统计；仅已发布）
+      parameters:
+        - { name: levelId, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string }, description: 名称模糊搜索 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  knowledgePoints:
+                    type: array
+                    items: { $ref: '#/components/schemas/KnowledgePointItem' }
+  /knowledge-points/{id}:
+    get:
+      tags: [learning]
+      summary: 知识点详情（正文仅已发布可见）与个人统计
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/KnowledgePointDetail' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /wrong-items:
+    get:
+      tags: [learning]
+      summary: 错题本（每题取最近一次错误作答）
+      parameters: [{ name: knowledgePointId, in: query, schema: { type: string } }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wrongItems:
+                    type: array
+                    items: { $ref: '#/components/schemas/WrongItem' }
+  /issue-reports:
+    post:
+      tags: [learning]
+      summary: 提交题目问题反馈（后端补全题目版本与判分上下文）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [practiceItemId, targetType]
+              properties:
+                practiceItemId: { type: string }
+                targetType: { type: string, enum: [stem, answer, explanation, classification, ai_grading] }
+                description: { type: string }
+      responses:
+        '201': { description: 已提交 }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /practice/availability:
+    get:
+      tags: [practice]
+      summary: 当前筛选下可用题量
+      parameters:
+        - { name: levelId, in: query, required: true, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: string } }
+        - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items] } }
+        - { name: knowledgePointIds, in: query, schema: { type: string }, description: 逗号分隔 }
+        - { name: count, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { available: { type: integer } }
+  /practice-sessions:
+    post:
+      tags: [practice]
+      summary: 创建不可变练习批次（仅已发布题目；不足返回 409）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePracticeRequest' }
+      responses:
+        '201': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PreSubmitSession' } } } }
+        '409':
+          description: |
+            insufficient_questions：可用题量不足（details.available 为实际数量，服务端不放宽条件）；
+            no_wrong_items：没有可重练的错题。
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    get:
+      tags: [practice]
+      summary: 练习历史
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, grading, completed, analysis_failed] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/SessionListItem' }
+                  nextCursor: { type: string }
+  /practice-sessions/{id}:
+    get:
+      tags: [practice]
+      summary: 获取批次与答题前题目（契约保证无答案字段）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PreSubmitSession' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /practice-sessions/{id}/answers/{itemId}:
+    put:
+      tags: [practice]
+      summary: 自动保存单题答案（仅 active 批次；返回服务端 savedAt）
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                value: { $ref: '#/components/schemas/AnswerValue' }
+                markedForReview: { type: boolean }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { savedAt: { type: string } }
+        '409': { description: practice_not_active（已提交后保存被拒绝） }
+  /practice-sessions/{id}/submit:
+    post:
+      tags: [practice]
+      summary: |
+        提交本批练习并开始判分。必须携带全部最终答案与 Idempotency-Key 请求头；
+        相同键+相同内容重复提交返回现有结果；相同键不同内容返回 409 idempotency_conflict。
+      parameters:
+        - { name: Idempotency-Key, in: header, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      itemId: { type: string }
+                      value: { $ref: '#/components/schemas/AnswerValue' }
+                      markedForReview: { type: boolean }
+      responses:
+        '200': { description: OK（返回分层结果）, content: { application/json: { schema: { $ref: '#/components/schemas/ResultSession' } } } }
+        '400': { description: missing_idempotency_key }
+        '409': { description: practice_not_active / idempotency_conflict }
+  /practice-sessions/{id}/result:
+    get:
+      tags: [practice]
+      summary: 分层结果（已确认正确率与 AI 判定严格分开；grading 状态可轮询）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ResultSession' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: practice_not_submitted }
+  /admin/overview:
+    get:
+      tags: [admin]
+      summary: 内容概览统计
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  draft: { type: integer }
+                  inReview: { type: integer }
+                  published: { type: integer }
+                  retired: { type: integer }
+                  publishedNoAnswer: { type: integer }
+                  openIssues: { type: integer }
+  /admin/questions:
+    get:
+      tags: [admin]
+      summary: 题目列表（含答案覆盖筛选；游标分页）
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [draft, in_review, published, retired] } }
+        - { name: levelId, in: query, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: hasAnswer, in: query, schema: { type: string, enum: [yes, no] } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questions:
+                    type: array
+                    items: { $ref: '#/components/schemas/QuestionAdmin' }
+                  nextCursor: { type: string }
+    post:
+      tags: [admin]
+      summary: 新建题目（第一版；可携带材料与标准答案）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestionInput' }
+      responses:
+        '201': { description: OK, content: { application/json: { schema: { type: object, properties: { question: { $ref: '#/components/schemas/QuestionAdmin' } } } } } }
+  /admin/questions/{id}:
+    get:
+      tags: [admin]
+      summary: 题目详情（管理端可读标准答案）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { question: { $ref: '#/components/schemas/QuestionAdmin' } } } } } }
+    patch:
+      tags: [admin]
+      summary: 编辑题目（总是创建新版本；已发布版本继续对外服务）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestionInput' }
+      responses:
+        '200': { description: OK }
+        '409': { description: question_retired }
+  /admin/questions/{id}/submit-review:
+    post:
+      tags: [admin]
+      summary: 草稿提交审核
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /admin/questions/{id}/publish:
+    post:
+      tags: [admin]
+      summary: 发布当前版本（事务内校验；写入审计）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '409': { description: question_invalid / already_published / question_retired }
+  /admin/questions/{id}/retire:
+    post:
+      tags: [admin]
+      summary: 下架题目（历史记录保留题目快照）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /admin/knowledge-points:
+    get:
+      tags: [admin]
+      summary: 知识点管理列表
+      parameters: [{ name: levelId, in: query, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [admin]
+      summary: 新建知识点（默认草稿）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, levelId, subjectId]
+              properties:
+                name: { type: string }
+                levelId: { type: string }
+                subjectId: { type: string }
+                parentId: { type: string, nullable: true }
+                description: { type: string }
+                commonMistakes: { type: string }
+                examples: { type: string }
+      responses: { '201': { description: OK } }
+  /admin/knowledge-points/{id}:
+    patch:
+      tags: [admin]
+      summary: 更新知识点（name/description/commonMistakes/examples/status/parentId）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /admin/sources:
+    get:
+      tags: [admin]
+      summary: 来源与章节列表
+      responses: { '200': { description: OK } }
+    post:
+      tags: [admin]
+      summary: 新建来源（必须记录授权说明）
+      responses: { '201': { description: OK } }
+  /admin/sources/{id}:
+    patch:
+      tags: [admin]
+      summary: 更新来源
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /admin/sources/{id}/sections:
+    post:
+      tags: [admin]
+      summary: 新增章节
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '201': { description: OK } }
+  /admin/issue-reports:
+    get:
+      tags: [admin]
+      summary: 举报列表
+      parameters: [{ name: status, in: query, schema: { type: string, enum: [open, resolved, dismissed] } }]
+      responses: { '200': { description: OK } }
+  /admin/issue-reports/{id}:
+    patch:
+      tags: [admin]
+      summary: 处理举报（resolved / dismissed + 备注）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '409': { description: issue_already_handled }
+
+components:
+  responses:
+    MeResponse:
+      description: OK
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/MeResponse' }
+    Unauthorized:
+      description: unauthorized
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    NotFound:
+      description: not_found（不泄露资源是否存在）
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    ValidationError:
+      description: validation_failed（details.fields 为字段级错误）
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    RateLimited:
+      description: rate_limited
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+            details: { type: object, nullable: true }
+    MeResponse:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id: { type: string }
+            email: { type: string }
+            role: { type: string, enum: [learner, admin] }
+            defaultLevelId: { type: string, nullable: true }
+    Exam:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        levels:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string }, code: { type: string }, name: { type: string } }
+        subjects:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string }, code: { type: string }, name: { type: string } }
+    AnswerValue:
+      oneOf:
+        - type: object
+          properties: { optionIds: { type: array, items: { type: string } } }
+        - type: object
+          properties: { text: { type: string } }
+      nullable: true
+    PreSubmitSession:
+      type: object
+      description: 答题前 DTO；契约保证不含 correctAnswer/answerAuthority/gradingStatus/explanation 等字段
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [active, grading, completed, analysis_failed] }
+        answeredCount: { type: integer }
+        totalCount: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              position: { type: integer }
+              type: { type: string, enum: [single_choice, multiple_choice, fill_blank, short_answer] }
+              material:
+                nullable: true
+                type: object
+                properties: { id: { type: string }, title: { type: string }, content: { type: string } }
+              stem: { type: string }
+              options:
+                nullable: true
+                type: array
+                items:
+                  type: object
+                  properties: { id: { type: string }, label: { type: string }, text: { type: string } }
+              savedAnswer: { $ref: '#/components/schemas/AnswerValue' }
+              markedForReview: { type: boolean }
+              savedAt: { type: string, nullable: true }
+    ResultSession:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [grading, completed, analysis_failed] }
+        createdAt: { type: string }
+        submittedAt: { type: string, nullable: true }
+        summary:
+          type: object
+          properties:
+            confirmed:
+              type: object
+              description: 仅 official / human_verified 答案形成的正式正确率
+              properties:
+                correct: { type: integer }
+                total: { type: integer }
+                accuracy: { type: number, nullable: true }
+            ai:
+              type: object
+              description: AI 判定单独计数，不混入正式正确率
+              properties:
+                correct: { type: integer }
+                completed: { type: integer }
+                pending: { type: integer }
+                failed: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              position: { type: integer }
+              type: { type: string }
+              material: { type: object, nullable: true }
+              stem: { type: string }
+              options: { type: array, items: { type: object } }
+              knowledgePoints:
+                type: array
+                items:
+                  type: object
+                  properties: { id: { type: string }, name: { type: string } }
+              userAnswer: { $ref: '#/components/schemas/AnswerValue' }
+              gradingStatus: { type: string, enum: [correct, incorrect, unanswered, pending, failed] }
+              gradingSource: { type: string, enum: [deterministic, ai], nullable: true }
+              answerAuthority: { type: string, enum: [official, human_verified], nullable: true }
+              correctAnswer: { $ref: '#/components/schemas/AnswerValue' }
+              explanation:
+                nullable: true
+                type: object
+                properties:
+                  text: { type: string }
+                  source: { type: string, enum: [official, human_verified, ai] }
+    SessionListItem:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string }
+        totalCount: { type: integer }
+        createdAt: { type: string }
+        submittedAt: { type: string, nullable: true }
+    CreatePracticeRequest:
+      type: object
+      required: [levelId, count]
+      properties:
+        levelId: { type: string }
+        subjectId: { type: string }
+        mode: { type: string, enum: [comprehensive, knowledge, wrong_items], default: comprehensive }
+        knowledgePointIds: { type: array, items: { type: string } }
+        count: { type: integer, enum: [10, 20, 30] }
+    KnowledgePointItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        levelId: { type: string }
+        levelCode: { type: string }
+        subjectId: { type: string }
+        subjectName: { type: string }
+        parentId: { type: string, nullable: true }
+        questionCount: { type: integer }
+        stats:
+          nullable: true
+          type: object
+          properties:
+            confirmedAnswered: { type: integer }
+            confirmedCorrect: { type: integer }
+            recentAnswered: { type: integer }
+            recentCorrect: { type: integer }
+            aiAnswered: { type: integer }
+            aiCorrect: { type: integer }
+            consecutiveWrong: { type: integer }
+            lastPracticedAt: { type: string, nullable: true }
+    KnowledgePointDetail:
+      allOf:
+        - $ref: '#/components/schemas/KnowledgePointItem'
+        - type: object
+          properties:
+            description: { type: string }
+            commonMistakes: { type: string }
+            examples: { type: string }
+            status: { type: string }
+    WrongItem:
+      type: object
+      properties:
+        itemId: { type: string }
+        sessionId: { type: string }
+        questionId: { type: string }
+        position: { type: integer }
+        type: { type: string }
+        stem: { type: string }
+        options: { type: array, items: { type: object }, nullable: true }
+        material: { type: object, nullable: true }
+        knowledgePoints: { type: array, items: { type: object } }
+        gradingStatus: { type: string }
+        answerAuthority: { type: string, nullable: true }
+        userAnswer: { $ref: '#/components/schemas/AnswerValue' }
+        correctAnswer: { $ref: '#/components/schemas/AnswerValue' }
+        explanation: { type: object, nullable: true }
+    Dashboard:
+      type: object
+      properties:
+        activeSession:
+          nullable: true
+          type: object
+          properties: { id: { type: string }, answeredCount: { type: integer }, totalCount: { type: integer } }
+        recentSessions:
+          type: array
+          items: { $ref: '#/components/schemas/SessionListItem' }
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: [knowledge, comprehensive] }
+              knowledgePointId: { type: string, nullable: true }
+              name: { type: string }
+              recentAnswered: { type: integer }
+              recentWrongCount: { type: integer }
+              accuracy: { type: number, nullable: true }
+              consecutiveWrong: { type: integer }
+              suggestedCount: { type: integer }
+              reason: { type: string, description: 由后端真实统计数字组织 }
+              knowledgePointIds: { type: array, items: { type: string } }
+        comprehensive: { type: object, nullable: true }
+        statsEmpty: { type: boolean }
+    QuestionInput:
+      type: object
+      required: [type, stem, levelId, subjectId]
+      properties:
+        type: { type: string, enum: [single_choice, multiple_choice, fill_blank, short_answer] }
+        stem: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string }, label: { type: string }, text: { type: string } }
+        materialId: { type: string, nullable: true }
+        materialTitle: { type: string }
+        materialContent: { type: string }
+        levelId: { type: string }
+        subjectId: { type: string }
+        sourceSectionId: { type: string, nullable: true }
+        difficulty: { type: integer, minimum: 1, maximum: 5 }
+        knowledgePointIds: { type: array, items: { type: string } }
+        answer:
+          nullable: true
+          type: object
+          description: 省略表示无标准答案（练习时走 AI 判定）
+          properties:
+            value: { type: object }
+            authority: { type: string, enum: [official, human_verified] }
+            explanation: { type: string }
+    QuestionAdmin:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [draft, in_review, published, retired] }
+        hasAnswer: { type: boolean }
+        publishedVersionId: { type: string, nullable: true }
+        currentVersion: { type: object, nullable: true }
+        updatedAt: { type: string }
