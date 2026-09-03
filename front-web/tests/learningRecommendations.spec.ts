@@ -107,4 +107,34 @@ describe('学习推荐闭环', () => {
     await vi.waitFor(() => expect(emptyWrapper.text()).toContain('还没有已发布题目'))
     expect(emptyWrapper.find('button').attributes('disabled')).toBeDefined()
   })
+
+  it('知识点详情可按选择的难度默认生成 20 题', async () => {
+    requestMock.mockImplementation(async (path: string, options?: { method?: string; body?: unknown }) => {
+      if (path === '/knowledge-points/kp-1') {
+        return {
+          id: 'kp-1', name: '助词与格关系', levelId: 'level-1', levelCode: 'N5', subjectId: 'subject-1',
+          subjectName: '语法', parentId: null, questionCount: 0, description: '说明', commonMistakes: '', examples: '', status: 'published',
+        }
+      }
+      if (path === '/ai-practice-sessions' && options?.method === 'POST') return { id: 'ai-session', status: 'generating' }
+      return {}
+    })
+    const router = routerFor()
+    await router.push('/knowledge/kp-1')
+    await router.isReady()
+    const wrapper = mount(KnowledgeDetailPage, { global: { plugins: [router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('生成 AI 题目（20 题）'))
+
+    await wrapper.get('#ai-difficulty').setValue('hard')
+    await wrapper.findAll('button').find((button) => button.text().includes('生成 AI 题目'))!.trigger('click')
+    await flushPromises()
+
+    expect(requestMock).toHaveBeenCalledWith('/ai-practice-sessions', expect.objectContaining({
+      method: 'POST',
+      body: expect.objectContaining({
+        levelId: 'level-1', subjectId: 'subject-1', knowledgePointIds: ['kp-1'], count: 20, difficulty: 'hard',
+      }),
+    }))
+    expect(router.currentRoute.value.fullPath).toBe('/practice/ai-session')
+  })
 })

@@ -118,11 +118,18 @@ export interface PreSubmitSession {
   items: PreSubmitItem[]
 }
 
+export type AIGenerationDifficulty = 'easy' | 'normal' | 'hard' | 'mixed'
+export type AIGenerationMode = 'memory' | 'level'
+export type AIGenerationQuestionType = 'mixed' | QuestionType
+
 export interface AIGeneratePracticeRequest {
   levelId?: string
   subjectId?: string
   knowledgePointIds?: string[]
   count: 10 | 20 | 30
+  difficulty?: AIGenerationDifficulty
+  generationMode?: AIGenerationMode
+  questionType?: AIGenerationQuestionType
 }
 
 export interface AIGeneratedSession {

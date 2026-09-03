@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "level": "n4",
+  "subject": "reading",
+  "batch": 2,
+  "status": "draft",
+  "source": "DeepSeek",
+  "points": [
+    {
+      "id": "a9e3326c-f7c0-59b5-be25-a66f40e40f40",
+      "slug": "n4-reading-understanding_sequence_markers",
+      "level": "n4",
+      "subject": "reading",
+      "parentId": "c71e2d09-187b-5f11-9aec-0911b2e39818",
+      "name": "理解顺序标记词",
+      "description": "掌握表示事件先后顺序的标记词（如「まず、次に、それから、最後に」）在阅读中的作用，能够按顺序理清步骤或流程。",
+      "commonMistakes": "容易忽略标记词之间的层级关系，或将表示并列的「そして」误认为顺序标记。",
+      "examples": "例句：まず材料を切ります。次に、鍋で炒めます。それから、水を加えて煮ます。説明：通过「まず、次に、それから」明确操作步骤的顺序。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n4_reading"
+    },
+    {
+      "id": "a9847bbc-f84d-50b5-9d29-627a53d39c49",
+      "slug": "n4-reading-infer_author_intention",
+      "level": "n4",
+      "subject": "reading",
+      "parentId": "c71e2d09-187b-5f11-9aec-0911b2e39818",
+      "name": "推断作者写作意图",
+      "description": "在阅读短文或书信中，根据整体内容和语气推断作者写这篇文章的目的（如告知、劝诱、感谢、道歉、请求等）。",
+      "commonMistakes": "只根据个别句子判断，忽略全文语气和结尾常用表达；把作者意图与文中人物意图混淆。",
+      "examples": "日语例句：この手紙は、友達にパーティーの日取りを知らせるために書いたものです。；说明：通过开头和结尾的「お知らせ」「ぜひ来てください」等判断意图。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n4_reading"
+    },
+    {
+      "id": "62e807c2-6768-52d4-bca0-20da6f45d209",
+      "slug": "n4-reading-understand_implicit_meaning",
+      "level": "n4",
+      "subject": "reading",
+      "parentId": "c71e2d09-187b-5f11-9aec-0911b2e39818",
+      "name": "理解隐含信息",
+      "description": "从文中没有直接写出的内容，通过上下文和常识推断出说话人未明说的意思、背景或后续可能发生的事。",
+      "commonMistakes": "过度推断，脱离原文依据；只停留在字面意思，忽略省略和暗示。",
+      "examples": "日语例句：田中さんは「あしたはちょっと…」と言った。；说明：从省略号推断田中明天不方便，但具体原因未说明。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n4_reading"
+    },
+    {
+      "id": "1652e4b8-5af0-558f-a973-39d4c7681eb1",
+      "slug": "n4-reading-grasp_paragraph_connection",
+      "level": "n4",
+      "subject": "reading",
+      "parentId": "c71e2d09-187b-5f11-9aec-0911b2e39818",
+      "name": "把握段落间衔接关系",
+      "description": "理解相邻段落或句子之间的逻辑连接（如承接、转折、补充、总结），能判断过渡句的作用。",
+      "commonMistakes": "只关注单句，忽略连接词（しかし、また、つまり等）提示的关系；把补充当作转折。",
+      "examples": "日语例句：最初は難しかった。しかし、練習すればだんだん上手になった。；说明：「しかし」表示转折，前后内容形成对比。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n4_reading"
+    },
+    {
+      "id": "98d4e229-d570-50c6-8c42-4aec7859fb41",
+      "slug": "n4-reading-extract_necessary_information",
+      "level": "n4",
+      "subject": "reading",
+      "parentId": "c71e2d09-187b-5f11-9aec-0911b2e39818",
+      "name": "提取必要信息",
+      "description": "在通知、广告、说明书等实用文本中，快速找到所需的具体信息（时间、地点、条件、联系方式等），并排除干扰项。",
+      "commonMistakes": "被无关细节干扰，忽略限定条件（如「土曜日以外」「学生のみ」）；混淆不同条目下的信息。",
+      "examples": "日语例句：図書館は月曜日休みです。火曜日から日曜日まで午前9時から午後8時まで開いています。；说明：若问“周二能借书吗”，需提取开馆时间并判断符合条件。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n4_reading"
+    }
+  ]
+}

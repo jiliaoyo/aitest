@@ -74,7 +74,7 @@ func Load() (Config, error) {
 	}
 	c.WorkerConcurrency = concurrency
 
-	aiTimeout, err := time.ParseDuration(getenv("AI_TIMEOUT", "60s"))
+	aiTimeout, err := time.ParseDuration(getenv("AI_TIMEOUT", "300s"))
 	if err != nil {
 		return c, fmt.Errorf("AI_TIMEOUT 无效: %w", err)
 	}

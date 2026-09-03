@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { KnowledgePointDetail } from '@/api/types'
+import type { AIGeneratedSession, AIGenerationDifficulty, KnowledgePointDetail } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { formatPercent, formatDateTime } from '@/app/format'
@@ -15,6 +15,9 @@ const state = ref<'loading' | 'ready' | 'error' | 'notfound'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
 const creating = ref(false)
+const generatingAI = ref(false)
+const generateAIError = ref('')
+const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
 
 async function load(): Promise<void> {
   state.value = 'loading'
@@ -61,6 +64,29 @@ async function startPractice(): Promise<void> {
     creating.value = false
   }
 }
+
+async function generateAIPractice(): Promise<void> {
+  if (!detail.value || generatingAI.value) return
+  generatingAI.value = true
+  generateAIError.value = ''
+  try {
+    const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
+      method: 'POST',
+      body: {
+        levelId: detail.value.levelId,
+        subjectId: detail.value.subjectId,
+        knowledgePointIds: [detail.value.id],
+        count: 20,
+        difficulty: aiDifficulty.value,
+      },
+    })
+    await router.push(`/practice/${session.id}`)
+  } catch (err) {
+    generateAIError.value = err instanceof ApiError ? err.message : 'AI 出题失败，请重试'
+  } finally {
+    generatingAI.value = false
+  }
+}
 </script>
 
 <template>
@@ -82,6 +108,24 @@ async function startPractice(): Promise<void> {
       <div v-if="detail.questionCount === 0" class="card">
         <p class="muted">该知识点还没有已发布题目，先去其他知识点练习吧。</p>
       </div>
+
+      <section class="card" aria-labelledby="ai-generation-title">
+        <h2 id="ai-generation-title" style="font-size: 18px; margin-top: 0">AI 生成题目</h2>
+        <p class="muted">围绕当前知识点生成 20 道新题，仅用于本次账号练习，不会自动进入公共题库。</p>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-difficulty">难度</label>
+          <select id="ai-difficulty" v-model="aiDifficulty" :disabled="generatingAI">
+            <option value="mixed">随机混合难度</option>
+            <option value="easy">简单</option>
+            <option value="normal">一般</option>
+            <option value="hard">困难</option>
+          </select>
+        </div>
+        <p v-if="generateAIError" class="error-summary" role="alert">{{ generateAIError }}</p>
+        <button class="primary" type="button" :disabled="generatingAI" @click="generateAIPractice">
+          {{ generatingAI ? 'AI 出题中…' : '生成 AI 题目（20 题）' }}
+        </button>
+      </section>
 
       <div v-if="detail.description || detail.commonMistakes || detail.examples" class="card">
         <section v-if="detail.description">

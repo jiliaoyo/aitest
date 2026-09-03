@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "level": "n3",
+  "subject": "grammar",
+  "batch": 6,
+  "status": "draft",
+  "source": "DeepSeek",
+  "points": [
+    {
+      "id": "cef389d3-b5af-59da-9fdb-04a33179cecd",
+      "slug": "n3-grammar-te_wa_ikenai_nai_te_wa_naranai",
+      "level": "n3",
+      "subject": "grammar",
+      "parentId": "7a5708fd-a47a-5754-b54f-6a6b05de3730",
+      "name": "～てはいけない／～てはならない（禁止・规范）",
+      "description": "表示禁止或不允许做某事。～てはいけない多用于个人对他人或自己的禁止，语气较直接；～てはならない多用于社会规范、道德、法律等普遍性禁止，语气较正式、书面。接续：动词て形＋はいけない／はならない。",
+      "commonMistakes": "容易混淆两者使用场合：～てはいけない更口语化，～てはならない更正式、客观。另外，～てはならない不能用于对特定个人的命令，而～てはいけない可以。",
+      "examples": "ここでタバコを吸ってはいけません。（说明：这里不能吸烟，直接禁止。）／嘘をついてはならない。（说明：不应说谎，属于道德规范。）",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n3_grammar"
+    },
+    {
+      "id": "a98397d0-88e8-53f3-b78c-3317db029c1e",
+      "slug": "n3-grammar-te_mo_suru",
+      "level": "n3",
+      "subject": "grammar",
+      "parentId": "7a5708fd-a47a-5754-b54f-6a6b05de3730",
+      "name": "～てもする（强调动作）",
+      "description": "表示“特意做某事”或“强调动作的程度”，常与“わざわざ”等副词连用，用于强调主语主动进行某动作。接续：动词て形＋も＋する。",
+      "commonMistakes": "容易与“～てみる”混淆，但“～てもする”不表示尝试，而是强调动作本身；注意“も”不能省略，且多用于口语或书面强调。",
+      "examples": "日本語：わざわざ遠くから来てもしたのに、会えなくて残念だ。；说明：强调“特意来”的动作。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n3_grammar"
+    }
+  ]
+}

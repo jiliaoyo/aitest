@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { AIGeneratePracticeRequest, AIGeneratedSession, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
+import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationDifficulty, AIGenerationMode, AIGenerationQuestionType, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { sessionUser } from '@/app/session'
@@ -29,6 +29,21 @@ const creating = ref(false)
 const createError = ref('')
 const generatingAI = ref(false)
 const generateAIError = ref('')
+const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
+const aiGenerationMode = ref<AIGenerationMode>('memory')
+const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
+
+const aiGenerationModeOptions: { value: AIGenerationMode; label: string }[] = [
+  { value: 'memory', label: '根据我的记忆' },
+  { value: 'level', label: '根据当前级别' },
+]
+const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[] = [
+  { value: 'mixed', label: '混合题型' },
+  { value: 'single_choice', label: '单项选择' },
+  { value: 'multiple_choice', label: '多项选择' },
+  { value: 'fill_blank', label: '填空题' },
+  { value: 'short_answer', label: '简答题' },
+]
 
 const kps = ref<KnowledgePointItem[]>([])
 const kpsLoading = ref(false)
@@ -50,6 +65,7 @@ onMounted(async () => {
 
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
+const selectedLevelName = computed(() => levels.value.find((level) => level.id === levelId.value)?.name ?? '当前级别')
 
 watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId, knowledgePointIds], async () => {
   await refreshAvailability()
@@ -172,8 +188,11 @@ async function generateAIPractice(): Promise<void> {
     const body: AIGeneratePracticeRequest = {
       levelId: levelId.value,
       subjectId: subjectId.value,
-      knowledgePointIds: knowledgePointIds.value,
+      knowledgePointIds: aiGenerationMode.value === 'memory' ? knowledgePointIds.value : [],
       count: count.value as 10 | 20 | 30,
+      difficulty: aiDifficulty.value,
+      generationMode: aiGenerationMode.value,
+      questionType: aiQuestionType.value,
     }
     const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
       method: 'POST',
@@ -313,7 +332,39 @@ async function generateAIPractice(): Promise<void> {
 
       <section class="card" aria-labelledby="ai-practice-title">
         <h2 id="ai-practice-title" style="font-size: 18px">AI 个性化练习</h2>
-        <p class="muted">AI 会参考你的全局做题记忆和薄弱知识点，随机生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。</p>
+        <p class="muted">
+          AI 会
+          <template v-if="aiGenerationMode === 'memory'">参考你的全局做题记忆和薄弱知识点</template>
+          <template v-else>根据当前 {{ selectedLevelName }} 级别</template>
+          生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。
+        </p>
+        <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
+          <legend style="font-weight: 600; margin-bottom: 6px">生成依据</legend>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label v-for="option in aiGenerationModeOptions" :key="option.value" class="option-row" style="margin-bottom: 0">
+              <input v-model="aiGenerationMode" type="radio" name="ai-generation-mode" :value="option.value" />
+              <span>{{ option.label }}<template v-if="option.value === 'level'">（{{ selectedLevelName }}）</template></span>
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
+          <legend style="font-weight: 600; margin-bottom: 6px">题型</legend>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label v-for="option in aiQuestionTypeOptions" :key="option.value" class="option-row" style="margin-bottom: 0">
+              <input v-model="aiQuestionType" type="radio" name="ai-question-type" :value="option.value" />
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-difficulty">难度</label>
+          <select id="ai-difficulty" v-model="aiDifficulty" :disabled="generatingAI">
+            <option value="mixed">随机混合难度</option>
+            <option value="easy">简单</option>
+            <option value="normal">一般</option>
+            <option value="hard">困难</option>
+          </select>
+        </div>
         <p v-if="generateAIError" class="error-summary" role="alert">{{ generateAIError }}</p>
         <button class="primary" type="button" :disabled="!levelId || generatingAI" @click="generateAIPractice">
           {{ generatingAI ? 'AI 出题中…' : '根据我的记忆生成题目' }}

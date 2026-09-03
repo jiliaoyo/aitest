@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "level": "n2",
+  "subject": "reading",
+  "batch": 3,
+  "status": "draft",
+  "source": "DeepSeek",
+  "points": [
+    {
+      "id": "0c3f964b-b30a-5c1d-ada9-53f2b0acd2d8",
+      "slug": "n2-reading-reading_parallel_structure",
+      "level": "n2",
+      "subject": "reading",
+      "parentId": "484277fc-4207-58b6-a379-7748339c9a44",
+      "name": "并列结构理解",
+      "description": "掌握文章中多个并列成分或并列句的识别，理解其共同作用或递进关系，避免遗漏信息。",
+      "commonMistakes": "误将并列成分当作主次关系，或忽略并列连词如「そして」「また」「それに」等，导致信息提取不全。",
+      "examples": "日本語：この商品はデザインが優れているし、価格も手頃だ。；说明：通过「し」并列两个优点，阅读时需同时把握两方面。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n2_reading"
+    },
+    {
+      "id": "52fc7bf9-7867-56de-aeac-68d4acba6f56",
+      "slug": "n2-reading-reading_contrastive_emphasis",
+      "level": "n2",
+      "subject": "reading",
+      "parentId": "484277fc-4207-58b6-a379-7748339c9a44",
+      "name": "对比强调理解",
+      "description": "识别文章中通过对比（如「一方」「逆に」「対して」）突出某一方或强调差异的写法，理解作者的侧重点。",
+      "commonMistakes": "只注意对比内容，忽略作者通过对比强调的重点，或误以为对比双方同等重要。",
+      "examples": "日本語：若者はSNSをよく使う一方、高齢者は新聞を好む傾向がある。；说明：对比中可能隐含作者对代际差异的关注，需结合上下文判断强调点。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n2_reading"
+    },
+    {
+      "id": "0fe10728-7e44-5c74-9410-c20f98e82c5e",
+      "slug": "n2-reading-reading_modal_attitude",
+      "level": "n2",
+      "subject": "reading",
+      "parentId": "484277fc-4207-58b6-a379-7748339c9a44",
+      "name": "语气词与态度把握",
+      "description": "通过「だろう」「かもしれない」「に違いない」等语气表达判断作者的确信程度或推测态度，避免将推测当作事实。",
+      "commonMistakes": "将「かもしれない」等不确定表达误读为肯定事实，或忽略语气词对态度的影响。",
+      "examples": "日本語：この計画は実現可能かもしれないが、まだ課題が多い。；说明：「かもしれない」表明作者持保留态度，并非完全肯定。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n2_reading"
+    },
+    {
+      "id": "be473c3f-fcc0-5634-828a-d53b237ab97c",
+      "slug": "n2-reading-reading_question_paragraph",
+      "level": "n2",
+      "subject": "reading",
+      "parentId": "484277fc-4207-58b6-a379-7748339c9a44",
+      "name": "设问段功能理解",
+      "description": "理解文中设问句（自问自答）的作用，如引出话题、承上启下或强调观点，把握文章展开逻辑。",
+      "commonMistakes": "把设问句当作普通疑问句，忽略其引导下文的功能，导致对文章结构理解偏差。",
+      "examples": "日本語：では、なぜこの問題が重要なのでしょうか。それは…；说明：设问句用于引出下文解释，阅读时需注意其后的回答部分。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n2_reading"
+    },
+    {
+      "id": "6ca6638a-2638-5f74-b300-5b6db0b74975",
+      "slug": "n2-reading-reading_negative_contrast",
+      "level": "n2",
+      "subject": "reading",
+      "parentId": "484277fc-4207-58b6-a379-7748339c9a44",
+      "name": "否定对比理解",
+      "description": "识别通过否定一方来肯定另一方的表达（如「AではなくB」「むしろ」），理解作者的真实意图。",
+      "commonMistakes": "只理解否定部分，忽略被肯定的部分，或混淆「ではなく」与「だけではなく」的区别。",
+      "examples": "日本語：失敗は悪いことではなく、むしろ成長の機会だ。；说明：通过否定「悪いこと」强调「成長の機会」，阅读时需抓住被肯定的重点。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n2_reading"
+    }
+  ]
+}

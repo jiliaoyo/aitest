@@ -20,16 +20,29 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v1"
+const questionGenerationPromptVersion = "practice_question_generation.v3"
 
-//go:embed prompts/practice_question_generation.v1.md
+//go:embed prompts/practice_question_generation.v3.md
 var questionGenerationPrompt string
+
+const (
+	generatedDifficultyEasy    = "easy"
+	generatedDifficultyNormal  = "normal"
+	generatedDifficultyHard    = "hard"
+	generatedDifficultyMixed   = "mixed"
+	generationModeMemory       = "memory"
+	generationModeLevel        = "level"
+	generatedQuestionTypeMixed = "mixed"
+)
 
 type AIGenerateRequest struct {
 	LevelID           string   `json:"levelId"`
 	SubjectID         string   `json:"subjectId"`
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
 	Count             int      `json:"count"`
+	Difficulty        string   `json:"difficulty"`
+	GenerationMode    string   `json:"generationMode"`
+	QuestionType      string   `json:"questionType"`
 }
 
 type AIGeneratedSession struct {
@@ -61,10 +74,28 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 		return AIGeneratedSession{}, httpapi.E(http.StatusServiceUnavailable, "ai_unavailable", "AI 出题服务暂不可用")
 	}
 	if req.Count == 0 {
-		req.Count = 10
+		req.Count = 20
 	}
 	if !validGeneratedCount(req.Count) {
 		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"count": "题量只能是 10、20 或 30"})
+	}
+	if req.Difficulty == "" {
+		req.Difficulty = generatedDifficultyMixed
+	}
+	if !validGeneratedDifficulty(req.Difficulty) {
+		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"difficulty": "难度必须是 easy、normal、hard 或 mixed"})
+	}
+	if req.GenerationMode == "" {
+		req.GenerationMode = generationModeMemory
+	}
+	if !validGenerationMode(req.GenerationMode) {
+		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"generationMode": "生成依据必须是 memory 或 level"})
+	}
+	if req.QuestionType == "" {
+		req.QuestionType = generatedQuestionTypeMixed
+	}
+	if !validGeneratedQuestionType(req.QuestionType) {
+		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"questionType": "题型不合法"})
 	}
 	if len(req.KnowledgePointIDs) > 10 {
 		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"knowledgePointIds": "一次最多选择 10 个知识点"})
@@ -84,6 +115,9 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 		"mode":              "ai_generated",
 		"subjectId":         req.SubjectID,
 		"knowledgePointIds": req.KnowledgePointIDs,
+		"difficulty":        req.Difficulty,
+		"generationMode":    req.GenerationMode,
+		"questionType":      req.QuestionType,
 	})
 	var out AIGeneratedSession
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -104,6 +138,18 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 }
 
 func validGeneratedCount(count int) bool { return count == 10 || count == 20 || count == 30 }
+
+func validGeneratedDifficulty(difficulty string) bool {
+	return difficulty == generatedDifficultyEasy || difficulty == generatedDifficultyNormal || difficulty == generatedDifficultyHard || difficulty == generatedDifficultyMixed
+}
+
+func validGenerationMode(mode string) bool {
+	return mode == generationModeMemory || mode == generationModeLevel
+}
+
+func validGeneratedQuestionType(questionType string) bool {
+	return questionType == generatedQuestionTypeMixed || content.ValidType(questionType)
+}
 
 func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateRequest) error {
 	var levelExists bool
@@ -167,7 +213,11 @@ type generationJobRequest struct {
 type questionGenerationInput struct {
 	Count          int                         `json:"count"`
 	LevelID        string                      `json:"levelId"`
+	LevelCode      string                      `json:"levelCode"`
 	SubjectID      string                      `json:"subjectId,omitempty"`
+	Difficulty     string                      `json:"difficulty"`
+	GenerationMode string                      `json:"generationMode"`
+	QuestionType   string                      `json:"questionType"`
 	RandomSeed     string                      `json:"randomSeed"`
 	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
 }
@@ -195,6 +245,7 @@ type generatedQuestionResponse struct {
 type generationSessionRow struct {
 	UserID         string
 	LevelID        string
+	LevelCode      string
 	SubjectID      *string
 	RequestedCount int
 	Scope          string
@@ -208,9 +259,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	}
 	var row generationSessionRow
 	err := s.pool.QueryRow(ctx,
-		`SELECT user_id::text, level_id::text, subject_id::text, requested_count, scope::text, status
-		 FROM practice_sessions WHERE id = $1`, req.SessionID,
-	).Scan(&row.UserID, &row.LevelID, &row.SubjectID, &row.RequestedCount, &row.Scope, &row.Status)
+		`SELECT ps.user_id::text, ps.level_id::text, l.code, ps.subject_id::text, ps.requested_count, ps.scope::text, ps.status
+		 FROM practice_sessions ps JOIN exam_levels l ON l.id = ps.level_id WHERE ps.id = $1`, req.SessionID,
+	).Scan(&row.UserID, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.RequestedCount, &row.Scope, &row.Status)
 	if errors.Is(err, pgx.ErrNoRows) || row.Status == "active" {
 		return nil
 	}
@@ -224,6 +275,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		Mode              string   `json:"mode"`
 		SubjectID         string   `json:"subjectId"`
 		KnowledgePointIDs []string `json:"knowledgePointIds"`
+		Difficulty        string   `json:"difficulty"`
+		GenerationMode    string   `json:"generationMode"`
+		QuestionType      string   `json:"questionType"`
 	}
 	if err := strictDecode([]byte(row.Scope), &scope); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("解析 AI 出题范围失败: %w", err))
@@ -232,7 +286,28 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if row.SubjectID != nil {
 		subjectID = *row.SubjectID
 	}
-	memory, err := learning.NewStore(s.pool).GenerationMemoryForAI(ctx, row.UserID, row.LevelID, subjectID, scope.KnowledgePointIDs)
+	difficulty := scope.Difficulty
+	if difficulty == "" {
+		difficulty = generatedDifficultyMixed
+	}
+	if !validGeneratedDifficulty(difficulty) {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 出题难度不合法"))
+	}
+	generationMode := scope.GenerationMode
+	if generationMode == "" {
+		generationMode = generationModeMemory
+	}
+	if !validGenerationMode(generationMode) {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 出题依据不合法"))
+	}
+	questionType := scope.QuestionType
+	if questionType == "" {
+		questionType = generatedQuestionTypeMixed
+	}
+	if !validGeneratedQuestionType(questionType) {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 题型不合法"))
+	}
+	memory, err := learning.NewStore(s.pool).GenerationMemoryForAI(ctx, row.UserID, row.LevelID, subjectID, scope.KnowledgePointIDs, generationMode)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取 AI 出题记忆失败: %w", err))
 	}
@@ -244,7 +319,8 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
 	inputJSON, _ := json.Marshal(questionGenerationInput{
-		Count: row.RequestedCount, LevelID: row.LevelID, SubjectID: subjectID,
+		Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
+		GenerationMode: generationMode, QuestionType: questionType,
 		RandomSeed: seed, LearningMemory: memory,
 	})
 	out, err := s.client.RunPromptWithTemperature(ctx, "practice_question_generation", questionGenerationPromptVersion,
@@ -256,7 +332,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err := strictDecode(out, &response); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("AI 出题输出不合法: %w", err))
 	}
-	if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, memory.KnowledgePoints); err != nil {
+	if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
 	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, memory.KnowledgePoints, response.Questions); err != nil {
@@ -274,7 +350,7 @@ func randomSeed() (string, error) {
 	return hex.EncodeToString(seed[:]), nil
 }
 
-func validateGeneratedQuestions(questions []generatedQuestion, expected int, points []learning.AIGenerationKnowledgePoint) error {
+func validateGeneratedQuestions(questions []generatedQuestion, expected int, difficulty, questionType string, points []learning.AIGenerationKnowledgePoint) error {
 	if len(questions) != expected {
 		return fmt.Errorf("AI 出题数量不正确：需要 %d 道，实际 %d 道", expected, len(questions))
 	}
@@ -284,7 +360,7 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, poi
 	}
 	seenStems := map[string]bool{}
 	for i, question := range questions {
-		if question.Type != "single_choice" || len([]rune(strings.TrimSpace(question.Stem))) < 2 {
+		if !questionTypeMatches(questionType, question.Type) || len([]rune(strings.TrimSpace(question.Stem))) < 2 {
 			return fmt.Errorf("AI 第 %d 题题型或题干不合法", i+1)
 		}
 		stem := strings.TrimSpace(question.Stem)
@@ -292,22 +368,34 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, poi
 			return fmt.Errorf("AI 第 %d 题与其他题目重复", i+1)
 		}
 		seenStems[stem] = true
-		if len(question.Options) != 4 {
-			return fmt.Errorf("AI 第 %d 题必须有 4 个选项", i+1)
-		}
 		options := make([]content.Option, 0, len(question.Options))
-		seenOptions := map[string]bool{}
-		for _, option := range question.Options {
-			if option.ID == "" || seenOptions[option.ID] || strings.TrimSpace(option.Text) == "" {
-				return fmt.Errorf("AI 第 %d 题选项不合法", i+1)
+		if content.IsChoiceType(question.Type) {
+			if len(question.Options) != 4 {
+				return fmt.Errorf("AI 第 %d 题必须有 4 个选项", i+1)
 			}
-			seenOptions[option.ID] = true
-			options = append(options, content.Option{ID: option.ID, Label: option.Label, Text: option.Text})
+			seenOptions := map[string]bool{}
+			for _, option := range question.Options {
+				if option.ID == "" || seenOptions[option.ID] || strings.TrimSpace(option.Text) == "" {
+					return fmt.Errorf("AI 第 %d 题选项不合法", i+1)
+				}
+				seenOptions[option.ID] = true
+				options = append(options, content.Option{ID: option.ID, Label: option.Label, Text: option.Text})
+			}
+		} else if len(question.Options) != 0 {
+			return fmt.Errorf("AI 第 %d 题非选择题不能有选项", i+1)
 		}
 		if err := content.ValidateAnswerValue(question.Type, options, question.CorrectAnswer); err != nil {
 			return fmt.Errorf("AI 第 %d 题答案不合法: %w", i+1, err)
 		}
-		if question.Difficulty < 1 || question.Difficulty > 5 || strings.TrimSpace(question.Explanation) == "" || len([]rune(question.Explanation)) > 2000 {
+		if question.Type == "short_answer" {
+			var answer struct {
+				Reference string `json:"reference"`
+			}
+			if err := json.Unmarshal(question.CorrectAnswer, &answer); err != nil || strings.TrimSpace(answer.Reference) == "" {
+				return fmt.Errorf("AI 第 %d 题简答参考答案不合法", i+1)
+			}
+		}
+		if !difficultyMatches(difficulty, question.Difficulty) || strings.TrimSpace(question.Explanation) == "" || len([]rune(question.Explanation)) > 2000 {
 			return fmt.Errorf("AI 第 %d 题难度或解析不合法", i+1)
 		}
 		if len(question.KnowledgePointIDs) == 0 {
@@ -320,6 +408,25 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, poi
 		}
 	}
 	return nil
+}
+
+func questionTypeMatches(mode, questionType string) bool {
+	return content.ValidType(questionType) && (mode == generatedQuestionTypeMixed || mode == questionType)
+}
+
+func difficultyMatches(mode string, difficulty int) bool {
+	switch mode {
+	case generatedDifficultyEasy:
+		return difficulty >= 1 && difficulty <= 2
+	case generatedDifficultyNormal:
+		return difficulty == 3
+	case generatedDifficultyHard:
+		return difficulty >= 4 && difficulty <= 5
+	case generatedDifficultyMixed:
+		return difficulty >= 1 && difficulty <= 5
+	default:
+		return false
+	}
 }
 
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {

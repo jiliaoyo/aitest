@@ -1,0 +1,459 @@
+{
+  "version": 1,
+  "scope": [
+    "n5",
+    "n4",
+    "n3",
+    "n2",
+    "n1"
+  ],
+  "subjects": [
+    "grammar",
+    "vocabulary",
+    "reading"
+  ],
+  "status": "draft",
+  "batches": [
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 1,
+      "file": "n1_grammar_01.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 2,
+      "file": "n1_grammar_02.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 3,
+      "file": "n1_grammar_03.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 4,
+      "file": "n1_grammar_04.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 5,
+      "file": "n1_grammar_05.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 6,
+      "file": "n1_grammar_06.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "grammar",
+      "batch": 7,
+      "file": "n1_grammar_07.json",
+      "count": 10
+    },
+    {
+      "level": "n1",
+      "subject": "reading",
+      "batch": 1,
+      "file": "n1_reading_01.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "reading",
+      "batch": 2,
+      "file": "n1_reading_02.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "reading",
+      "batch": 3,
+      "file": "n1_reading_03.json",
+      "count": 15
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 1,
+      "file": "n1_vocabulary_01.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 2,
+      "file": "n1_vocabulary_02.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 3,
+      "file": "n1_vocabulary_03.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 4,
+      "file": "n1_vocabulary_04.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 5,
+      "file": "n1_vocabulary_05.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 6,
+      "file": "n1_vocabulary_06.json",
+      "count": 20
+    },
+    {
+      "level": "n1",
+      "subject": "vocabulary",
+      "batch": 7,
+      "file": "n1_vocabulary_07.json",
+      "count": 10
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 1,
+      "file": "n2_grammar_01.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 2,
+      "file": "n2_grammar_02.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 3,
+      "file": "n2_grammar_03.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 4,
+      "file": "n2_grammar_04.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 5,
+      "file": "n2_grammar_05.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "grammar",
+      "batch": 6,
+      "file": "n2_grammar_06.json",
+      "count": 10
+    },
+    {
+      "level": "n2",
+      "subject": "reading",
+      "batch": 1,
+      "file": "n2_reading_01.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "reading",
+      "batch": 2,
+      "file": "n2_reading_02.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "reading",
+      "batch": 3,
+      "file": "n2_reading_03.json",
+      "count": 5
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 1,
+      "file": "n2_vocabulary_01.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 2,
+      "file": "n2_vocabulary_02.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 3,
+      "file": "n2_vocabulary_03.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 4,
+      "file": "n2_vocabulary_04.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 5,
+      "file": "n2_vocabulary_05.json",
+      "count": 20
+    },
+    {
+      "level": "n2",
+      "subject": "vocabulary",
+      "batch": 6,
+      "file": "n2_vocabulary_06.json",
+      "count": 10
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 1,
+      "file": "n3_grammar_01.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 2,
+      "file": "n3_grammar_02.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 3,
+      "file": "n3_grammar_03.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 4,
+      "file": "n3_grammar_04.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 5,
+      "file": "n3_grammar_05.json",
+      "count": 10
+    },
+    {
+      "level": "n3",
+      "subject": "grammar",
+      "batch": 6,
+      "file": "n3_grammar_06.json",
+      "count": 2
+    },
+    {
+      "level": "n3",
+      "subject": "reading",
+      "batch": 1,
+      "file": "n3_reading_01.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "reading",
+      "batch": 2,
+      "file": "n3_reading_02.json",
+      "count": 15
+    },
+    {
+      "level": "n3",
+      "subject": "vocabulary",
+      "batch": 1,
+      "file": "n3_vocabulary_01.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "vocabulary",
+      "batch": 2,
+      "file": "n3_vocabulary_02.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "vocabulary",
+      "batch": 3,
+      "file": "n3_vocabulary_03.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "vocabulary",
+      "batch": 4,
+      "file": "n3_vocabulary_04.json",
+      "count": 20
+    },
+    {
+      "level": "n3",
+      "subject": "vocabulary",
+      "batch": 5,
+      "file": "n3_vocabulary_05.json",
+      "count": 10
+    },
+    {
+      "level": "n4",
+      "subject": "grammar",
+      "batch": 1,
+      "file": "n4_grammar_01.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "grammar",
+      "batch": 2,
+      "file": "n4_grammar_02.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "grammar",
+      "batch": 3,
+      "file": "n4_grammar_03.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "grammar",
+      "batch": 4,
+      "file": "n4_grammar_04.json",
+      "count": 10
+    },
+    {
+      "level": "n4",
+      "subject": "reading",
+      "batch": 1,
+      "file": "n4_reading_01.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "reading",
+      "batch": 2,
+      "file": "n4_reading_02.json",
+      "count": 5
+    },
+    {
+      "level": "n4",
+      "subject": "vocabulary",
+      "batch": 1,
+      "file": "n4_vocabulary_01.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "vocabulary",
+      "batch": 2,
+      "file": "n4_vocabulary_02.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "vocabulary",
+      "batch": 3,
+      "file": "n4_vocabulary_03.json",
+      "count": 20
+    },
+    {
+      "level": "n4",
+      "subject": "vocabulary",
+      "batch": 4,
+      "file": "n4_vocabulary_04.json",
+      "count": 10
+    },
+    {
+      "level": "n5",
+      "subject": "grammar",
+      "batch": 1,
+      "file": "n5_grammar_01.json",
+      "count": 20
+    },
+    {
+      "level": "n5",
+      "subject": "grammar",
+      "batch": 2,
+      "file": "n5_grammar_02.json",
+      "count": 17
+    },
+    {
+      "level": "n5",
+      "subject": "grammar",
+      "batch": 3,
+      "file": "n5_grammar_03.json",
+      "count": 10
+    },
+    {
+      "level": "n5",
+      "subject": "grammar",
+      "batch": 4,
+      "file": "n5_grammar_04.json",
+      "count": 3
+    },
+    {
+      "level": "n5",
+      "subject": "reading",
+      "batch": 1,
+      "file": "n5_reading_01.json",
+      "count": 20
+    },
+    {
+      "level": "n5",
+      "subject": "vocabulary",
+      "batch": 1,
+      "file": "n5_vocabulary_01.json",
+      "count": 20
+    },
+    {
+      "level": "n5",
+      "subject": "vocabulary",
+      "batch": 2,
+      "file": "n5_vocabulary_02.json",
+      "count": 20
+    },
+    {
+      "level": "n5",
+      "subject": "vocabulary",
+      "batch": 3,
+      "file": "n5_vocabulary_03.json",
+      "count": 10
+    }
+  ]
+}

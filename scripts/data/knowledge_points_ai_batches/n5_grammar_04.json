@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "level": "n5",
+  "subject": "grammar",
+  "batch": 4,
+  "status": "draft",
+  "source": "DeepSeek",
+  "points": [
+    {
+      "id": "59df396a-4a80-5605-9d05-914b6bc6a100",
+      "slug": "n5-grammar-te_mo_ii_desu_ka_hitei",
+      "level": "n5",
+      "subject": "grammar",
+      "parentId": "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+      "name": "～てもいいですか（否定回答）",
+      "description": "针对“～てもいいですか”的否定回答，常用“いいえ、～てはいけません”或“いいえ、～ないでください”，表示不允许。",
+      "commonMistakes": "否定回答不能直接说“いいえ、～てもいいです”，必须用禁止或请求不要的表达。",
+      "examples": "日本語：いいえ、ここでタバコを吸ってはいけません。；说明：对“吸ってもいいですか”的否定回答。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n5_grammar"
+    },
+    {
+      "id": "ded43238-0c2b-5dae-93fb-44493d443c81",
+      "slug": "n5-grammar-te_kudasai_masu_keigo",
+      "level": "n5",
+      "subject": "grammar",
+      "parentId": "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+      "name": "～てください（ます形接续）",
+      "description": "用于礼貌地请求对方做某事，接续为动词て形+ください。注意与「～てくださいませんか」等更礼貌形式区分。",
+      "commonMistakes": "误将「ください」当作动词原形，或接续错误（如用ます形直接加ください）。",
+      "examples": "日语例句：ここに名前を書いてください。；说明：请求对方在这里写名字。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n5_grammar"
+    },
+    {
+      "id": "8ff09a9c-9984-5c53-bf84-b78d9b90ff06",
+      "slug": "n5-grammar-te_mo_ii_desu_ka_affirmative",
+      "level": "n5",
+      "subject": "grammar",
+      "parentId": "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+      "name": "～てもいいですか（肯定回答）",
+      "description": "用于请求许可，回答时可用「はい、いいですよ」或「はい、どうぞ」等肯定表达。",
+      "commonMistakes": "回答时误用「てもいいです」直接重复，或混淆「いいです」与「大丈夫です」。",
+      "examples": "日语例句：窓を開けてもいいですか。→ はい、いいですよ。；说明：询问可否开窗，肯定回答。",
+      "status": "draft",
+      "source": "ai_candidate",
+      "sourceBatch": "n5_grammar"
+    }
+  ]
+}

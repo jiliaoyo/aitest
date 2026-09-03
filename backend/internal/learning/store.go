@@ -202,8 +202,8 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 }
 
 // GenerationMemoryForAI 返回当前级别的已审核知识点和账号统计，供生成题任务使用。
-// 未指定知识点时优先薄弱点；样本不足则随机补足，避免每次都生成同一组题。
-func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string) (AIGenerationMemory, error) {
+// memory 模式优先薄弱点，level 模式随机抽取更大的知识点样本，避免生成内容只围绕少数薄弱点。
+func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
 	var memory AIGenerationMemory
 	if err := s.db.QueryRow(ctx,
 		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
@@ -225,11 +225,12 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		   AND kp.level_id::text = $2
 		   AND ($3 = '' OR kp.subject_id::text = $3)
 		   AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
-		 ORDER BY CASE WHEN coalesce(st.recent_answered, 0) >= 5 THEN 0 ELSE 1 END,
-		          coalesce(st.recent_correct, 0)::float / greatest(coalesce(st.recent_answered, 0), 1),
-		          coalesce(st.consecutive_wrong, 0) DESC,
+		 ORDER BY CASE WHEN $5 = 'level' THEN random() END,
+		          CASE WHEN $5 = 'memory' AND coalesce(st.recent_answered, 0) >= 5 THEN 0 ELSE 1 END,
+		          CASE WHEN $5 = 'memory' THEN coalesce(st.recent_correct, 0)::float / greatest(coalesce(st.recent_answered, 0), 1) END,
+		          CASE WHEN $5 = 'memory' THEN coalesce(st.consecutive_wrong, 0)::float END DESC,
 		          random()
-		 LIMIT CASE WHEN $4::uuid[] = '{}' THEN 5 ELSE 50 END`, userID, levelID, subjectID, knowledgePointIDs)
+		 LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 5 ELSE 50 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
 	if err != nil {
 		return memory, err
 	}

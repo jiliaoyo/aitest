@@ -286,7 +286,7 @@ paths:
   /ai-practice-sessions:
     post:
       tags: [practice]
-      summary: 根据当前账号全局做题记忆异步生成私有练习
+      summary: 根据账号记忆或 JLPT 级别异步生成私有练习
       description: AI 只从已审核知识点生成新题；题目不会自动进入普通题库，生成完成后通过普通练习接口答题。
       requestBody:
         required: false
@@ -818,8 +818,11 @@ components:
       properties:
         levelId: { type: string, description: 省略时使用账号默认级别 }
         subjectId: { type: string, description: 可选科目范围 }
-        knowledgePointIds: { type: array, maxItems: 10, items: { type: string }, description: 省略时由全局记忆选择薄弱点 }
-        count: { type: integer, enum: [10, 20, 30], default: 10 }
+        knowledgePointIds: { type: array, maxItems: 10, items: { type: string }, description: memory 模式可指定知识点；省略或 level 模式时由服务端按当前级别选择 }
+        count: { type: integer, enum: [10, 20, 30], default: 20 }
+        difficulty: { type: string, enum: [easy, normal, hard, mixed], default: mixed, description: 简单为 1–2，一般为 3，困难为 4–5，混合为随机 1–5 }
+        generationMode: { type: string, enum: [memory, level], default: memory, description: memory 根据账号记忆，level 根据当前级别 }
+        questionType: { type: string, enum: [mixed, single_choice, multiple_choice, fill_blank, short_answer], default: mixed, description: mixed 为混合题型，也可指定单独题型 }
     PracticeSource:
       type: object
       properties:
