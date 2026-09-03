@@ -354,16 +354,30 @@ type catalogChoice struct {
 	SubjectID string `json:"subjectId,omitempty"`
 }
 
+type catalogBase struct {
+	ID   string
+	Code string
+	Name string
+}
+
 func (s *Service) loadCatalog(ctx context.Context) (catalogContext, error) {
-	levels, err := store.CollectRows[catalogChoice](ctx, s.pool,
+	levelRows, err := store.CollectRows[catalogBase](ctx, s.pool,
 		`SELECT id::text, code, name FROM exam_levels ORDER BY sort_order`)
 	if err != nil {
 		return catalogContext{}, err
 	}
-	subjects, err := store.CollectRows[catalogChoice](ctx, s.pool,
+	subjectRows, err := store.CollectRows[catalogBase](ctx, s.pool,
 		`SELECT id::text, code, name FROM subjects ORDER BY sort_order`)
 	if err != nil {
 		return catalogContext{}, err
+	}
+	levels := make([]catalogChoice, 0, len(levelRows))
+	for _, row := range levelRows {
+		levels = append(levels, catalogChoice{ID: row.ID, Code: row.Code, Name: row.Name})
+	}
+	subjects := make([]catalogChoice, 0, len(subjectRows))
+	for _, row := range subjectRows {
+		subjects = append(subjects, catalogChoice{ID: row.ID, Code: row.Code, Name: row.Name})
 	}
 	kps, err := store.CollectRows[catalogChoice](ctx, s.pool,
 		`SELECT id::text, '', name, level_id::text, subject_id::text
