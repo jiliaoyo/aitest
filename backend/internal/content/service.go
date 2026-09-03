@@ -29,6 +29,63 @@ func NewService(pool *pgxpool.Pool, catalogStore KPChecker) *Service {
 
 func (s *Service) Store() *Store { return s.store }
 
+// CreateAndPublishTx 在调用方事务内创建并发布一题；导入发布需要它与 import_items 链接原子完成。
+func (s *Service) CreateAndPublishTx(ctx context.Context, tx pgx.Tx, adminID string, in QuestionInput) (string, error) {
+	if fields := ValidateInput(in); len(fields) > 0 {
+		return "", httpapi.ValidationError(fields)
+	}
+	if err := s.checkReferences(ctx, in); err != nil {
+		return "", err
+	}
+	st := s.store.With(tx)
+	var materialVersionID *string
+	if in.MaterialID != nil && *in.MaterialID != "" {
+		if in.MaterialContent != "" {
+			mvID, err := st.BumpMaterialVersion(ctx, *in.MaterialID, in.MaterialTitle, in.MaterialContent, adminID)
+			if err != nil {
+				return "", fmt.Errorf("更新材料失败: %w", err)
+			}
+			materialVersionID = &mvID
+		} else {
+			if ok, err := st.MaterialExists(ctx, *in.MaterialID); err != nil || !ok {
+				if err != nil {
+					return "", err
+				}
+				return "", httpapi.ValidationError(map[string]string{"materialId": "材料不存在"})
+			}
+			mvID, err := st.materialLatestVersion(ctx, *in.MaterialID)
+			if err != nil {
+				return "", err
+			}
+			materialVersionID = &mvID
+		}
+	} else if in.MaterialContent != "" {
+		_, vID, err := st.CreateMaterial(ctx, in.MaterialTitle, in.MaterialContent, adminID)
+		if err != nil {
+			return "", fmt.Errorf("创建材料失败: %w", err)
+		}
+		materialVersionID = &vID
+	}
+	qid, err := st.CreateQuestion(ctx, in.Answer != nil, adminID)
+	if err != nil {
+		return "", err
+	}
+	vid, err := st.InsertVersion(ctx, tx, qid, 1, in, materialVersionID, adminID)
+	if err != nil {
+		return "", err
+	}
+	if err := st.SetCurrentVersion(ctx, tx, qid, vid, in.Answer != nil); err != nil {
+		return "", err
+	}
+	if err := st.Publish(ctx, tx, qid, vid); err != nil {
+		return "", err
+	}
+	if err := st.writeAudit(ctx, tx, adminID, "question_import_published", "question", qid, map[string]any{"version": vid}); err != nil {
+		return "", err
+	}
+	return qid, nil
+}
+
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	return s.store.Overview(ctx)
 }
@@ -90,7 +147,7 @@ func (s *Service) CreateQuestion(ctx context.Context, adminID string, in Questio
 		if err := st.writeAudit(ctx, tx, adminID, "question_created", "question", qid, map[string]any{"version": vid}); err != nil {
 			return err
 		}
-		out, err = s.store.QuestionAdminByID(ctx, qid)
+		out, err = st.QuestionAdminByID(ctx, qid)
 		return err
 	})
 	return out, err
@@ -107,7 +164,7 @@ func (s *Service) UpdateQuestion(ctx context.Context, adminID, questionID string
 	var out QuestionAdmin
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		st := s.store.With(tx)
-		current, err := s.store.QuestionAdminByID(ctx, questionID)
+		current, err := st.QuestionAdminByID(ctx, questionID)
 		if err != nil {
 			return err
 		}
@@ -152,7 +209,7 @@ func (s *Service) UpdateQuestion(ctx context.Context, adminID, questionID string
 		if err := st.writeAudit(ctx, tx, adminID, "question_revised", "question", questionID, map[string]any{"version": vid}); err != nil {
 			return err
 		}
-		out, err = s.store.QuestionAdminByID(ctx, questionID)
+		out, err = st.QuestionAdminByID(ctx, questionID)
 		return err
 	})
 	return out, err
@@ -184,7 +241,7 @@ func (s *Service) checkReferences(ctx context.Context, in QuestionInput) error {
 func (s *Service) Publish(ctx context.Context, adminID, questionID string) (QuestionAdmin, error) {
 	var out QuestionAdmin
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		current, err := s.store.QuestionAdminByID(ctx, questionID)
+		current, err := s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		if err != nil {
 			return err
 		}
@@ -217,7 +274,7 @@ func (s *Service) Publish(ctx context.Context, adminID, questionID string) (Ques
 		if err := st.writeAudit(ctx, tx, adminID, "question_published", "question", questionID, map[string]any{"version": v.ID}); err != nil {
 			return err
 		}
-		out, err = s.store.QuestionAdminByID(ctx, questionID)
+		out, err = s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		return err
 	})
 	return out, err
@@ -226,7 +283,7 @@ func (s *Service) Publish(ctx context.Context, adminID, questionID string) (Ques
 func (s *Service) Retire(ctx context.Context, adminID, questionID string) (QuestionAdmin, error) {
 	var out QuestionAdmin
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		current, err := s.store.QuestionAdminByID(ctx, questionID)
+		current, err := s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		if err != nil {
 			return err
 		}
@@ -240,7 +297,7 @@ func (s *Service) Retire(ctx context.Context, adminID, questionID string) (Quest
 		if err := st.writeAudit(ctx, tx, adminID, "question_retired", "question", questionID, nil); err != nil {
 			return err
 		}
-		out, err = s.store.QuestionAdminByID(ctx, questionID)
+		out, err = s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		return err
 	})
 	return out, err
@@ -249,7 +306,7 @@ func (s *Service) Retire(ctx context.Context, adminID, questionID string) (Quest
 func (s *Service) SubmitReview(ctx context.Context, adminID, questionID string) (QuestionAdmin, error) {
 	var out QuestionAdmin
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		current, err := s.store.QuestionAdminByID(ctx, questionID)
+		current, err := s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		if err != nil {
 			return err
 		}
@@ -263,7 +320,7 @@ func (s *Service) SubmitReview(ctx context.Context, adminID, questionID string) 
 		if err := st.writeAudit(ctx, tx, adminID, "question_submitted_review", "question", questionID, nil); err != nil {
 			return err
 		}
-		out, err = s.store.QuestionAdminByID(ctx, questionID)
+		out, err = s.store.With(tx).QuestionAdminByID(ctx, questionID)
 		return err
 	})
 	return out, err

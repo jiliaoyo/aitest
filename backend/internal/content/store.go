@@ -223,7 +223,7 @@ func (s *Store) writeAudit(ctx context.Context, tx pgx.Tx, actorID, action, obje
 		}
 		payload = data
 	}
-	_, err := s.db.Exec(ctx,
+	_, err := tx.Exec(ctx,
 		`INSERT INTO audit_logs (actor_user_id, action, object_type, object_id, detail)
 		 VALUES ($1, $2, $3, $4, $5)`,
 		actorID, action, objectType, objectID, payload)

@@ -15,6 +15,7 @@ import (
 	"github.com/aishuati/backend/internal/config"
 	"github.com/aishuati/backend/internal/content"
 	"github.com/aishuati/backend/internal/httpapi"
+	"github.com/aishuati/backend/internal/imports"
 	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/practice"
@@ -56,11 +57,15 @@ func Run(ctx context.Context) error {
 		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger)
+	importService := imports.NewService(pool, contentService, aiClient, cfg.UploadDir, cfg.UploadMaxBytes, logger)
 
 	// worker：生产环境独立进程；开发环境可通过 RUN_WORKER=true 内嵌运行
 	if cfg.RunWorker {
 		handlers := map[string]jobs.Handler{}
 		for k, v := range aiService.Handlers() {
+			handlers[k] = v
+		}
+		for k, v := range importService.Handlers() {
 			handlers[k] = v
 		}
 		for k, v := range learningHandler.Handlers() {
@@ -84,6 +89,7 @@ func Run(ctx context.Context) error {
 	// 管理端路由（adminMux）：仅管理员
 	adminMux := http.NewServeMux()
 	contentHandler.RegisterRoutes(adminMux)
+	imports.NewHandler(importService, logger).RegisterRoutes(adminMux)
 	catalogHandler.RegisterRoutes(nil, adminMux)
 	learningHandler.RegisterRoutes(nil, adminMux)
 
