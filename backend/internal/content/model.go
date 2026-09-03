@@ -154,7 +154,7 @@ func ValidateInput(in QuestionInput) map[string]string {
 		fields["subjectId"] = "请选择科目"
 	}
 	if in.Difficulty < 1 || in.Difficulty > 5 {
-		in.Difficulty = 3
+		fields["difficulty"] = "难度必须是 1 到 5"
 	}
 	if in.Answer != nil {
 		if !validAuthorities[in.Answer.Authority] {

@@ -50,11 +50,6 @@ const info = ref('')
 const confirmPublish = ref(false)
 
 const isChoice = computed(() => form.type === 'single_choice' || form.type === 'multiple_choice')
-const sections = computed(() => {
-  const sourceID = (sources.value[0]?.id ?? '')
-  return sources.value.find((s) => s.id === sourceID)?.sections ?? []
-})
-
 onMounted(async () => {
   try {
     const [catalog, sourceRes] = await Promise.all([
@@ -185,7 +180,7 @@ function buildRequestBody(): Record<string, unknown> {
   return body
 }
 
-async function save(): Promise<void> {
+async function save(): Promise<boolean> {
   saving.value = true
   topError.value = ''
   info.value = ''
@@ -205,17 +200,19 @@ async function save(): Promise<void> {
       await router.replace(`/admin/questions/${res.question.id}`)
     }
     info.value = '草稿已保存。发布是独立操作，需要再次确认。'
+    return true
   } catch (err) {
     const fields = fieldErrors(err)
     for (const [k, v] of Object.entries(fields)) fieldErr[k] = v
     topError.value = Object.keys(fields).length ? '请修正表单错误' : err instanceof ApiError ? err.message : '保存失败，请重试'
+    return false
   } finally {
     saving.value = false
   }
 }
 
 async function submitReview(): Promise<void> {
-  await save()
+  if (!(await save())) return
   try {
     const res = await request<{ question: QuestionAdminDTO }>(`/admin/questions/${questionID.value}/submit-review`, { method: 'POST' })
     status.value = res.question.status
@@ -289,6 +286,7 @@ async function retire(): Promise<void> {
           <div class="field">
             <label for="q-difficulty">难度（1-5）</label>
             <input id="q-difficulty" v-model.number="form.difficulty" type="number" min="1" max="5" />
+            <p v-if="fieldErr.difficulty" class="error">{{ fieldErr.difficulty }}</p>
           </div>
         </div>
 
@@ -350,7 +348,9 @@ async function retire(): Promise<void> {
           <label for="q-section">来源章节（可选）</label>
           <select id="q-section" v-model="form.sourceSectionId">
             <option value="">不关联</option>
-            <option v-for="sec in sections" :key="sec.id" :value="sec.id">{{ sec.name }}</option>
+            <optgroup v-for="source in sources" :key="source.id" :label="source.name">
+              <option v-for="sec in source.sections" :key="sec.id" :value="sec.id">{{ sec.name }}</option>
+            </optgroup>
           </select>
           <p v-if="fieldErr.sourceSectionId" class="error">{{ fieldErr.sourceSectionId }}</p>
         </div>

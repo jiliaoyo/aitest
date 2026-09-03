@@ -88,6 +88,16 @@ func (s *Store) KnowledgePointExists(ctx context.Context, id string) (bool, erro
 	return store.Exists(ctx, s.db, `SELECT true FROM knowledge_points WHERE id = $1`, id)
 }
 
+func (s *Store) KnowledgePointMatchesQuestionScope(ctx context.Context, id, levelID, subjectID string) (bool, error) {
+	return store.Exists(ctx, s.db,
+		`SELECT true
+		 FROM knowledge_points kp
+		 JOIN exam_levels l ON l.id = kp.level_id
+		 JOIN subjects sub ON sub.id = kp.subject_id
+		 WHERE kp.id = $1 AND kp.level_id = $2 AND kp.subject_id = $3 AND l.exam_id = sub.exam_id`,
+		id, levelID, subjectID)
+}
+
 type kpRow struct {
 	ID             string
 	ExamID         string

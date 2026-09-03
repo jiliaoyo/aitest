@@ -21,6 +21,7 @@ type Service struct {
 // KPChecker 由 catalog 模块提供知识点存在性校验，避免 content 依赖 catalog 的完整实现。
 type KPChecker interface {
 	KnowledgePointExists(ctx context.Context, id string) (bool, error)
+	KnowledgePointMatchesQuestionScope(ctx context.Context, id, levelID, subjectID string) (bool, error)
 }
 
 func NewService(pool *pgxpool.Pool, catalogStore KPChecker) *Service {
@@ -224,6 +225,13 @@ func (s *Service) checkReferences(ctx context.Context, in QuestionInput) error {
 		if !ok {
 			return httpapi.ValidationError(map[string]string{"knowledgePointIds": "知识点不存在: " + kpID})
 		}
+		matches, err := s.catalogKP.KnowledgePointMatchesQuestionScope(ctx, kpID, in.LevelID, in.SubjectID)
+		if err != nil {
+			return err
+		}
+		if !matches {
+			return httpapi.ValidationError(map[string]string{"knowledgePointIds": "知识点与题目的考试、级别或科目不一致: " + kpID})
+		}
 	}
 	if in.SourceSectionID != nil && *in.SourceSectionID != "" {
 		ok, err := s.store.SectionExists(ctx, *in.SourceSectionID)
@@ -260,7 +268,7 @@ func (s *Service) Publish(ctx context.Context, adminID, questionID string) (Ques
 		}
 		if fields := ValidateInput(QuestionInput{
 			Type: v.Type, Stem: v.Stem, Options: opts,
-			LevelID: v.LevelID, SubjectID: v.SubjectID,
+			LevelID: v.LevelID, SubjectID: v.SubjectID, Difficulty: v.Difficulty,
 		}); len(fields) > 0 {
 			return httpapi.E(http.StatusConflict, "question_invalid", "题目字段不完整，不能发布")
 		}

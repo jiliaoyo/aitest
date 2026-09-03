@@ -271,11 +271,11 @@ func (s *Store) InsertVersion(ctx context.Context, tx store.DBTx, questionID str
 	).Scan(&vid); err != nil {
 		return "", err
 	}
-	for _, kpID := range in.KnowledgePointIDs {
+	if len(in.KnowledgePointIDs) > 0 {
 		if _, err := tx.Exec(ctx,
 			`INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id)
 			 SELECT $1, x FROM unnest($2::uuid[]) AS x`,
-			vid, kpID); err != nil {
+			vid, in.KnowledgePointIDs); err != nil {
 			return "", err
 		}
 	}
