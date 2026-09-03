@@ -125,6 +125,7 @@ describe('学习推荐闭环', () => {
     const wrapper = mount(KnowledgeDetailPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('生成 AI 题目（20 题）'))
 
+    await wrapper.get('#ai-question-type').setValue('short_answer')
     await wrapper.get('#ai-difficulty').setValue('hard')
     await wrapper.findAll('button').find((button) => button.text().includes('生成 AI 题目'))!.trigger('click')
     await flushPromises()
@@ -132,7 +133,7 @@ describe('学习推荐闭环', () => {
     expect(requestMock).toHaveBeenCalledWith('/ai-practice-sessions', expect.objectContaining({
       method: 'POST',
       body: expect.objectContaining({
-        levelId: 'level-1', subjectId: 'subject-1', knowledgePointIds: ['kp-1'], count: 20, difficulty: 'hard',
+        levelId: 'level-1', subjectId: 'subject-1', knowledgePointIds: ['kp-1'], count: 20, difficulty: 'hard', questionType: 'short_answer',
       }),
     }))
     expect(router.currentRoute.value.fullPath).toBe('/practice/ai-session')
