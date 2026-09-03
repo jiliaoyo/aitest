@@ -118,6 +118,7 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 	catalogHandler.RegisterRoutes(authed, nil)
 	practiceHandler.RegisterRoutes(authed)
 	learningHandler.RegisterRoutes(authed, nil)
+	aiService.RegisterRoutes(authed)
 
 	// 管理端路由（adminMux）：仅管理员
 	adminMux := http.NewServeMux()

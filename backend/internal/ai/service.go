@@ -46,9 +46,10 @@ func NewService(pool *pgxpool.Pool, client *Client, logger *slog.Logger) *Servic
 // Handlers 返回 AI 相关任务处理器，供 worker 注册。
 func (s *Service) Handlers() map[string]jobs.Handler {
 	return map[string]jobs.Handler{
-		"grade_practice_item_ai":      s.handleGrade,
-		"explain_practice_item_ai":    s.handleExplain,
-		"analyze_practice_session_ai": s.handleBatchAnalysis,
+		"grade_practice_item_ai":       s.handleGrade,
+		"explain_practice_item_ai":     s.handleExplain,
+		"analyze_practice_session_ai":  s.handleBatchAnalysis,
+		"generate_ai_practice_session": s.handleGenerate,
 	}
 }
 
@@ -66,24 +67,26 @@ type itemContext struct {
 }
 
 type batchAnalysisRow struct {
-	ItemID              string
-	Position            int
-	QuestionVersionID   string
-	Type                string
-	Stem                string
-	SourceSection       *string
-	Options             *string
-	MaterialID          *string
-	Material            *string
-	UserValue           *string
-	StandardAnswer      *string
-	AnswerAuthority     *string
-	GradingSource       string
-	GradingStatus       string
-	CorrectValue        *string
-	ExplanationSource   *string
-	CachedExplanation   *string
-	CachedPromptVersion *string
+	ItemID               string
+	Position             int
+	QuestionVersionID    string
+	Type                 string
+	Stem                 string
+	SourceSection        *string
+	Options              *string
+	MaterialID           *string
+	Material             *string
+	UserValue            *string
+	StandardAnswer       *string
+	AnswerAuthority      *string
+	GeneratedAnswer      *string
+	GeneratedExplanation *string
+	GradingSource        string
+	GradingStatus        string
+	CorrectValue         *string
+	ExplanationSource    *string
+	CachedExplanation    *string
+	CachedPromptVersion  *string
 }
 
 func (s *Service) loadItem(ctx context.Context, db store.DBTx, sessionID, itemID string) (itemContext, error) {
@@ -103,7 +106,7 @@ func (s *Service) loadBatch(ctx context.Context, sessionID string) ([]batchAnaly
 	return store.CollectRows[batchAnalysisRow](ctx, s.pool,
 		`SELECT pi.id::text, pi.position, v.id::text, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.content, ua.value::text,
-		        ak.value::text, ak.authority,
+		        ak.value::text, ak.authority, aga.value::text, aga.explanation,
 		        gr.source, gr.status, gr.correct_value::text, gr.explanation_source,
 		        qae.explanation, qae.prompt_version
 		 FROM practice_items pi
@@ -113,6 +116,7 @@ func (s *Service) loadBatch(ctx context.Context, sessionID string) ([]batchAnaly
 		 LEFT JOIN user_answers ua ON ua.item_id = pi.id
 		 JOIN grading_results gr ON gr.item_id = pi.id AND gr.session_id = pi.session_id
 		 LEFT JOIN answer_keys ak ON ak.question_version_id = v.id
+		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
 		 LEFT JOIN question_ai_explanations qae ON qae.question_version_id = v.id
 		 WHERE pi.session_id = $1
 		 ORDER BY pi.position`, sessionID)
@@ -206,21 +210,23 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 }
 
 type batchAnalysisItem struct {
-	ItemID           string `json:"itemId"`
-	Position         int    `json:"position"`
-	Type             string `json:"type"`
-	Stem             string `json:"stem"`
-	SourceSection    string `json:"sourceSection,omitempty"`
-	Options          any    `json:"options"`
-	MaterialID       string `json:"materialId,omitempty"`
-	UserAnswer       any    `json:"userAnswer"`
-	StandardAnswer   any    `json:"standardAnswer"`
-	CorrectAnswer    any    `json:"correctAnswer"`
-	AnswerAuthority  string `json:"answerAuthority,omitempty"`
-	GradingSource    string `json:"gradingSource"`
-	GradingStatus    string `json:"gradingStatus"`
-	NeedsGrading     bool   `json:"needsGrading"`
-	NeedsExplanation bool   `json:"needsExplanation"`
+	ItemID               string `json:"itemId"`
+	Position             int    `json:"position"`
+	Type                 string `json:"type"`
+	Stem                 string `json:"stem"`
+	SourceSection        string `json:"sourceSection,omitempty"`
+	Options              any    `json:"options"`
+	MaterialID           string `json:"materialId,omitempty"`
+	UserAnswer           any    `json:"userAnswer"`
+	StandardAnswer       any    `json:"standardAnswer"`
+	GeneratedAnswer      any    `json:"generatedAnswer,omitempty"`
+	GeneratedExplanation string `json:"generatedExplanation,omitempty"`
+	CorrectAnswer        any    `json:"correctAnswer"`
+	AnswerAuthority      string `json:"answerAuthority,omitempty"`
+	GradingSource        string `json:"gradingSource"`
+	GradingStatus        string `json:"gradingStatus"`
+	NeedsGrading         bool   `json:"needsGrading"`
+	NeedsExplanation     bool   `json:"needsExplanation"`
 }
 
 type batchAnalysisInput struct {
@@ -298,7 +304,8 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 			ItemID: row.ItemID, Position: row.Position, Type: row.Type, Stem: row.Stem,
 			SourceSection: section, Options: jsonValue(row.Options),
 			MaterialID: jsonValueString(row.MaterialID), UserAnswer: jsonValue(row.UserValue),
-			StandardAnswer: jsonValue(row.StandardAnswer), CorrectAnswer: jsonValue(row.CorrectValue),
+			StandardAnswer: jsonValue(row.StandardAnswer), GeneratedAnswer: jsonValue(row.GeneratedAnswer),
+			GeneratedExplanation: jsonValueString(row.GeneratedExplanation), CorrectAnswer: jsonValue(row.CorrectValue),
 			AnswerAuthority: jsonValueString(row.AnswerAuthority), GradingSource: row.GradingSource,
 			GradingStatus:    row.GradingStatus,
 			NeedsGrading:     row.GradingSource == practice.SourceAI && row.GradingStatus == practice.StatusPending,

@@ -20,10 +20,12 @@ const statusFilter = ref((route.query.status as string | undefined) ?? '')
 
 const statusOptions = [
   { value: '', label: '全部' },
+  { value: 'generating', label: 'AI 出题中' },
   { value: 'active', label: '答题中' },
   { value: 'grading', label: '判分中' },
   { value: 'completed', label: '已完成' },
   { value: 'analysis_failed', label: '部分分析失败' },
+  { value: 'generation_failed', label: 'AI 出题失败' },
 ]
 
 async function load(append = false): Promise<void> {
@@ -50,7 +52,7 @@ watch(statusFilter, () => {
 })
 
 function linkFor(s: SessionListItem): string {
-  return s.status === 'active' ? `/practice/${s.id}` : `/practice/${s.id}/result`
+  return ['active', 'generating', 'generation_failed'].includes(s.status) ? `/practice/${s.id}` : `/practice/${s.id}/result`
 }
 </script>
 
@@ -89,7 +91,7 @@ function linkFor(s: SessionListItem): string {
             <td class="mono">{{ formatDateTime(s.createdAt) }}</td>
             <td class="mono">{{ formatDateTime(s.submittedAt) }}</td>
             <td>
-              <RouterLink :to="linkFor(s)">{{ s.status === 'active' ? '继续答题' : '查看结果' }}</RouterLink>
+                  <RouterLink :to="linkFor(s)">{{ ['active', 'generating'].includes(s.status) ? '继续练习' : s.status === 'generation_failed' ? '查看生成状态' : '查看结果' }}</RouterLink>
             </td>
           </tr>
         </tbody>

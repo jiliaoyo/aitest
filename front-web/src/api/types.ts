@@ -1,7 +1,7 @@
 // 与后端 api/openapi.yaml 契约对应的最小手写 DTO（后端 camelCase 字段 + snake_case 枚举）。
 
 export type Role = 'learner' | 'admin'
-export type SessionStatus = 'active' | 'grading' | 'completed' | 'analysis_failed'
+export type SessionStatus = 'generating' | 'active' | 'grading' | 'completed' | 'analysis_failed' | 'generation_failed'
 export type QuestionType = 'single_choice' | 'multiple_choice' | 'fill_blank' | 'short_answer'
 export type GradingStatus = 'correct' | 'incorrect' | 'unanswered' | 'pending' | 'failed'
 export type AnswerAuthority = 'official' | 'human_verified'
@@ -118,6 +118,18 @@ export interface PreSubmitSession {
   items: PreSubmitItem[]
 }
 
+export interface AIGeneratePracticeRequest {
+  levelId?: string
+  subjectId?: string
+  knowledgePointIds?: string[]
+  count: 10 | 20 | 30
+}
+
+export interface AIGeneratedSession {
+  id: string
+  status: 'generating'
+}
+
 // ---- practice：答题后 DTO ----
 
 export interface ExplanationDTO {
@@ -179,6 +191,7 @@ export interface SessionListItem {
 
 export interface ActiveSessionDTO {
   id: string
+  status: SessionStatus
   answeredCount: number
   totalCount: number
 }

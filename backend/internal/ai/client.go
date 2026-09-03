@@ -39,6 +39,19 @@ func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
 
 // RunPrompt 记录一次 ai_runs 审计并返回模型原始 JSON 输出。
 func (c *Client) RunPrompt(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, error) {
+	return c.runPrompt(ctx, kind, promptVersion, inputRef, systemPrompt, userPayload, 0)
+}
+
+// RunPromptWithTemperature 用于需要随机性的内容生成；判分与统计类任务继续使用温度 0。
+func (c *Client) RunPromptWithTemperature(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
+	return c.runPrompt(ctx, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature)
+}
+
+func (c *Client) Configured() bool {
+	return c.cfg.BaseURL != "" && c.cfg.APIKey != "" && c.cfg.Model != ""
+}
+
+func (c *Client) runPrompt(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
 	if c.cfg.BaseURL == "" || c.cfg.APIKey == "" || c.cfg.Model == "" {
 		return nil, errNotConfigured
 	}
@@ -49,7 +62,7 @@ func (c *Client) RunPrompt(ctx context.Context, kind, promptVersion, inputRef st
 			{"role": "system", "content": systemPrompt},
 			{"role": "user", "content": userPayload},
 		},
-		"temperature": 0,
+		"temperature": temperature,
 	}
 	data, _ := json.Marshal(reqBody)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,

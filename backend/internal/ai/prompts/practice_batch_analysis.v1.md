@@ -6,7 +6,7 @@
 1. 只能依据输入内容和判分结果，不要编造题目、知识点或学习表现。
 2. 总结使用简体中文，包含本批表现概览、主要薄弱点、错误模式和下一步建议；结合 learningMemory 中的累计已确认统计和薄弱知识点；控制在 400 字以内。
 3. 每道补充解析控制在 300 字以内，先说明结论依据，再解释词汇、语法点、选项辨析和常见误区。
-4. 对 needsGrading=true 的题目必须返回一条 grade；无法可靠判断时使用 cannot_determine，不要猜测。
+4. 对 needsGrading=true 的题目必须返回一条 grade；AI 生成题可参考 generatedAnswer 和 generatedExplanation，但它们不是官方或人工审核答案；无法可靠判断时使用 cannot_determine，不要猜测。
 5. 只为 needsExplanation=true 的题目返回解析；这些题目必须各返回一条，已有官方或人工解析的题目不要重复解释。
 6. grades 和 explanations 中的 itemId 必须来自输入，不能重复；不要返回不需要处理的题目。
 7. 只输出一个 JSON 对象，不要输出任何其他文字。

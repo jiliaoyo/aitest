@@ -60,10 +60,13 @@ func (r kpStatRow) toItem() KnowledgePointItem {
 
 const kpStatsColumns = `kp.id::text, kp.name, kp.level_id::text, l.code, kp.subject_id::text, s.name,
  kp.parent_id,
- (SELECT count(*) FROM question_version_knowledge_points qvkp
-  JOIN question_versions v ON v.id = qvkp.question_version_id
-  JOIN questions q ON q.id = v.question_id
-  WHERE qvkp.knowledge_point_id = kp.id AND q.published_version_id = v.id) AS question_count,
+	 (SELECT count(*) FROM question_version_knowledge_points qvkp
+	  JOIN question_versions v ON v.id = qvkp.question_version_id
+	  JOIN questions q ON q.id = v.question_id
+	  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+	  LEFT JOIN sources src ON src.id = ss.source_id
+	  WHERE qvkp.knowledge_point_id = kp.id AND q.published_version_id = v.id
+	    AND coalesce(src.kind, '') <> 'ai_generated') AS question_count,
  coalesce(st.confirmed_answered, 0), coalesce(st.confirmed_correct, 0),
  coalesce(st.recent_answered, 0), coalesce(st.recent_correct, 0),
  coalesce(st.ai_answered, 0), coalesce(st.ai_correct, 0),
@@ -198,6 +201,42 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 	return snapshot, nil
 }
 
+// GenerationMemoryForAI 返回当前级别的已审核知识点和账号统计，供生成题任务使用。
+// 未指定知识点时优先薄弱点；样本不足则随机补足，避免每次都生成同一组题。
+func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string) (AIGenerationMemory, error) {
+	var memory AIGenerationMemory
+	if err := s.db.QueryRow(ctx,
+		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
+		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
+	).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect); err != nil {
+		return memory, err
+	}
+	if knowledgePointIDs == nil {
+		knowledgePointIDs = []string{}
+	}
+	rows, err := store.CollectRows[AIGenerationKnowledgePoint](ctx, s.db,
+		`SELECT kp.id::text, kp.name, kp.subject_id::text, kp.description, kp.common_mistakes, kp.examples,
+		        coalesce(st.recent_answered, 0), coalesce(st.recent_correct, 0),
+		        coalesce(st.consecutive_wrong, 0)
+		 FROM knowledge_points kp
+		 LEFT JOIN user_knowledge_stats st
+		   ON st.knowledge_point_id = kp.id AND st.user_id = $1
+		 WHERE kp.status = 'published'
+		   AND kp.level_id::text = $2
+		   AND ($3 = '' OR kp.subject_id::text = $3)
+		   AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
+		 ORDER BY CASE WHEN coalesce(st.recent_answered, 0) >= 5 THEN 0 ELSE 1 END,
+		          coalesce(st.recent_correct, 0)::float / greatest(coalesce(st.recent_answered, 0), 1),
+		          coalesce(st.consecutive_wrong, 0) DESC,
+		          random()
+		 LIMIT CASE WHEN $4::uuid[] = '{}' THEN 5 ELSE 50 END`, userID, levelID, subjectID, knowledgePointIDs)
+	if err != nil {
+		return memory, err
+	}
+	memory.KnowledgePoints = rows
+	return memory, nil
+}
+
 // DeleteMemory 清除派生学习记忆并设置新的统计起点；练习历史和成绩仍保留。
 func (s *Store) DeleteMemory(ctx context.Context, pool *pgxpool.Pool, userID string) error {
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
@@ -234,14 +273,14 @@ func (s *Store) WriteAIAdviceTx(ctx context.Context, tx pgx.Tx, userID string, r
 func (s *Store) ActiveSession(ctx context.Context, userID string) (*ActiveSession, error) {
 	var a ActiveSession
 	err := s.db.QueryRow(ctx,
-		`SELECT ps.id::text,
+		`SELECT ps.id::text, ps.status,
 		        (SELECT count(*) FROM user_answers ua JOIN practice_items pi ON pi.id = ua.item_id
 		         WHERE pi.session_id = ps.id AND ua.value IS NOT NULL) AS answered,
 		        (SELECT count(*) FROM practice_items pi WHERE pi.session_id = ps.id) AS total
 		 FROM practice_sessions ps
-		 WHERE ps.user_id = $1 AND ps.status = 'active'
+		 WHERE ps.user_id = $1 AND ps.status IN ('active', 'generating')
 		 ORDER BY ps.created_at DESC LIMIT 1`, userID,
-	).Scan(&a.ID, &a.AnsweredCount, &a.TotalCount)
+	).Scan(&a.ID, &a.Status, &a.AnsweredCount, &a.TotalCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

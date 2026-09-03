@@ -75,12 +75,17 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
       <div v-if="dashboard.activeSession" class="card" data-tone="accent">
         <div class="page-header">
           <div>
-            <h2 style="font-size: 17px">有一批未完成的练习</h2>
+            <h2 style="font-size: 17px">
+              {{ dashboard.activeSession.status === 'generating' ? 'AI 正在生成个性化题目' : '有一批未完成的练习' }}
+            </h2>
             <p class="muted mono">
-              已答 {{ dashboard.activeSession.answeredCount }} / {{ dashboard.activeSession.totalCount }} 题
+              <template v-if="dashboard.activeSession.status === 'generating'">正在根据全局做题记忆准备题目</template>
+              <template v-else>已答 {{ dashboard.activeSession.answeredCount }} / {{ dashboard.activeSession.totalCount }} 题</template>
             </p>
           </div>
-          <button class="primary" @click="router.push(`/practice/${dashboard.activeSession!.id}`)">继续答题</button>
+          <button class="primary" @click="router.push(`/practice/${dashboard.activeSession!.id}`)">
+            {{ dashboard.activeSession.status === 'generating' ? '查看生成进度' : '继续答题' }}
+          </button>
         </div>
       </div>
 

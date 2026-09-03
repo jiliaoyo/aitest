@@ -42,10 +42,12 @@ export function formatTime(value: string | null | undefined): string {
 }
 
 export const sessionStatusText: Record<string, string> = {
+  generating: 'AI 出题中',
   active: '答题中',
   grading: '判分中',
   completed: '已完成',
   analysis_failed: '部分分析失败',
+  generation_failed: 'AI 出题失败',
 }
 
 export const gradingStatusText: Record<string, string> = {

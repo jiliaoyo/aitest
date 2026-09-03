@@ -37,7 +37,9 @@ func (s *Store) CountPublishedVersions(ctx context.Context, f SelectionFilter) (
 		`SELECT count(*) FROM questions q
 		 JOIN question_versions v ON v.id = q.published_version_id
 		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+		 LEFT JOIN sources src ON src.id = ss.source_id
 		 WHERE q.retired_at IS NULL
+		   AND coalesce(src.kind, '') <> 'ai_generated'
 		   AND v.level_id::text = $1
 		   AND ($2 = '' OR v.subject_id::text = $2)
 		   AND ($3 = '' OR v.source_section_id::text = $3)
@@ -109,6 +111,7 @@ func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID stri
 		   AND v.level_id::text = $1
 		   AND ($2 = '' OR v.subject_id::text = $2)
 		 JOIN questions q ON q.published_version_id = v.id AND q.retired_at IS NULL
+		 WHERE src.kind <> 'ai_generated'
 		 GROUP BY src.id, src.name, src.created_at, src.kind, ss.id, ss.name, ss.sort_order
 		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id, ss.sort_order`, levelID, subjectID)
 	if err != nil {
@@ -611,8 +614,9 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 	  JOIN question_versions v ON v.id = q.published_version_id
 	  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
 	  LEFT JOIN sources src ON src.id = ss.source_id
-	  WHERE q.retired_at IS NULL
-	    AND v.level_id::text = $1
+		WHERE q.retired_at IS NULL
+		    AND coalesce(src.kind, '') <> 'ai_generated'
+		    AND v.level_id::text = $1
 	    AND ($2 = '' OR v.subject_id::text = $2)
 	    AND ($3 = '' OR v.source_section_id::text = $3)
 	    AND ($4 = '' OR ss.source_id::text = $4)

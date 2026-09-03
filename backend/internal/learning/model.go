@@ -47,6 +47,7 @@ type Recommendation struct {
 
 type ActiveSession struct {
 	ID            string `json:"id"`
+	Status        string `json:"status"`
 	AnsweredCount int    `json:"answeredCount"`
 	TotalCount    int    `json:"totalCount"`
 }
@@ -87,6 +88,24 @@ type AIMemoryWeakPoint struct {
 	RecentAnswered   int    `json:"recentAnswered"`
 	RecentCorrect    int    `json:"recentCorrect"`
 	ConsecutiveWrong int    `json:"consecutiveWrong"`
+}
+
+type AIGenerationKnowledgePoint struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	SubjectID        string `json:"subjectId"`
+	Description      string `json:"description"`
+	CommonMistakes   string `json:"commonMistakes"`
+	Examples         string `json:"examples"`
+	RecentAnswered   int    `json:"recentAnswered"`
+	RecentCorrect    int    `json:"recentCorrect"`
+	ConsecutiveWrong int    `json:"consecutiveWrong"`
+}
+
+type AIGenerationMemory struct {
+	ConfirmedAnswered int                          `json:"confirmedAnswered"`
+	ConfirmedCorrect  int                          `json:"confirmedCorrect"`
+	KnowledgePoints   []AIGenerationKnowledgePoint `json:"knowledgePoints"`
 }
 
 type RecentSession struct {

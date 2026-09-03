@@ -29,6 +29,7 @@ const submitError = ref('')
 
 const autosave = useAnswerAutosave(sessionID)
 const currentEntry = computed(() => autosave.entryOf(currentItem.value?.id ?? ''))
+let generationTimer: ReturnType<typeof setInterval> | null = null
 
 const currentItem = computed<PreSubmitItem | null>(() => {
   const item = session.value?.items[currentIndex.value]
@@ -55,14 +56,16 @@ function isMarked(item: PreSubmitItem): boolean {
 
 onMounted(load)
 
-async function load(): Promise<void> {
-  pageState.value = 'loading'
+async function load(silent = false): Promise<void> {
+  if (!silent) pageState.value = 'loading'
   try {
     const data = await request<PreSubmitSession>(`/practice-sessions/${sessionID.value}`)
     session.value = data
     showLocalDraftNote.value = autosave.init(data.items)
     pageState.value = 'ready'
+    scheduleGenerationPolling()
   } catch (err) {
+    if (silent) return
     if (err instanceof ApiError && err.status === 404) {
       pageState.value = 'notfound'
       return
@@ -70,6 +73,16 @@ async function load(): Promise<void> {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     pageState.value = 'error'
+  }
+}
+
+function scheduleGenerationPolling(): void {
+  if (session.value?.status === 'generating' && generationTimer === null) {
+    generationTimer = setInterval(() => void load(true), 2000)
+  }
+  if (session.value?.status !== 'generating' && generationTimer !== null) {
+    clearInterval(generationTimer)
+    generationTimer = null
   }
 }
 
@@ -152,6 +165,7 @@ async function doSubmit(): Promise<void> {
 }
 
 onBeforeUnmount(() => {
+  if (generationTimer) clearInterval(generationTimer)
   for (const entry of autosave.entries.values()) {
     if (entry.timer) clearTimeout(entry.timer)
   }
@@ -164,7 +178,21 @@ onBeforeUnmount(() => {
     <AppStatus v-else-if="pageState === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load" />
     <AppStatus v-else-if="pageState === 'notfound'" state="empty" message="练习不存在，或刷新后已被提交。" action-label="返回学习概览" @action="router.push('/')" />
     <template v-else-if="session">
-      <template v-if="session.status !== 'active'">
+      <template v-if="session.status === 'generating'">
+        <div class="card" role="status">
+          <h2>AI 正在生成个性化题目</h2>
+          <p class="muted">正在根据你的全局做题记忆和薄弱知识点随机出题，请稍候。</p>
+          <button type="button" @click="load()">刷新生成状态</button>
+        </div>
+      </template>
+      <template v-else-if="session.status === 'generation_failed'">
+        <div class="card">
+          <h2>AI 题目生成失败</h2>
+          <p class="muted">本次生成没有写入公共题库，请返回重新开始。</p>
+          <button class="primary" @click="router.push('/practice/new')">重新开始</button>
+        </div>
+      </template>
+      <template v-else-if="session.status !== 'active'">
         <div class="card">
           <h2>本批练习已提交</h2>
           <p class="muted">答案已锁定，去看看结果与解析。</p>

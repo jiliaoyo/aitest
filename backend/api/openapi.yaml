@@ -268,7 +268,7 @@ paths:
       tags: [practice]
       summary: 练习历史
       parameters:
-        - { name: status, in: query, schema: { type: string, enum: [active, grading, completed, analysis_failed] } }
+        - { name: status, in: query, schema: { type: string, enum: [generating, active, grading, completed, analysis_failed, generation_failed] } }
         - { name: cursor, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
       responses:
@@ -283,6 +283,28 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/SessionListItem' }
                   nextCursor: { type: string }
+  /ai-practice-sessions:
+    post:
+      tags: [practice]
+      summary: 根据当前账号全局做题记忆异步生成私有练习
+      description: AI 只从已审核知识点生成新题；题目不会自动进入普通题库，生成完成后通过普通练习接口答题。
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AIGeneratePracticeRequest' }
+      responses:
+        '202':
+          description: 已加入生成队列
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  status: { type: string, enum: [generating] }
+        '409': { description: no_knowledge_points }
+        '503': { description: ai_unavailable }
   /practice-sessions/{id}:
     get:
       tags: [practice]
@@ -687,7 +709,7 @@ components:
       description: 答题前 DTO；契约保证不含 correctAnswer/answerAuthority/gradingStatus/explanation 等字段
       properties:
         id: { type: string }
-        status: { type: string, enum: [active, grading, completed, analysis_failed] }
+        status: { type: string, enum: [generating, active, grading, completed, analysis_failed, generation_failed] }
         answeredCount: { type: integer }
         totalCount: { type: integer }
         items:
@@ -791,6 +813,13 @@ components:
         sourceSectionId: { type: string, description: 指定来源章节 }
         knowledgePointIds: { type: array, items: { type: string } }
         count: { type: integer, enum: [10, 20, 30] }
+    AIGeneratePracticeRequest:
+      type: object
+      properties:
+        levelId: { type: string, description: 省略时使用账号默认级别 }
+        subjectId: { type: string, description: 可选科目范围 }
+        knowledgePointIds: { type: array, maxItems: 10, items: { type: string }, description: 省略时由全局记忆选择薄弱点 }
+        count: { type: integer, enum: [10, 20, 30], default: 10 }
     PracticeSource:
       type: object
       properties:
@@ -860,7 +889,7 @@ components:
         activeSession:
           nullable: true
           type: object
-          properties: { id: { type: string }, answeredCount: { type: integer }, totalCount: { type: integer } }
+          properties: { id: { type: string }, status: { type: string, enum: [generating, active] }, answeredCount: { type: integer }, totalCount: { type: integer } }
         recentSessions:
           type: array
           items: { $ref: '#/components/schemas/SessionListItem' }

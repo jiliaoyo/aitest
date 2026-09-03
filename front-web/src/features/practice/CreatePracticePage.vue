@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
+import type { AIGeneratePracticeRequest, AIGeneratedSession, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { sessionUser } from '@/app/session'
@@ -27,6 +27,8 @@ const availabilityLoading = ref(false)
 const availabilityError = ref('')
 const creating = ref(false)
 const createError = ref('')
+const generatingAI = ref(false)
+const generateAIError = ref('')
 
 const kps = ref<KnowledgePointItem[]>([])
 const kpsLoading = ref(false)
@@ -161,6 +163,29 @@ async function create(): Promise<void> {
     creating.value = false
   }
 }
+
+async function generateAIPractice(): Promise<void> {
+  if (!levelId.value || generatingAI.value) return
+  generatingAI.value = true
+  generateAIError.value = ''
+  try {
+    const body: AIGeneratePracticeRequest = {
+      levelId: levelId.value,
+      subjectId: subjectId.value,
+      knowledgePointIds: knowledgePointIds.value,
+      count: count.value as 10 | 20 | 30,
+    }
+    const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
+      method: 'POST',
+      body,
+    })
+    await router.push(`/practice/${session.id}`)
+  } catch (err) {
+    generateAIError.value = err instanceof ApiError ? err.message : 'AI 出题失败，请重试'
+  } finally {
+    generatingAI.value = false
+  }
+}
 </script>
 
 <template>
@@ -285,6 +310,15 @@ async function create(): Promise<void> {
           {{ creating ? '创建中…' : '开始练习' }}
         </button>
       </form>
+
+      <section class="card" aria-labelledby="ai-practice-title">
+        <h2 id="ai-practice-title" style="font-size: 18px">AI 个性化练习</h2>
+        <p class="muted">AI 会参考你的全局做题记忆和薄弱知识点，随机生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。</p>
+        <p v-if="generateAIError" class="error-summary" role="alert">{{ generateAIError }}</p>
+        <button class="primary" type="button" :disabled="!levelId || generatingAI" @click="generateAIPractice">
+          {{ generatingAI ? 'AI 出题中…' : '根据我的记忆生成题目' }}
+        </button>
+      </section>
     </template>
   </AppShell>
 </template>

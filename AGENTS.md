@@ -90,7 +90,7 @@ npm run test       # vitest
 - 答题前 DTO 永不返回答案；答题后结果通过 `sourceSectionName` 展示来源章节，通过 `aiAnalysis` 展示整批 AI 总结。
 - `question_ai_explanations` 只缓存与题目本身无关用户作答的权威题目解析；主观题或依赖具体作答的 AI 判定不写入题目缓存。
 - 批次 AI 请求应去重共享材料，并严格校验模型返回的题目 ID、结论和文本长度；失败任务保留在 jobs 中，不能静默写入残缺结果。
-- 最新迁移为 `0010_import_extraction.sql`；新增字段或缓存策略只能追加迁移。
+- 最新迁移为 `0012_ai_generated_practice.sql`；新增字段或缓存策略只能追加迁移。
 
 ## 代码风格
 

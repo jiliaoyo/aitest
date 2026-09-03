@@ -427,6 +427,12 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 	if meta.Status == "active" {
 		return ResultSession{}, httpapi.E(http.StatusConflict, "practice_not_submitted", "练习尚未提交")
 	}
+	if meta.Status == "generating" {
+		return ResultSession{}, httpapi.E(http.StatusConflict, "practice_generating", "AI 题目仍在生成，请稍后查看")
+	}
+	if meta.Status == "generation_failed" {
+		return ResultSession{}, httpapi.E(http.StatusConflict, "generation_failed", "AI 题目生成失败，请重新开始")
+	}
 	if meta.Status == "completed" {
 		pending, err := s.store.HasPendingAIJobs(ctx, sessionID)
 		if err != nil {

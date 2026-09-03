@@ -63,6 +63,7 @@ type resultResponse struct {
 			Total   int `json:"total"`
 		} `json:"confirmed"`
 		AI struct {
+			Correct int `json:"correct"`
 			Pending int `json:"pending"`
 		} `json:"ai"`
 	} `json:"summary"`
@@ -550,6 +551,125 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			"/api/v1/learning-memory", nil, ""), &after)
 		if after.Advice.Status != "completed" || after.Advice.Text == "" {
 			t.Fatalf("successful batch AI should persist account advice: %+v", after)
+		}
+	})
+
+	t.Run("AI 根据全局记忆生成私有练习并保持 AI 判分分层", func(t *testing.T) {
+		fakeAI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var request struct {
+				Messages []struct {
+					Content string `json:"content"`
+				} `json:"messages"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil || len(request.Messages) < 2 {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			var generation struct {
+				Count          int `json:"count"`
+				LearningMemory struct {
+					KnowledgePoints []struct {
+						ID string `json:"id"`
+					} `json:"knowledgePoints"`
+				} `json:"learningMemory"`
+			}
+			var batch struct {
+				Items []struct {
+					ItemID       string `json:"itemId"`
+					NeedsGrading bool   `json:"needsGrading"`
+				} `json:"items"`
+			}
+			_ = json.Unmarshal([]byte(request.Messages[1].Content), &generation)
+			_ = json.Unmarshal([]byte(request.Messages[1].Content), &batch)
+			var output any
+			if generation.Count > 0 {
+				if len(generation.LearningMemory.KnowledgePoints) == 0 {
+					http.Error(w, "missing knowledge points", http.StatusBadRequest)
+					return
+				}
+				pointID := generation.LearningMemory.KnowledgePoints[0].ID
+				questions := make([]map[string]any, generation.Count)
+				for i := range questions {
+					questions[i] = map[string]any{
+						"type": "single_choice", "stem": fmt.Sprintf("AI 个性化测试题 %d。", i+1),
+						"options": []map[string]string{
+							{"id": "a", "label": "A", "text": "正解"}, {"id": "b", "label": "B", "text": "选项二"},
+							{"id": "c", "label": "C", "text": "选项三"}, {"id": "d", "label": "D", "text": "选项四"},
+						},
+						"correctAnswer": map[string]any{"optionIds": []string{"a"}},
+						"explanation":   "这是测试解析。", "knowledgePointIds": []string{pointID}, "difficulty": 3,
+					}
+				}
+				output = map[string]any{"questions": questions}
+			} else {
+				grades := make([]map[string]any, 0)
+				for _, item := range batch.Items {
+					if item.NeedsGrading {
+						grades = append(grades, map[string]any{
+							"itemId": item.ItemID, "correctness": "correct",
+							"correctAnswer": map[string]any{"optionIds": []string{"a"}}, "explanation": "根据生成时的答案判断。",
+						})
+					}
+				}
+				output = map[string]any{"summary": "完成了 AI 个性化练习。", "grades": grades, "explanations": []any{}}
+			}
+			content, _ := json.Marshal(output)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{{"message": map[string]string{"content": string(content)}}},
+			})
+		}))
+		defer fakeAI.Close()
+		aiClient := ai.NewClient(ai.Config{BaseURL: fakeAI.URL, APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, logger)
+		aiService := ai.NewService(pool, aiClient, logger)
+		generated, err := aiService.CreateGeneratedSession(context.Background(), dataUserID(t, pool, "learner-b@example.com"), ai.AIGenerateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Count: 10,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if generated.Status != "generating" || countRows(t, pool, `SELECT count(*) FROM jobs WHERE kind = 'generate_ai_practice_session' AND payload->>'sessionId' = $1`, generated.ID) != 1 {
+			t.Fatalf("AI generation should enqueue one generation job: %+v", generated)
+		}
+		if err := aiService.Handlers()["generate_ai_practice_session"](context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err != nil {
+			t.Fatalf("AI generation failed: %v", err)
+		}
+		if countRows(t, pool, `SELECT count(*) FROM practice_items WHERE session_id = $1`, generated.ID) != 10 ||
+			countRows(t, pool, `SELECT count(*) FROM ai_generated_question_answers aga JOIN practice_items pi ON pi.question_version_id = aga.question_version_id WHERE pi.session_id = $1`, generated.ID) != 10 ||
+			countRows(t, pool, `SELECT count(*) FROM practice_items pi JOIN answer_keys ak ON ak.question_version_id = pi.question_version_id WHERE pi.session_id = $1`, generated.ID) != 0 {
+			t.Fatal("generated answers must remain private and separate from answer_keys")
+		}
+		pre := jsonRequest(t, data.learnerB, server.URL, http.MethodGet, "/api/v1/practice-sessions/"+generated.ID, nil, "")
+		body := readResponse(t, pre)
+		if pre.StatusCode != http.StatusOK || bytes.Contains(body, []byte("correctAnswer")) {
+			t.Fatalf("generated pre-submit response leaked answer: %s", body)
+		}
+		var preGenerated preSessionResponse
+		if err := json.Unmarshal(body, &preGenerated); err != nil || len(preGenerated.Items) != 10 {
+			t.Fatalf("generated session should expose 10 answerable items: %s", body)
+		}
+		answers := make([]submittedAnswer, 0, len(preGenerated.Items))
+		for _, item := range preGenerated.Items {
+			answers = append(answers, submittedAnswer{ItemID: item.ID, Value: json.RawMessage(`{"optionIds":["a"]}`)})
+		}
+		var result resultResponse
+		decodeResponse(t, rawRequest(t, data.learnerB, server.URL, http.MethodPost,
+			"/api/v1/practice-sessions/"+generated.ID+"/submit", submitJSON(t, answers), map[string]string{"Idempotency-Key": "ai-generated-1"}), &result)
+		if result.Summary.Confirmed.Total != 0 || result.Summary.AI.Pending != 10 || countRows(t, pool,
+			`SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, generated.ID) != 1 {
+			t.Fatalf("generated batch should use one AI analysis and no confirmed score: %+v", result)
+		}
+		if err := aiService.Handlers()["analyze_practice_session_ai"](context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err != nil {
+			t.Fatalf("generated batch analysis failed: %v", err)
+		}
+		if _, err := pool.Exec(context.Background(),
+			`UPDATE jobs SET status = 'succeeded' WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, generated.ID); err != nil {
+			t.Fatal(err)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/practice-sessions/"+generated.ID+"/result", nil, ""), &result)
+		if result.Status != "completed" || result.Summary.Confirmed.Total != 0 || result.Summary.AI.Correct != 10 {
+			t.Fatalf("AI-generated result should stay out of confirmed score: %+v", result)
 		}
 	})
 

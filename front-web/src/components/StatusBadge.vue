@@ -35,6 +35,7 @@ const tone = computed(() => {
     case 'pending':
     case 'grading':
     case 'in_review':
+    case 'generating':
     case 'draft':
     case 'unanswered':
     case 'uploaded':
@@ -45,6 +46,7 @@ const tone = computed(() => {
     case 'incorrect':
     case 'failed':
     case 'analysis_failed':
+    case 'generation_failed':
     case 'retired':
     case 'rejected':
       return 'danger'
