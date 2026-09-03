@@ -24,8 +24,9 @@ backend/          Go 1.24 模块化单体(module 名 github.com/aishuati/backend
 front-web/        Vue 3 + TS(strict) + Vite + vue-router,无 Pinia(shallowRef session)
 docs/             上述规范文档
 pdf/              蓝宝书 N4N5 扫描版(题库来源,见「PDF 题库导入管线」)
-scripts/          OCR / 解析 / 建库脚本(见下文)
+scripts/          OCR / 解析 / 建库 / 题库导出脚本(见下文)
 ocr-service/      本地 OCR 导入服务(扫描 PDF → 审核 → 结构化 JSON,见「扫描书导入」)
+questions_json/   题库导出的结构化 JSON(export_questions_json.py 产物,不入库,可随时重新生成)
 ```
 
 ## 环境与常用命令
@@ -108,6 +109,8 @@ npm run test       # vitest
 针对任意扫描版 PDF 的常规导入路径:`ocr-service/` 是用 `.venv-ocr` 运行的 FastAPI 服务(`./run.sh`,127.0.0.1:8787),流程为 上传 PDF → pymupdf 抽页 → 本地 DeepSeek-OCR 逐页识别 → 网页端逐页审核编辑 → 文本 LLM(非视觉模型,`.env` 配 `LLM_BASE_URL/LLM_API_KEY/LLM_MODEL`)结构化 → 题目 JSON 再编辑 → 导出。
 
 导出的 `{"items":[...]}` 直接上传到管理端「导入任务」页:后端 imports 模块**只接受这种结构化 JSON**(不在刷题项目里做 PDF/DOCX 等格式识别,也没有 AI 结构化和失败重试),解析 `levelCode`/`subjectCode`/`knowledgePointNames` 为内部 ID(知识点名称匹配不上只记入 anomalies,不拒导),复用全部草稿校验后同步生成待审核条目(review_ready),之后走既有的逐题审核 → 发布流程。JSON 题目格式定义在 `backend/internal/imports/json_import.go`,字段增删要同步 `ocr-service/app.py` 的 `ALLOWED_ITEM_KEYS`。
+
+反向导出:`scripts/export_questions_json.py`(`.venv/bin/python` 运行,PG_URL 可覆盖)把数据库题库(每题 current_version)导出为同一格式,按 级别-科目 分组、每组 ≤500 题(对齐单批导入上限)拆文件,输出到 `questions_json/`。约定:`human_verified` 答案归一为 `official`(导入格式硬约束);`materialKey` 填材料 ID 以便重新导入时共享阅读材料;`rawExcerpt` 留空由后端默认取题干。题库有更新后重跑一次即可,产物已用全量上传验证过可重新导入。
 
 ## 刷题与 AI 结果约定
 
