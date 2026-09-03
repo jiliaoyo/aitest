@@ -92,7 +92,7 @@ npm run test       # vitest
 - AI 按级别出题时，服务端从所选级别的已发布知识点中随机取样，并把级别代码（如 `n5`）传给模型；AI 返回的题型和难度会在服务端再次校验。
 - `question_ai_explanations` 只缓存与题目本身无关用户作答的权威题目解析；主观题或依赖具体作答的 AI 判定不写入题目缓存。
 - 批次 AI 请求应去重共享材料，并严格校验模型返回的题目 ID、结论和文本长度；失败任务保留在 jobs 中，不能静默写入残缺结果。
-- 练习历史和错题本支持软删除：历史通过 `DELETE /practice-sessions/{id}` 隐藏整批，错题本通过 `DELETE /wrong-items/{id}` 隐藏单题；`practice_sessions.deleted_at` 和 `practice_items.deleted_at` 只影响用户视图与错题重练，不删除原始作答、成绩或统计事实。进行中的练习不能删除。
+- 练习历史和错题本支持软删除：历史通过 `DELETE /practice-sessions/{id}` 隐藏整批，错题本通过 `DELETE /wrong-items/{id}` 隐藏单题；`practice_sessions.deleted_at` 和 `practice_items.deleted_at` 只影响用户视图与错题重练，不删除原始作答、成绩或统计事实。正在生成的练习不能删除，答题中的练习可以删除。
 - 最新迁移为 `0014_practice_soft_delete.sql`；新增字段或缓存策略只能追加迁移。
 
 前端排版约定：AI 文本使用 `src/app/format.ts` 的 `formatAIText` 和 `src/styles/base.css` 的 `.ai-text`；选项行统一使用 `src/styles/utilities.css` 的 `.option-row`，其单选框/复选框已做共享的垂直居中处理，不要在页面内重复覆盖。

@@ -58,7 +58,7 @@ function linkFor(s: SessionListItem): string {
 }
 
 async function deleteSession(session: SessionListItem): Promise<void> {
-  if (deletingID.value || ['active', 'generating'].includes(session.status)) return
+  if (deletingID.value || session.status === 'generating') return
   if (!window.confirm('确定隐藏这条练习历史吗？原始答题记录和成绩会保留。')) return
   deletingID.value = session.id
   deleteError.value = ''
@@ -112,8 +112,8 @@ async function deleteSession(session: SessionListItem): Promise<void> {
               <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
                 <RouterLink :to="linkFor(s)">{{ ['active', 'generating'].includes(s.status) ? '继续练习' : s.status === 'generation_failed' ? '查看生成状态' : '查看结果' }}</RouterLink>
                 <button
-                  v-if="!['active', 'generating'].includes(s.status)"
-                  class="danger"
+                  v-if="s.status !== 'generating'"
+                  class="ghost danger"
                   type="button"
                   :disabled="deletingID === s.id"
                   @click="deleteSession(s)"

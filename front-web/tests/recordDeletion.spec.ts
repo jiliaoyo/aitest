@@ -30,7 +30,7 @@ describe('历史与错题本软删除', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     requestMock.mockImplementation(async (path: string) => {
       if (path.startsWith('/practice-sessions?')) {
-        return { sessions: [{ id: 'session-1', status: 'completed', totalCount: 20, createdAt: '2026-01-01T00:00:00Z', submittedAt: '2026-01-01T00:10:00Z' }], nextCursor: '' }
+        return { sessions: [{ id: 'session-1', status: 'active', totalCount: 20, createdAt: '2026-01-01T00:00:00Z', submittedAt: null }], nextCursor: '' }
       }
       return undefined
     })

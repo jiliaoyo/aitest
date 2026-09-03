@@ -330,7 +330,7 @@ paths:
       responses:
         '204': { description: 已隐藏 }
         '404': { $ref: '#/components/responses/NotFound' }
-        '409': { description: practice_in_progress }
+        '409': { description: practice_in_progress（正在生成的练习） }
   /practice-sessions/{id}/answers/{itemId}:
     put:
       tags: [practice]

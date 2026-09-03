@@ -143,7 +143,7 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 14px">
-          <button class="danger" type="button" :disabled="deletingItemID === item.itemId" @click="removeWrongItem(item)">
+          <button class="ghost danger" type="button" :disabled="deletingItemID === item.itemId" @click="removeWrongItem(item)">
             {{ deletingItemID === item.itemId ? '删除中…' : '从错题本移除' }}
           </button>
         </div>

@@ -583,8 +583,8 @@ func (s *Service) DeleteSession(ctx context.Context, userID, sessionID string) e
 	if err != nil {
 		return err
 	}
-	if status == "active" || status == "generating" {
-		return httpapi.E(http.StatusConflict, "practice_in_progress", "进行中的练习不能删除")
+	if status == "generating" {
+		return httpapi.E(http.StatusConflict, "practice_in_progress", "正在生成的练习不能删除")
 	}
 	_, err = s.pool.Exec(ctx,
 		`UPDATE practice_sessions SET deleted_at = now(), updated_at = now()
