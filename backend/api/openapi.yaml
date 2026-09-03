@@ -336,6 +336,15 @@ paths:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ResultSession' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { description: practice_not_submitted }
+  /practice-sessions/{id}/analysis/retry:
+    post:
+      tags: [practice]
+      summary: 重试失败的本批 AI 分析（只入队一个整批任务）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/ResultSession' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: practice_not_submitted / analysis_not_failed }
   /admin/overview:
     get:
       tags: [admin]

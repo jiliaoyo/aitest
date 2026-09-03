@@ -16,6 +16,8 @@ const result = ref<ResultSession | null>(null)
 const pageState = ref<'loading' | 'ready' | 'error' | 'notfound'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
+const retrying = ref(false)
+const retryError = ref('')
 
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -63,6 +65,20 @@ function schedulePolling(): void {
 function onVisibility(): void {
   if (!document.hidden && result.value?.status === 'grading') {
     void load(true)
+  }
+}
+
+async function retryAnalysis(): Promise<void> {
+  if (retrying.value || result.value?.aiAnalysis.status !== 'failed') return
+  retrying.value = true
+  retryError.value = ''
+  try {
+    result.value = await request<ResultSession>(`/practice-sessions/${sessionID.value}/analysis/retry`, { method: 'POST' })
+    schedulePolling()
+  } catch (err) {
+    retryError.value = err instanceof ApiError ? err.message : '重新分析失败，请重试'
+  } finally {
+    retrying.value = false
   }
 }
 
@@ -120,7 +136,11 @@ const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.valu
           <span class="tag" :data-tone="result.aiAnalysis.status === 'failed' ? 'danger' : result.aiAnalysis.status === 'completed' ? 'success' : 'accent'">
             {{ aiAnalysisStatusText[result.aiAnalysis.status] ?? result.aiAnalysis.status }}
           </span>
+          <button v-if="result.aiAnalysis.status === 'failed' || result.aiAnalysis.status === 'pending'" type="button" :disabled="retrying || result.aiAnalysis.status === 'pending'" @click="retryAnalysis">
+            {{ result.aiAnalysis.status === 'pending' || retrying ? '重新分析中…' : '重新分析' }}
+          </button>
         </div>
+        <p v-if="retryError" class="error" role="alert">{{ retryError }}</p>
         <p v-if="result.aiAnalysis.status === 'pending'" class="muted" style="margin: 12px 0 0">
           正在根据整批作答情况整理表现、薄弱点和下一步建议…
         </p>

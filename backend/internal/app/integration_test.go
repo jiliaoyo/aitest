@@ -235,6 +235,33 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("失败的本批 AI 分析可重试且重复点击不重复入队", func(t *testing.T) {
+		if _, err := pool.Exec(context.Background(),
+			`UPDATE jobs SET status = 'failed' WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, learnerASession.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(context.Background(),
+			`UPDATE grading_results SET status = 'failed', explanation = 'AI 失败', explanation_source = 'ai' WHERE session_id = $1 AND source = 'ai'`, learnerASession.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(context.Background(),
+			`UPDATE practice_sessions SET status = 'analysis_failed', ai_summary_status = 'failed' WHERE id = $1`, learnerASession.ID); err != nil {
+			t.Fatal(err)
+		}
+		path := "/api/v1/practice-sessions/" + learnerASession.ID + "/analysis/retry"
+		assertStatus(t, jsonRequest(t, data.learnerB, server.URL, http.MethodPost, path, nil, ""), http.StatusNotFound)
+		var result resultResponse
+		decodeResponse(t, jsonRequest(t, data.learnerA, server.URL, http.MethodPost, path, nil, ""), &result)
+		if result.Status != "grading" || result.Summary.AI.Pending != 1 {
+			t.Fatalf("retry should restore pending AI result: %+v", result)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerA, server.URL, http.MethodPost, path, nil, ""), &result)
+		if countRows(t, pool, `SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, learnerASession.ID) != 2 ||
+			countRows(t, pool, `SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND status IN ('queued', 'running') AND payload->>'sessionId' = $1`, learnerASession.ID) != 1 {
+			t.Fatal("repeated analysis retry should leave one active batch job")
+		}
+	})
+
 	t.Run("自动保存与提交同时发生时最终提交胜出", func(t *testing.T) {
 		pre := createIntegrationSession(t, data, data.learnerB)
 		first := itemIDForQuestion(t, pool, pre.ID, data.keyQuestionID)

@@ -29,6 +29,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/practice-sessions/{id}/answers/{itemId}", h.saveAnswer)
 	mux.HandleFunc("POST /api/v1/practice-sessions/{id}/submit", h.submit)
 	mux.HandleFunc("GET /api/v1/practice-sessions/{id}/result", h.result)
+	mux.HandleFunc("POST /api/v1/practice-sessions/{id}/analysis/retry", h.retryAnalysis)
 }
 
 func (h *Handler) sources(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +141,15 @@ func (h *Handler) submit(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) result(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.GetResult(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("id"))
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) retryAnalysis(w http.ResponseWriter, r *http.Request) {
+	result, err := h.service.RetryAnalysis(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("id"))
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

@@ -514,6 +514,47 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 	return out, nil
 }
 
+// RetryAnalysis 恢复失败的 AI 结果，并保证同一批次最多存在一个活动中的整批任务。
+func (s *Service) RetryAnalysis(ctx context.Context, userID, sessionID string) (ResultSession, error) {
+	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		st := s.store.With(tx)
+		var lockedID string
+		err := tx.QueryRow(ctx,
+			`SELECT id::text FROM practice_sessions WHERE id = $1 AND user_id = $2 FOR UPDATE`, sessionID, userID).Scan(&lockedID)
+		if err == pgx.ErrNoRows {
+			return httpapi.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+		meta, err := st.SessionMetaForUser(ctx, sessionID, userID)
+		if err != nil {
+			return err
+		}
+		active, err := st.HasActiveBatchAnalysisJob(ctx, tx, sessionID)
+		if err != nil {
+			return err
+		}
+		if active {
+			return nil
+		}
+		if meta.Status == "active" {
+			return httpapi.E(http.StatusConflict, "practice_not_submitted", "练习尚未提交")
+		}
+		if meta.Status != "analysis_failed" && meta.AISummaryStatus != "failed" {
+			return httpapi.E(http.StatusConflict, "analysis_not_failed", "当前批次没有可重试的 AI 分析")
+		}
+		if err := st.ResetAIAnalysisForRetry(ctx, tx, sessionID); err != nil {
+			return err
+		}
+		return jobs.EnqueueTx(ctx, tx, "analyze_practice_session_ai", map[string]string{"sessionId": sessionID})
+	})
+	if err != nil {
+		return ResultSession{}, err
+	}
+	return s.GetResult(ctx, userID, sessionID)
+}
+
 // ---------- 历史 ----------
 
 func (s *Service) ListSessions(ctx context.Context, userID, status, cursor string, limit int) ([]SessionListItem, string, error) {

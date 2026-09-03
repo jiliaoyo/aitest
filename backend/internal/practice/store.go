@@ -242,6 +242,31 @@ func (s *Store) MarkSubmitted(ctx context.Context, tx pgx.Tx, sessionID, submitK
 	return err
 }
 
+func (s *Store) HasActiveBatchAnalysisJob(ctx context.Context, tx pgx.Tx, sessionID string) (bool, error) {
+	return store.Exists(ctx, tx,
+		`SELECT true FROM jobs
+		 WHERE kind = 'analyze_practice_session_ai'
+		   AND status IN ('queued', 'running')
+		   AND payload->>'sessionId' = $1
+		 LIMIT 1`, sessionID)
+}
+
+func (s *Store) ResetAIAnalysisForRetry(ctx context.Context, tx pgx.Tx, sessionID string) error {
+	if _, err := tx.Exec(ctx,
+		`UPDATE grading_results
+		 SET status = 'pending', correct_value = NULL, explanation = NULL,
+		     explanation_source = NULL, updated_at = now()
+		 WHERE session_id = $1 AND source = 'ai' AND status = 'failed'`, sessionID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx,
+		`UPDATE practice_sessions
+		 SET status = 'grading', ai_summary_status = 'pending', ai_summary = '',
+		     completed_at = NULL, updated_at = now()
+		 WHERE id = $1`, sessionID)
+	return err
+}
+
 // SetSessionStatus 仅当当前处于中间态时迁移，保证幂等。
 func (s *Store) SetSessionStatus(ctx context.Context, tx pgx.Tx, sessionID, status string) error {
 	_, err := tx.Exec(ctx,
