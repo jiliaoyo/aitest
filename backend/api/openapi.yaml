@@ -59,6 +59,24 @@ paths:
       tags: [auth]
       summary: 失效当前会话
       responses: { '200': { description: OK } }
+  /auth/change-password:
+    post:
+      tags: [auth]
+      summary: 修改当前账号密码
+      description: 校验当前密码后更新密码哈希，并失效其他会话；当前会话继续有效。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        '200': { description: 修改成功 }
+        '400': { description: invalid_current_password / validation_failed }
   /auth/password-reset/request:
     post:
       tags: [auth]

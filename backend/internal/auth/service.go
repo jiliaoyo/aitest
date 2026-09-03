@@ -144,6 +144,40 @@ func (s *Service) SetDefaultLevel(ctx context.Context, userID string, levelID *s
 	return s.store.SetDefaultLevel(ctx, userID, levelID)
 }
 
+func (s *Service) ChangePassword(ctx context.Context, userID, currentToken, currentPassword, newPassword string) error {
+	if currentPassword == "" {
+		return httpapi.ValidationError(map[string]string{"currentPassword": "请输入当前密码"})
+	}
+	if err := validatePassword(newPassword); err != nil {
+		return httpapi.ValidationError(map[string]string{"newPassword": err.Message})
+	}
+
+	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var currentHash string
+		if err := tx.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&currentHash); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return httpapi.ErrUnauthorized
+			}
+			return err
+		}
+		if bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(currentPassword)) != nil {
+			return httpapi.E(http.StatusBadRequest, "invalid_current_password", "当前密码不正确")
+		}
+		newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("密码哈希失败: %w", err)
+		}
+		if err := s.store.UpdatePasswordTx(ctx, tx, userID, string(newHash)); err != nil {
+			return err
+		}
+		if err := s.store.RevokeOtherUserSessionsTx(ctx, tx, userID, HashToken(currentToken)); err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
+}
+
 // RequestPasswordReset 创建找回令牌。首版没有邮件通道：dev 环境把令牌返回给调用方，
 // prod 只记录日志并统一响应成功，不暴露令牌是否存在。
 func (s *Service) RequestPasswordReset(ctx context.Context, email, appEnv string) (string, error) {

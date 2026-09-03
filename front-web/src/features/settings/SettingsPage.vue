@@ -16,6 +16,11 @@ const errorMessage = ref('')
 const deletingMemory = ref(false)
 const memoryDeleted = ref(false)
 const memoryError = ref('')
+const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+const passwordFields = reactive<Record<string, string>>({})
+const passwordSaving = ref(false)
+const passwordSaved = ref(false)
+const passwordError = ref('')
 
 onMounted(async () => {
   const me = sessionUser()
@@ -68,11 +73,38 @@ async function deleteMemory(): Promise<void> {
     deletingMemory.value = false
   }
 }
+
+async function changePassword(): Promise<void> {
+  for (const key of Object.keys(passwordFields)) delete passwordFields[key]
+  passwordSaved.value = false
+  passwordError.value = ''
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    passwordFields.confirmPassword = '两次输入的新密码不一致'
+    return
+  }
+  passwordSaving.value = true
+  try {
+    await request('/auth/change-password', {
+      method: 'POST',
+      body: { currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword },
+    })
+    passwordForm.currentPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    passwordSaved.value = true
+  } catch (err) {
+    const fields = fieldErrors(err)
+    for (const [key, value] of Object.entries(fields)) passwordFields[key] = value
+    if (!Object.keys(fields).length) passwordError.value = err instanceof ApiError ? err.message : '修改密码失败，请重试'
+  } finally {
+    passwordSaving.value = false
+  }
+}
 </script>
 
 <template>
   <AppShell>
-    <h1 style="font-size: 24px">个人设置</h1>
+    <h1 style="font-size: 24px">个人中心</h1>
     <form class="card" style="max-width: 520px" @submit.prevent="save">
       <div class="field">
         <label for="level">默认练习级别</label>
@@ -85,6 +117,28 @@ async function deleteMemory(): Promise<void> {
       <p v-if="saved" class="tag" data-tone="success" role="status" style="margin-bottom: 10px">已保存</p>
       <p v-if="errorMessage" class="error-summary" role="alert">{{ errorMessage }}</p>
       <button class="primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存' }}</button>
+    </form>
+
+    <form id="change-password-form" class="card" style="max-width: 520px" @submit.prevent="changePassword">
+      <h2 style="font-size: 16px">修改密码</h2>
+      <div class="field">
+        <label for="current-password">当前密码</label>
+        <input id="current-password" v-model="passwordForm.currentPassword" type="password" autocomplete="current-password" />
+        <p v-if="passwordFields.currentPassword" class="error">{{ passwordFields.currentPassword }}</p>
+      </div>
+      <div class="field">
+        <label for="new-password">新密码</label>
+        <input id="new-password" v-model="passwordForm.newPassword" type="password" autocomplete="new-password" />
+        <p v-if="passwordFields.newPassword" class="error">{{ passwordFields.newPassword }}</p>
+      </div>
+      <div class="field">
+        <label for="confirm-password">确认新密码</label>
+        <input id="confirm-password" v-model="passwordForm.confirmPassword" type="password" autocomplete="new-password" />
+        <p v-if="passwordFields.confirmPassword" class="error">{{ passwordFields.confirmPassword }}</p>
+      </div>
+      <p v-if="passwordSaved" class="tag" data-tone="success" role="status" style="margin-bottom: 10px">密码已修改</p>
+      <p v-if="passwordError" class="error-summary" role="alert">{{ passwordError }}</p>
+      <button class="primary" type="submit" :disabled="passwordSaving">{{ passwordSaving ? '修改中…' : '修改密码' }}</button>
     </form>
 
     <div class="card" style="max-width: 520px">

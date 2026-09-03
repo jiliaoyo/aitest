@@ -27,6 +27,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/register", h.register)
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
+	mux.HandleFunc("POST /api/v1/auth/change-password", h.changePassword)
 	mux.HandleFunc("POST /api/v1/auth/password-reset/request", h.requestReset)
 	mux.HandleFunc("POST /api/v1/auth/password-reset/confirm", h.confirmReset)
 	mux.HandleFunc("GET /api/v1/me", h.me)
@@ -95,6 +96,22 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.clearSessionCookie(w)
+	httpapi.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := httpapi.DecodeJSON(w, r, &req); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	if err := h.service.ChangePassword(r.Context(), ctxkeys.UserID(r.Context()), Token(r), req.CurrentPassword, req.NewPassword); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
 	httpapi.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 

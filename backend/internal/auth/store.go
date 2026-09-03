@@ -113,6 +113,16 @@ func (s *Store) RevokeUserSessionsTx(ctx context.Context, db store.DBTx, userID 
 	return err
 }
 
+func (s *Store) RevokeOtherUserSessionsTx(ctx context.Context, db store.DBTx, userID, currentTokenHash string) error {
+	if currentTokenHash == "" {
+		return s.RevokeUserSessionsTx(ctx, db, userID)
+	}
+	_, err := db.Exec(ctx,
+		`UPDATE auth_sessions SET revoked_at = now()
+		 WHERE user_id = $1 AND token_hash <> $2 AND revoked_at IS NULL`, userID, currentTokenHash)
+	return err
+}
+
 // HitRateLimit 在固定窗口内对 key 计数；超过 limit 返回 false。
 func (s *Store) HitRateLimit(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
 	var count int

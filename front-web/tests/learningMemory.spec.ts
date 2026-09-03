@@ -67,4 +67,31 @@ describe('账号学习记忆', () => {
     expect(requestMock).toHaveBeenCalledWith('/learning-memory', { method: 'DELETE' })
     expect(wrapper.text()).toContain('已删除，新的进度会重新累计')
   })
+
+  it('个人中心可修改密码并保留当前会话', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/catalog') return { exams: [] }
+      if (path === '/auth/change-password') return { ok: true }
+      return undefined
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/settings', component: SettingsPage }],
+    })
+    await router.push('/settings')
+    await router.isReady()
+    const wrapper = mount(SettingsPage, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await wrapper.get('#current-password').setValue('old-password')
+    await wrapper.get('#new-password').setValue('new-password')
+    await wrapper.get('#confirm-password').setValue('new-password')
+    await wrapper.get('#change-password-form').trigger('submit')
+    await flushPromises()
+
+    expect(requestMock).toHaveBeenCalledWith('/auth/change-password', {
+      method: 'POST', body: { currentPassword: 'old-password', newPassword: 'new-password' },
+    })
+    expect(wrapper.text()).toContain('密码已修改')
+  })
 })

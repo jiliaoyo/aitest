@@ -44,7 +44,7 @@ function isActive(to: string): boolean {
           <RouterLink v-if="isAdmin()" to="/" class="tag">返回学习端</RouterLink>
           <RouterLink v-if="isAdmin()" to="/admin" class="tag">进入管理端</RouterLink>
           <span class="muted mono">{{ sessionUser()?.email }}</span>
-          <RouterLink to="/settings" class="tag">设置</RouterLink>
+          <RouterLink to="/settings" class="tag">个人中心</RouterLink>
         </div>
       </div>
     </header>
