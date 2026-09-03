@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/jobs"
@@ -328,8 +329,11 @@ func (s *Store) RecordAudit(ctx context.Context, tx pgx.Tx, actorID, action, obj
 }
 
 func (s *Store) RetryJob(ctx context.Context, tx pgx.Tx, id, status string) error {
-	_, err := tx.Exec(ctx,
+	result, err := tx.Exec(ctx,
 		`UPDATE import_jobs SET status = $2, stage_error = '', updated_at = now()
 		 WHERE id = $1 AND status = 'failed'`, id, status)
+	if err == nil && result.RowsAffected() == 0 {
+		return httpapi.E(http.StatusConflict, "import_not_failed", "只有失败的导入任务可以重试")
+	}
 	return err
 }
