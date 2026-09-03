@@ -88,9 +88,14 @@ npm run test       # vitest
 
 - 创建练习支持 `sourceId` 数据来源筛选；不传表示全部来源。默认 `source_order` 按 PDF 来源顺序，`random` 才随机。
 - 答题前 DTO 永不返回答案；答题后结果通过 `sourceSectionName` 展示来源章节，通过 `aiAnalysis` 展示整批 AI 总结。
+- AI 私有出题接口是 `POST /ai-practice-sessions`：默认 20 题，`generationMode` 支持 `memory`（账号记忆）和 `level`（指定 JLPT 级别），`questionType` 支持混合、单项选择、多项选择、填空和简答，`difficulty` 支持 `easy`、`normal`、`hard`、`mixed`。
+- AI 按级别出题时，服务端从所选级别的已发布知识点中随机取样，并把级别代码（如 `n5`）传给模型；AI 返回的题型和难度会在服务端再次校验。
 - `question_ai_explanations` 只缓存与题目本身无关用户作答的权威题目解析；主观题或依赖具体作答的 AI 判定不写入题目缓存。
 - 批次 AI 请求应去重共享材料，并严格校验模型返回的题目 ID、结论和文本长度；失败任务保留在 jobs 中，不能静默写入残缺结果。
-- 最新迁移为 `0012_ai_generated_practice.sql`；新增字段或缓存策略只能追加迁移。
+- 练习历史和错题本支持软删除：历史通过 `DELETE /practice-sessions/{id}` 隐藏整批，错题本通过 `DELETE /wrong-items/{id}` 隐藏单题；`practice_sessions.deleted_at` 和 `practice_items.deleted_at` 只影响用户视图与错题重练，不删除原始作答、成绩或统计事实。进行中的练习不能删除。
+- 最新迁移为 `0014_practice_soft_delete.sql`；新增字段或缓存策略只能追加迁移。
+
+前端排版约定：AI 文本使用 `src/app/format.ts` 的 `formatAIText` 和 `src/styles/base.css` 的 `.ai-text`；选项行统一使用 `src/styles/utilities.css` 的 `.option-row`，其单选框/复选框已做共享的垂直居中处理，不要在页面内重复覆盖。
 
 ## 代码风格
 
