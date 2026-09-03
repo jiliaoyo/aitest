@@ -44,12 +44,13 @@ func (h *Handler) sources(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) availability(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := CreateRequest{
-		LevelID:        q.Get("levelId"),
-		SubjectID:      q.Get("subjectId"),
-		Mode:           q.Get("mode"),
-		SelectionOrder: q.Get("selectionOrder"),
-		SourceID:       q.Get("sourceId"),
-		Count:          10,
+		LevelID:         q.Get("levelId"),
+		SubjectID:       q.Get("subjectId"),
+		Mode:            q.Get("mode"),
+		SelectionOrder:  q.Get("selectionOrder"),
+		SourceID:        q.Get("sourceId"),
+		SourceSectionID: q.Get("sourceSectionId"),
+		Count:           10,
 	}
 	req.KnowledgePointIDs = parseIDList(q.Get("knowledgePointIds"))
 	n, err := h.service.Availability(r.Context(), ctxkeys.UserID(r.Context()), req)

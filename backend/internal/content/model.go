@@ -32,6 +32,13 @@ type SourceSection struct {
 }
 
 type PracticeSource struct {
+	ID            string                  `json:"id"`
+	Name          string                  `json:"name"`
+	QuestionCount int                     `json:"questionCount"`
+	Sections      []PracticeSourceSection `json:"sections"`
+}
+
+type PracticeSourceSection struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	QuestionCount int    `json:"questionCount"`

@@ -93,25 +93,35 @@ func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
 
 func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID string) ([]PracticeSource, error) {
 	rows, err := store.CollectRows[struct {
-		ID            string
-		Name          string
+		SourceID      string
+		SourceName    string
+		SectionID     string
+		SectionName   string
 		QuestionCount int
 	}](ctx, s.db,
-		`SELECT src.id::text, src.name, count(q.id)::int
+		`SELECT src.id::text, src.name, ss.id::text, ss.name, count(q.id)::int
 		 FROM source_sections ss
 		 JOIN sources src ON src.id = ss.source_id
 		 JOIN question_versions v ON v.source_section_id = ss.id
 		   AND v.level_id::text = $1
 		   AND ($2 = '' OR v.subject_id::text = $2)
 		 JOIN questions q ON q.published_version_id = v.id AND q.retired_at IS NULL
-		 GROUP BY src.id, src.name, src.created_at, src.kind
-		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id`, levelID, subjectID)
+		 GROUP BY src.id, src.name, src.created_at, src.kind, ss.id, ss.name, ss.sort_order
+		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id, ss.sort_order`, levelID, subjectID)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]PracticeSource, 0, len(rows))
+	byID := map[string]int{}
 	for _, r := range rows {
-		out = append(out, PracticeSource{ID: r.ID, Name: r.Name, QuestionCount: r.QuestionCount})
+		i, ok := byID[r.SourceID]
+		if !ok {
+			byID[r.SourceID] = len(out)
+			out = append(out, PracticeSource{ID: r.SourceID, Name: r.SourceName, Sections: []PracticeSourceSection{}})
+			i = len(out) - 1
+		}
+		out[i].QuestionCount += r.QuestionCount
+		out[i].Sections = append(out[i].Sections, PracticeSourceSection{ID: r.SectionID, Name: r.SectionName, QuestionCount: r.QuestionCount})
 	}
 	return out, nil
 }
