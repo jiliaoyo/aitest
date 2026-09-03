@@ -267,42 +267,48 @@ ai_agg AS (
          COUNT(*) FILTER (WHERE status IN ('correct', 'incorrect')) AS ai_answered,
          COUNT(*) FILTER (WHERE status = 'correct') AS ai_correct
   FROM joined WHERE source = 'ai' GROUP BY kp_id
+),
+all_kp AS (
+  SELECT kp_id FROM agg
+  UNION
+  SELECT kp_id FROM ai_agg
 )
 INSERT INTO user_knowledge_stats
   (user_id, knowledge_point_id, confirmed_answered, confirmed_correct,
    recent_answered, recent_correct, ai_answered, ai_correct, consecutive_wrong, last_practiced_at)
-SELECT $1, agg.kp_id, agg.confirmed_answered, agg.confirmed_correct,
-       agg.recent_answered, agg.recent_correct,
+SELECT $1, all_kp.kp_id, coalesce(agg.confirmed_answered, 0), coalesce(agg.confirmed_correct, 0),
+       coalesce(agg.recent_answered, 0), coalesce(agg.recent_correct, 0),
        coalesce(ai.ai_answered, 0), coalesce(ai.ai_correct, 0),
        coalesce(stk.consecutive_wrong, 0), agg.last_practiced_at
-FROM agg
-LEFT JOIN streak stk ON stk.kp_id = agg.kp_id
-LEFT JOIN ai_agg ai ON ai.kp_id = agg.kp_id`, userID)
+FROM all_kp
+LEFT JOIN agg ON agg.kp_id = all_kp.kp_id
+LEFT JOIN streak stk ON stk.kp_id = all_kp.kp_id
+LEFT JOIN ai_agg ai ON ai.kp_id = all_kp.kp_id`, userID)
 	return err
 }
 
 // ---------- 错题本 ----------
 
 type wrongItemRow struct {
-	ItemID             string
-	SessionID          string
-	QuestionID         string
-	Position           int
-	Type               string
-	Stem               string
-	OptionsText        *string
-	MaterialID         *string
-	MaterialTitle      *string
-	MaterialContent    *string
-	KPID               *string
-	KPName             *string
-	Status             string
-	Authority          *string
-	CorrectValue       *string
-	UserValue          *string
-	Explanation        *string
-	ExplanationSource  *string
-	GradedAt           string
+	ItemID            string
+	SessionID         string
+	QuestionID        string
+	Position          int
+	Type              string
+	Stem              string
+	OptionsText       *string
+	MaterialID        *string
+	MaterialTitle     *string
+	MaterialContent   *string
+	KPID              *string
+	KPName            *string
+	Status            string
+	Authority         *string
+	CorrectValue      *string
+	UserValue         *string
+	Explanation       *string
+	ExplanationSource *string
+	GradedAt          string
 }
 
 // WrongItems 返回每个错题（最近一次错误作答）及其解析，支持按知识点筛选。
@@ -343,22 +349,22 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string,
 // ---------- 举报 ----------
 
 type IssueReport struct {
-	ID               string          `json:"id"`
-	UserID           string          `json:"userId"`
-	QuestionID       string          `json:"questionId"`
-	QuestionVersionID string         `json:"questionVersionId"`
-	PracticeItemID   *string         `json:"practiceItemId,omitempty"`
-	SessionID        *string         `json:"sessionId,omitempty"`
-	TargetType       string          `json:"targetType"`
-	Description      string          `json:"description"`
-	Context          json.RawMessage `json:"context"`
-	Status           string          `json:"status"`
-	ResolutionNote   string          `json:"resolutionNote"`
-	HandledBy        *string         `json:"handledBy,omitempty"`
-	HandledAt        *string         `json:"handledAt,omitempty"`
-	CreatedAt        string          `json:"createdAt"`
-	UserEmail        string          `json:"userEmail,omitempty"`
-	Stem             string          `json:"stem,omitempty"`
+	ID                string          `json:"id"`
+	UserID            string          `json:"userId"`
+	QuestionID        string          `json:"questionId"`
+	QuestionVersionID string          `json:"questionVersionId"`
+	PracticeItemID    *string         `json:"practiceItemId,omitempty"`
+	SessionID         *string         `json:"sessionId,omitempty"`
+	TargetType        string          `json:"targetType"`
+	Description       string          `json:"description"`
+	Context           json.RawMessage `json:"context"`
+	Status            string          `json:"status"`
+	ResolutionNote    string          `json:"resolutionNote"`
+	HandledBy         *string         `json:"handledBy,omitempty"`
+	HandledAt         *string         `json:"handledAt,omitempty"`
+	CreatedAt         string          `json:"createdAt"`
+	UserEmail         string          `json:"userEmail,omitempty"`
+	Stem              string          `json:"stem,omitempty"`
 }
 
 // CreateIssueReport 由学习端提交；上下文（题目版本、用户答案、判分状态）由后端补全。

@@ -23,6 +23,8 @@ const filters = ref({
   levelId: (route.query.levelId as string | undefined) ?? '',
   subjectId: (route.query.subjectId as string | undefined) ?? '',
   q: (route.query.q as string | undefined) ?? '',
+  hasAnswer: (route.query.hasAnswer as string | undefined) ?? '',
+  quality: (route.query.quality as string | undefined) ?? '',
 })
 
 const statusOptions = [
@@ -31,6 +33,12 @@ const statusOptions = [
   { value: 'in_review', label: '待审核' },
   { value: 'published', label: '已发布' },
   { value: 'retired', label: '已下架' },
+]
+const qualityOptions = [
+  { value: '', label: '全部质量' },
+  { value: 'no_knowledge', label: '无知识点' },
+  { value: 'no_source', label: '无来源' },
+  { value: 'no_answer', label: '无答案' },
 ]
 
 let timer: ReturnType<typeof setTimeout> | null = null
@@ -95,6 +103,12 @@ watch(filters, () => {
       <div class="field">
         <label for="f-q">搜索题干</label>
         <input id="f-q" v-model="filters.q" type="text" placeholder="输入关键词" />
+      </div>
+      <div class="field">
+        <label for="f-quality">质量入口</label>
+        <select id="f-quality" v-model="filters.quality">
+          <option v-for="o in qualityOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
       </div>
     </div>
 

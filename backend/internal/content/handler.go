@@ -57,6 +57,7 @@ func (h *Handler) listQuestions(w http.ResponseWriter, r *http.Request) {
 		SubjectID: q.Get("subjectId"),
 		Query:     q.Get("q"),
 		HasAnswer: q.Get("hasAnswer"),
+		Quality:   q.Get("quality"),
 		Cursor:    q.Get("cursor"),
 		Limit:     limit,
 	})

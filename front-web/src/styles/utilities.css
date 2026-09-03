@@ -110,6 +110,15 @@
   padding: 18px;
 }
 
+.metric-link {
+  color: inherit;
+}
+
+.metric-link:hover {
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
 .metric .value {
   font-family: var(--font-mono);
   font-size: 28px;

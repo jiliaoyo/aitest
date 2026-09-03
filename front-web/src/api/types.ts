@@ -289,6 +289,8 @@ export interface OverviewDTO {
   inReview: number
   published: number
   retired: number
+  publishedNoKnowledge: number
+  publishedNoSource: number
   publishedNoAnswer: number
   openIssues: number
 }

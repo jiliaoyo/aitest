@@ -361,6 +361,8 @@ paths:
                   inReview: { type: integer }
                   published: { type: integer }
                   retired: { type: integer }
+                  publishedNoKnowledge: { type: integer }
+                  publishedNoSource: { type: integer }
                   publishedNoAnswer: { type: integer }
                   openIssues: { type: integer }
   /admin/questions:
@@ -373,6 +375,7 @@ paths:
         - { name: subjectId, in: query, schema: { type: string } }
         - { name: q, in: query, schema: { type: string } }
         - { name: hasAnswer, in: query, schema: { type: string, enum: [yes, no] } }
+        - { name: quality, in: query, schema: { type: string, enum: [no_knowledge, no_source, no_answer] } }
         - { name: cursor, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:

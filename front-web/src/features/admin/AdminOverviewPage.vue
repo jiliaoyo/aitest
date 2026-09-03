@@ -52,12 +52,30 @@ onMounted(load)
         </div>
         <div class="metric" :data-tone="overview.publishedNoAnswer > 0 ? 'warning' : undefined">
           <p class="value" :style="overview.publishedNoAnswer > 0 ? 'color: var(--warning)' : ''">{{ overview.publishedNoAnswer }}</p>
-          <p class="label">已发布但无标准答案（练习时走 AI 判定）</p>
+          <p class="label">已发布但无标准答案</p>
         </div>
         <div class="metric" :data-tone="overview.openIssues > 0 ? 'warning' : undefined">
           <p class="value" :style="overview.openIssues > 0 ? 'color: var(--warning)' : ''">{{ overview.openIssues }}</p>
           <p class="label">待处理举报</p>
         </div>
+      </div>
+      <div class="metrics" style="margin-top: 18px">
+        <RouterLink class="metric metric-link" :to="{ path: '/admin/questions', query: { status: 'published', quality: 'no_knowledge' } }">
+          <p class="value" :style="overview.publishedNoKnowledge > 0 ? 'color: var(--warning)' : ''">{{ overview.publishedNoKnowledge }}</p>
+          <p class="label">无知识点</p>
+        </RouterLink>
+        <RouterLink class="metric metric-link" :to="{ path: '/admin/questions', query: { status: 'published', quality: 'no_source' } }">
+          <p class="value" :style="overview.publishedNoSource > 0 ? 'color: var(--warning)' : ''">{{ overview.publishedNoSource }}</p>
+          <p class="label">无来源</p>
+        </RouterLink>
+        <RouterLink class="metric metric-link" :to="{ path: '/admin/questions', query: { status: 'published', hasAnswer: 'no' } }">
+          <p class="value" :style="overview.publishedNoAnswer > 0 ? 'color: var(--warning)' : ''">{{ overview.publishedNoAnswer }}</p>
+          <p class="label">无答案</p>
+        </RouterLink>
+        <RouterLink class="metric metric-link" :to="{ path: '/admin/issues', query: { status: 'open' } }">
+          <p class="value" :style="overview.openIssues > 0 ? 'color: var(--warning)' : ''">{{ overview.openIssues }}</p>
+          <p class="label">开放举报</p>
+        </RouterLink>
       </div>
       <div class="card" style="margin-top: 18px">
         <p class="muted" style="margin-top: 0">快捷入口</p>

@@ -428,6 +428,18 @@ func (s *Store) ListQuestionsAdmin(ctx context.Context, f ListFilter) ([]Questio
 	} else if f.HasAnswer == "no" {
 		conds = append(conds, "NOT q.has_answer")
 	}
+	switch f.Quality {
+	case "no_knowledge":
+		conds = append(conds, `q.status = 'published' AND NOT EXISTS (
+			SELECT 1 FROM question_version_knowledge_points qvkp
+			WHERE qvkp.question_version_id = q.published_version_id)`)
+	case "no_source":
+		conds = append(conds, `q.status = 'published' AND NOT EXISTS (
+			SELECT 1 FROM question_versions published_version
+			WHERE published_version.id = q.published_version_id AND published_version.source_section_id IS NOT NULL)`)
+	case "no_answer":
+		conds = append(conds, "q.status = 'published' AND NOT q.has_answer")
+	}
 	if f.Cursor != "" {
 		add("(q.updated_at, q.id) < (?::timestamptz, ?::uuid)", f.CursorAt(), f.CursorID())
 	}
@@ -468,6 +480,7 @@ type ListFilter struct {
 	SubjectID string
 	Query     string
 	HasAnswer string
+	Quality   string
 	Cursor    string // "updated_at\x00id"
 	Limit     int
 }
@@ -523,26 +536,32 @@ func joinAnd(conds []string) string {
 // ---------- 概览统计 ----------
 
 type Overview struct {
-	Draft             int `json:"draft"`
-	InReview          int `json:"inReview"`
-	Published         int `json:"published"`
-	Retired           int `json:"retired"`
-	PublishedNoAnswer int `json:"publishedNoAnswer"`
-	OpenIssues        int `json:"openIssues"`
+	Draft                int `json:"draft"`
+	InReview             int `json:"inReview"`
+	Published            int `json:"published"`
+	Retired              int `json:"retired"`
+	PublishedNoKnowledge int `json:"publishedNoKnowledge"`
+	PublishedNoSource    int `json:"publishedNoSource"`
+	PublishedNoAnswer    int `json:"publishedNoAnswer"`
+	OpenIssues           int `json:"openIssues"`
 }
 
 func (s *Store) Overview(ctx context.Context) (Overview, error) {
 	var o Overview
 	err := s.db.QueryRow(ctx,
 		`SELECT
-		   count(*) FILTER (WHERE status = 'draft'),
-		   count(*) FILTER (WHERE status = 'in_review'),
-		   count(*) FILTER (WHERE status = 'published' AND retired_at IS NULL),
-		   count(*) FILTER (WHERE retired_at IS NOT NULL),
-		   count(*) FILTER (WHERE status = 'published' AND retired_at IS NULL AND NOT has_answer),
+		   count(*) FILTER (WHERE q.status = 'draft'),
+		   count(*) FILTER (WHERE q.status = 'in_review'),
+		   count(*) FILTER (WHERE q.status = 'published' AND q.retired_at IS NULL),
+		   count(*) FILTER (WHERE q.retired_at IS NOT NULL),
+		   (SELECT count(*) FROM questions q2 WHERE q2.status = 'published' AND q2.retired_at IS NULL
+		      AND NOT EXISTS (SELECT 1 FROM question_version_knowledge_points m WHERE m.question_version_id = q2.published_version_id)),
+		   (SELECT count(*) FROM questions q3 JOIN question_versions v3 ON v3.id = q3.published_version_id
+		      WHERE q3.status = 'published' AND q3.retired_at IS NULL AND v3.source_section_id IS NULL),
+		   count(*) FILTER (WHERE q.status = 'published' AND q.retired_at IS NULL AND NOT q.has_answer),
 		   (SELECT count(*) FROM issue_reports WHERE status = 'open')
-		 FROM questions`).Scan(
-		&o.Draft, &o.InReview, &o.Published, &o.Retired, &o.PublishedNoAnswer, &o.OpenIssues)
+		 FROM questions q`).Scan(
+		&o.Draft, &o.InReview, &o.Published, &o.Retired, &o.PublishedNoKnowledge, &o.PublishedNoSource, &o.PublishedNoAnswer, &o.OpenIssues)
 	return o, err
 }
 
