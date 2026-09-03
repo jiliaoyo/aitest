@@ -15,6 +15,8 @@
 
 复制 `.env.example` 为 `.env`，填写文本 LLM 的 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`（OpenAI 兼容接口）。
 不配也能用：OCR 和逐页审核不依赖它，只有「生成结构化草稿」会报未配置错误。
+结构化请求强制使用 JSON Output；模型返回非 JSON 时任务失败，不会保存草稿。
+上传默认限制为 100 MiB、500 页，可用 `OCR_MAX_UPLOAD_BYTES` 和 `OCR_MAX_PAGES` 调整。
 
 ## 流程
 

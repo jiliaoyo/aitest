@@ -27,6 +27,8 @@
   textarea { width: 100%; min-height: 60vh; font: 13px/1.7 ui-monospace, monospace; padding: 10px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; }
   textarea.items { min-height: 70vh; }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .ocr-progress { display: inline-flex; gap: 8px; align-items: center; }
+  .ocr-progress progress { width: 140px; height: 12px; }
   .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; background: #f1efe8; }
   .tag.ok { background: #e1f5ee; color: var(--ok); } .tag.warn { background: #faeeda; color: var(--warn); }
   input[type=text] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; width: 110px; }
@@ -42,6 +44,7 @@
 <script>
 const app = document.getElementById('app');
 let job = null, currentPage = 1, pollTimer = null, editingItems = false;
+let editorDirty = false, pageRequest = 0, pollInFlight = false;
 
 async function api(path, options = {}) {
   const resp = await fetch('/api' + path, options);
@@ -54,7 +57,19 @@ function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = nul
 function maybePoll() {
   stopPoll();
   if (job && (job.ocr.running || job.structure.running)) {
-    pollTimer = setInterval(async () => { job = await api('/jobs/' + job.id); renderJob(); }, 3000);
+    pollTimer = setInterval(async () => {
+      if (pollInFlight || !job) return;
+      pollInFlight = true;
+      const id = job.id;
+      try {
+        const next = await api('/jobs/' + id);
+        if (!job || job.id !== id) return;
+        job = next;
+        updateOcrProgress(job);
+        if (!(job.ocr.running || job.structure.running)) stopPoll();
+        if (!editorDirty) renderJob();
+      } finally { pollInFlight = false; }
+    }, 3000);
   }
 }
 
@@ -100,15 +115,15 @@ async function openJob(id) {
 
 function renderJob() {
   const j = job;
-  const dot = p => `<span class="dot ${p.approved ? 'approved' : p.recognized ? 'recognized' : ''}"></span>`;
   app.innerHTML = `
     <div class="toolbar">
       <button id="back">← 任务列表</button>
       <b>${esc(j.fileName)}</b>
       <span class="muted">${esc(j.levelCode)}/${esc(j.subjectCode)}</span>
       <span style="flex:1"></span>
+      <span class="ocr-progress"><progress id="ocrProgress" aria-label="OCR 识别进度" max="${j.pageCount}" value="0"></progress><span id="ocrProgressLabel"></span></span>
       ${j.ocr.running
-        ? `<span class="tag warn">OCR 识别中 第 ${j.ocr.current} 页</span><button id="stopOcr">停止</button>`
+        ? `<button id="stopOcr">停止</button>`
         : `<button class="primary" id="startOcr">识别未识别页</button>`}
       ${j.structure.running
         ? `<span class="tag warn">正在生成结构化草稿…</span>`
@@ -120,17 +135,41 @@ function renderJob() {
     ${j.structure.error ? `<p class="error">结构化失败：${esc(j.structure.error)}</p>` : ''}
     ${j.structure.finishedAt ? `<p class="muted">草稿生成于 ${esc(j.structure.finishedAt)}，可在「题目草稿」中整体编辑后导出。</p>` : ''}
     <div id="body"></div>`;
-  document.getElementById('back').onclick = showJobs;
+  document.getElementById('back').onclick = () => {
+    if (editorDirty && !confirm('当前编辑尚未保存，确定返回任务列表？')) return;
+    editorDirty = false;
+    showJobs();
+  };
   const start = document.getElementById('startOcr');
   if (start) start.onclick = async () => { job = await api(`/jobs/${j.id}/ocr`, { method: 'POST' }); renderJob(); maybePoll(); };
   const stop = document.getElementById('stopOcr');
   if (stop) stop.onclick = async () => { job = await api(`/jobs/${j.id}/ocr/stop`, { method: 'POST' }); renderJob(); };
-  document.getElementById('structure').onclick = async () => {
+  const structure = document.getElementById('structure');
+  if (structure) structure.onclick = async () => {
     if (!confirm('用已确认页面的文本调用文本模型生成题目草稿？')) return;
     job = await api(`/jobs/${j.id}/structure`, { method: 'POST' }); renderJob(); maybePoll();
   };
-  document.getElementById('toggleItems').onclick = () => { editingItems = !editingItems; renderJob(); };
+  document.getElementById('toggleItems').onclick = () => {
+    if (editorDirty && !confirm('当前编辑尚未保存，确定切换视图？')) return;
+    editorDirty = false;
+    editingItems = !editingItems;
+    renderJob();
+  };
+  updateOcrProgress(j);
   editingItems ? renderItems() : renderPages();
+}
+
+function updateOcrProgress(j) {
+  const progress = document.getElementById('ocrProgress');
+  const label = document.getElementById('ocrProgressLabel');
+  if (!progress || !label) return;
+  const done = j.pages.filter(p => p.recognized).length;
+  progress.max = j.pageCount;
+  progress.value = done;
+  const current = j.ocr.current ? ` · 当前第 ${j.ocr.current} 页` : ' · 正在准备';
+  label.textContent = j.ocr.running
+    ? `已识别 ${done}/${j.pageCount} 页${current}`
+    : `已识别 ${done}/${j.pageCount} 页`;
 }
 
 function renderPages() {
@@ -152,21 +191,31 @@ function renderPages() {
         <textarea id="text" spellcheck="false"></textarea>
       </div>
     </div>`;
-  document.querySelectorAll('.pages button').forEach(b => b.onclick = () => { currentPage = +b.dataset.p; renderPages(); loadPage(); });
+  editorDirty = false;
+  document.querySelectorAll('.pages button').forEach(b => b.onclick = () => {
+    if (editorDirty && !confirm('当前页面编辑尚未保存，确定切换页面？')) return;
+    currentPage = +b.dataset.p;
+    renderPages();
+  });
   document.getElementById('save').onclick = () => savePage(false);
   document.getElementById('saveApprove').onclick = () => savePage(true);
+  document.getElementById('text').oninput = () => { editorDirty = true; };
   document.getElementById('reocr').onclick = async () => {
     if (!confirm('重新识别本页会覆盖当前文本，继续？')) return;
     const r = await api(`/jobs/${job.id}/pages/${currentPage}/reocr`, { method: 'POST' });
     document.getElementById('text').value = r.text;
-    job = await api('/jobs/' + job.id); renderPages(); loadPage();
+    editorDirty = false;
+    job = await api('/jobs/' + job.id); renderPages();
   };
   loadPage();
 }
 
 async function loadPage() {
-  const p = await api(`/jobs/${job.id}/pages/${currentPage}`);
+  const id = job.id, page = currentPage, request = ++pageRequest;
+  const p = await api(`/jobs/${id}/pages/${page}`);
+  if (!job || job.id !== id || currentPage !== page || pageRequest !== request) return;
   document.getElementById('text').value = p.text;
+  editorDirty = false;
   document.getElementById('pageState').innerHTML = p.approved ? '<span class="tag ok">已确认</span>' : '';
 }
 
@@ -176,11 +225,14 @@ async function savePage(approve) {
     body: JSON.stringify({ text: document.getElementById('text').value, approved: approve }),
   });
   job = await api('/jobs/' + job.id);
+  editorDirty = false;
   renderJob();
 }
 
 async function renderItems() {
-  const { items } = await api(`/jobs/${job.id}/items`);
+  const id = job.id;
+  const { items } = await api(`/jobs/${id}/items`);
+  if (!job || job.id !== id || !editingItems) return;
   document.getElementById('body').innerHTML = `
     <div class="card">
       <div class="toolbar">
@@ -191,6 +243,8 @@ async function renderItems() {
       <textarea class="items" id="itemsText" spellcheck="false">${esc(JSON.stringify(items, null, 1))}</textarea>
       <p class="error" id="itemsError"></p>
     </div>`;
+  editorDirty = false;
+  document.getElementById('itemsText').oninput = () => { editorDirty = true; };
   document.getElementById('saveItems').onclick = async () => {
     const err = document.getElementById('itemsError');
     try {
@@ -199,7 +253,8 @@ async function renderItems() {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: parsed }),
       });
-      job = await api('/jobs/' + job.id); renderJob(); editingItems = true; renderItems();
+      editorDirty = false;
+      job = await api('/jobs/' + job.id); renderJob();
     } catch (e) { err.textContent = '保存失败：' + e.message; }
   };
 }
