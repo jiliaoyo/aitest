@@ -311,3 +311,60 @@ export interface IssueReportDTO {
   stem?: string
   questionId: string
 }
+
+// ---- admin imports ----
+
+export interface ImportJobDTO {
+  id: string
+  fileName: string
+  mimeType: string
+  sizeBytes: number
+  status: 'uploaded' | 'extracting' | 'structuring' | 'review_ready' | 'published' | 'failed'
+  stageError: string
+  extractedText?: string
+  itemCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ImportAnswerDTO {
+  value: Record<string, unknown>
+  authority: AnswerAuthority
+  explanation: string
+}
+
+export interface ImportSuggestionDTO {
+  value: Record<string, unknown>
+  explanation: string
+}
+
+export interface ImportDraftDTO {
+  materialKey?: string
+  type: QuestionType
+  stem: string
+  options: OptionDTO[]
+  materialTitle?: string
+  materialContent?: string
+  levelId: string
+  subjectId: string
+  sourceSectionId?: string | null
+  difficulty: number
+  knowledgePointIds: string[]
+  answer?: ImportAnswerDTO
+  sourceAnswer?: ImportAnswerDTO
+  aiSuggestedAnswer?: ImportSuggestionDTO
+}
+
+export interface ImportItemDTO {
+  id: string
+  jobId: string
+  position: number
+  rawExcerpt: string
+  draft: ImportDraftDTO | null
+  anomalies: string[]
+  reviewStatus: 'pending' | 'approved' | 'published' | 'rejected'
+  publishedQuestionId: string | null
+  jobStatus: ImportJobDTO['status']
+  createdAt: string
+  updatedAt: string
+}

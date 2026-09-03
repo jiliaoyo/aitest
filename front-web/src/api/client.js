@@ -40,6 +40,9 @@ export async function request(path, opts = {}) {
             message: '网络连接失败，请检查网络后重试',
         });
     }
+    return readResponse(res);
+}
+async function readResponse(res) {
     if (res.status === 401) {
         clearSession();
         const redirect = encodeURIComponent(location.pathname + location.search);
@@ -75,6 +78,21 @@ export async function request(path, opts = {}) {
         return undefined;
     }
     return (await res.json());
+}
+/** 上传不设置 Content-Type，让浏览器自动补 multipart boundary。 */
+export async function upload(path, file, signal) {
+    let res;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        res = await fetch(`${BASE}${path}`, { method: 'POST', credentials: 'include', signal, body: form });
+    }
+    catch (err) {
+        if (signal?.aborted)
+            throw err;
+        throw new ApiError({ status: 0, code: 'network_error', message: '网络连接失败，请检查网络后重试' });
+    }
+    return readResponse(res);
 }
 /** 解析后端字段级校验错误 details.fields */
 export function fieldErrors(err) {

@@ -16,6 +16,7 @@ const learnerNav = [
 const adminNav = [
   { to: '/admin', label: '内容概览' },
   { to: '/admin/questions', label: '题目' },
+  { to: '/admin/imports', label: '导入任务' },
   { to: '/admin/knowledge', label: '知识点' },
   { to: '/admin/sources', label: '来源' },
   { to: '/admin/issues', label: '举报' },

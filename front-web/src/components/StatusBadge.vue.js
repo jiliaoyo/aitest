@@ -31,6 +31,10 @@ const tone = computed(() => {
         case 'in_review':
         case 'draft':
         case 'unanswered':
+        case 'uploaded':
+        case 'extracting':
+        case 'structuring':
+        case 'review_ready':
             return 'warning';
         case 'incorrect':
         case 'failed':

@@ -59,13 +59,17 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     })
   }
 
-  if (res.status === 401) {
-    clearSession()
-    const redirect = encodeURIComponent(location.pathname + location.search)
+	return readResponse<T>(res)
+}
+
+async function readResponse<T>(res: Response): Promise<T> {
+	if (res.status === 401) {
+		clearSession()
+		const redirect = encodeURIComponent(location.pathname + location.search)
     if (!location.pathname.startsWith('/login')) {
       location.assign(`/login?redirect=${redirect}`)
     }
-    throw new ApiError({ status: 401, code: 'unauthorized', message: '请先登录' })
+		throw new ApiError({ status: 401, code: 'unauthorized', message: '请先登录' })
   }
 
   if (!res.ok) {
@@ -94,7 +98,21 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (res.status === 204) {
     return undefined as T
   }
-  return (await res.json()) as T
+	return (await res.json()) as T
+}
+
+/** 上传不设置 Content-Type，让浏览器自动补 multipart boundary。 */
+export async function upload<T>(path: string, file: File, signal?: AbortSignal): Promise<T> {
+	let res: Response
+	const form = new FormData()
+	form.append('file', file)
+	try {
+		res = await fetch(`${BASE}${path}`, { method: 'POST', credentials: 'include', signal, body: form })
+	} catch (err) {
+		if (signal?.aborted) throw err
+		throw new ApiError({ status: 0, code: 'network_error', message: '网络连接失败，请检查网络后重试' })
+	}
+	return readResponse<T>(res)
 }
 
 /** 解析后端字段级校验错误 details.fields */

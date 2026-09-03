@@ -272,6 +272,56 @@
   flex-wrap: wrap;
 }
 
+.import-review-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.import-source {
+  margin: 0;
+  max-height: 520px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 14px/1.8 var(--font-japanese-serif);
+}
+
+.import-option-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.import-note {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid var(--warning);
+  border-radius: 9px;
+  background: var(--warning-soft);
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.import-answer-fieldset {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 14px;
+  margin: 0 0 14px;
+}
+
+.import-answer-fieldset legend {
+  font-weight: 600;
+  padding: 0 6px;
+}
+
 @media (max-width: 920px) {
   .layout-body {
     flex-direction: column;
@@ -289,6 +339,7 @@
     white-space: nowrap;
   }
   .practice-layout,
+  .import-review-grid,
   .grid-2,
   .grid-3,
   .metrics {
