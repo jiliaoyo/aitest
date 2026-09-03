@@ -32,6 +32,10 @@ const jobColumns = `ij.id::text, ij.file_name, ij.mime_type, ij.size_bytes, ij.s
  ij.stage_error, ij.extracted_text, (SELECT count(*) FROM import_items ii WHERE ii.import_job_id = ij.id),
  ij.created_at::text, ij.updated_at::text`
 
+const jobListColumns = `ij.id::text, ij.file_name, ij.mime_type, ij.size_bytes, ij.status,
+ ij.stage_error, ''::text, (SELECT count(*) FROM import_items ii WHERE ii.import_job_id = ij.id),
+ ij.created_at::text, ij.updated_at::text`
+
 func toJob(r jobRow) Job {
 	return Job{ID: r.ID, FileName: r.FileName, MimeType: r.MimeType, SizeBytes: r.SizeBytes,
 		Status: r.Status, StageError: r.StageError, ExtractedText: r.ExtractedText,
@@ -55,7 +59,7 @@ func (s *Store) ListJobs(ctx context.Context, limit int) ([]Job, error) {
 		limit = 20
 	}
 	rows, err := store.CollectRows[jobRow](ctx, s.db,
-		`SELECT `+jobColumns+` FROM import_jobs ij ORDER BY ij.created_at DESC LIMIT $1`, limit)
+		`SELECT `+jobListColumns+` FROM import_jobs ij ORDER BY ij.created_at DESC LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
