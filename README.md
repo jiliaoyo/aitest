@@ -58,14 +58,21 @@ npm run build  # vue-tsc 严格类型检查 + 产物构建
 
 独立 worker（生产形态）：`make worker`；API 与 worker 共用领域代码，仅进程分离。
 
-## PDF 题库重建
+## 当前题库快照导入
+
+当前本地题库已导出为可重复执行的 INSERT SQL；先导入知识点，再导入题库：
 
 ```bash
-python3 scripts/rebuild_question_bank.py
+psql "$PG_URL" -f backend/questions/current_knowledge_points.sql
+psql "$PG_URL" -f backend/questions/current_question_bank.sql
+```
+
+## PDF 题库重建（开发工具）
+
+```bash
+python3 scripts/rebuild_question_bank.py --out-dir /tmp/ai-shuati-generated-questions
 # 重建已有书籍题库前执行；只删除两本书及其依赖，保留自建题和自建练习
 psql "$PG_URL" -f scripts/data/reset_book_question_bank.sql
-psql "$PG_URL" -f backend/questions/blue_questions.sql
-psql "$PG_URL" -f backend/questions/redblue_questions.sql
 ```
 
 脚本读取 `scripts/data/` 中的 OCR 快照，按来源章节细分分类，并在发现题号、选项、答案或 OCR 噪声异常时拒绝生成 SQL。

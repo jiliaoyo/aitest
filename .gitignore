@@ -16,6 +16,8 @@ pdf/
 tmp/
 questions_json/
 .workbuddy/
+backend/questions/blue_questions.sql
+backend/questions/redblue_questions.sql
 __pycache__/
 *.pyc
 /data/
