@@ -20,9 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v3"
+const questionGenerationPromptVersion = "practice_question_generation.v5"
 
-//go:embed prompts/practice_question_generation.v3.md
+//go:embed prompts/practice_question_generation.v5.md
 var questionGenerationPrompt string
 
 const (
@@ -43,6 +43,7 @@ type AIGenerateRequest struct {
 	Difficulty        string   `json:"difficulty"`
 	GenerationMode    string   `json:"generationMode"`
 	QuestionType      string   `json:"questionType"`
+	ShowFurigana      bool     `json:"showFurigana"`
 }
 
 type AIGeneratedSession struct {
@@ -118,6 +119,7 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 		"difficulty":        req.Difficulty,
 		"generationMode":    req.GenerationMode,
 		"questionType":      req.QuestionType,
+		"showFurigana":      req.ShowFurigana,
 	})
 	var out AIGeneratedSession
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -218,6 +220,7 @@ type questionGenerationInput struct {
 	Difficulty     string                      `json:"difficulty"`
 	GenerationMode string                      `json:"generationMode"`
 	QuestionType   string                      `json:"questionType"`
+	ShowFurigana   bool                        `json:"showFurigana"`
 	RandomSeed     string                      `json:"randomSeed"`
 	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
 }
@@ -278,6 +281,8 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		Difficulty        string   `json:"difficulty"`
 		GenerationMode    string   `json:"generationMode"`
 		QuestionType      string   `json:"questionType"`
+		ShowFurigana      bool     `json:"showFurigana"`
+		Script            string   `json:"script"`
 	}
 	if err := strictDecode([]byte(row.Scope), &scope); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("解析 AI 出题范围失败: %w", err))
@@ -320,7 +325,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	}
 	inputJSON, _ := json.Marshal(questionGenerationInput{
 		Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
-		GenerationMode: generationMode, QuestionType: questionType,
+		GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana,
 		RandomSeed: seed, LearningMemory: memory,
 	})
 	out, err := s.client.RunPromptWithTemperature(ctx, "practice_question_generation", questionGenerationPromptVersion,

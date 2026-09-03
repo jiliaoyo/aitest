@@ -19,6 +19,7 @@ const generatingAI = ref(false)
 const generateAIError = ref('')
 const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
 const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
+const aiShowFurigana = ref(false)
 
 const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[] = [
   { value: 'mixed', label: '混合题型' },
@@ -27,7 +28,6 @@ const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[
   { value: 'fill_blank', label: '填空题' },
   { value: 'short_answer', label: '简答题' },
 ]
-
 async function load(): Promise<void> {
   state.value = 'loading'
   try {
@@ -88,6 +88,7 @@ async function generateAIPractice(): Promise<void> {
         count: 20,
         difficulty: aiDifficulty.value,
         questionType: aiQuestionType.value,
+        showFurigana: aiShowFurigana.value,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -137,6 +138,10 @@ async function generateAIPractice(): Promise<void> {
             <option value="hard">困难</option>
           </select>
         </div>
+        <label class="option-row" style="margin-bottom: 14px">
+          <input id="ai-furigana" v-model="aiShowFurigana" type="checkbox" :disabled="generatingAI" />
+          <span>在汉字旁标注假名</span>
+        </label>
         <p v-if="generateAIError" class="error-summary" role="alert">{{ generateAIError }}</p>
         <button class="primary" type="button" :disabled="generatingAI" @click="generateAIPractice">
           {{ generatingAI ? 'AI 出题中…' : '生成 AI 题目（20 题）' }}

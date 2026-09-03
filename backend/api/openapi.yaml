@@ -898,12 +898,13 @@ components:
       type: object
       properties:
         levelId: { type: string, description: 省略时使用账号默认级别 }
-        subjectId: { type: string, description: 可选科目范围 }
+        subjectId: { type: string, description: 可选科目范围；省略表示混合科目 }
         knowledgePointIds: { type: array, maxItems: 10, items: { type: string }, description: memory 模式可指定知识点；省略或 level 模式时由服务端按当前级别选择 }
         count: { type: integer, enum: [10, 20, 30], default: 20 }
         difficulty: { type: string, enum: [easy, normal, hard, mixed], default: mixed, description: 简单为 1–2，一般为 3，困难为 4–5，混合为随机 1–5 }
         generationMode: { type: string, enum: [memory, level], default: memory, description: memory 根据账号记忆，level 根据当前级别 }
         questionType: { type: string, enum: [mixed, single_choice, multiple_choice, fill_blank, short_answer], default: mixed, description: mixed 为混合题型，也可指定单独题型 }
+        showFurigana: { type: boolean, default: false, description: 是否在汉字旁用括号标注假名，如 日本語（にほんご） }
     PracticeSource:
       type: object
       properties:

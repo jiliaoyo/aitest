@@ -130,6 +130,7 @@ export interface AIGeneratePracticeRequest {
   difficulty?: AIGenerationDifficulty
   generationMode?: AIGenerationMode
   questionType?: AIGenerationQuestionType
+  showFurigana?: boolean
 }
 
 export interface AIGeneratedSession {

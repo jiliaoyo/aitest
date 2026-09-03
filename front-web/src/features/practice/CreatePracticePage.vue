@@ -33,6 +33,8 @@ const generateAIError = ref('')
 const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
 const aiGenerationMode = ref<AIGenerationMode>('memory')
 const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
+const aiSubjectId = ref('')
+const aiShowFurigana = ref(false)
 
 const aiGenerationModeOptions: { value: AIGenerationMode; label: string }[] = [
   { value: 'memory', label: '根据我的记忆' },
@@ -45,7 +47,6 @@ const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[
   { value: 'fill_blank', label: '填空题' },
   { value: 'short_answer', label: '简答题' },
 ]
-
 const kps = ref<KnowledgePointItem[]>([])
 const kpNextCursor = ref('')
 const kpsLoading = ref(false)
@@ -201,12 +202,13 @@ async function generateAIPractice(): Promise<void> {
   try {
     const body: AIGeneratePracticeRequest = {
       levelId: targetLevelId,
-      subjectId: subjectId.value,
-      knowledgePointIds: aiGenerationMode.value === 'memory' ? knowledgePointIds.value : [],
+      subjectId: aiSubjectId.value,
+      knowledgePointIds: aiGenerationMode.value === 'memory' && (!aiSubjectId.value || aiSubjectId.value === subjectId.value) ? knowledgePointIds.value : [],
       count: count.value as 10 | 20 | 30,
       difficulty: aiDifficulty.value,
       generationMode: aiGenerationMode.value,
       questionType: aiQuestionType.value,
+      showFurigana: aiShowFurigana.value,
     }
     const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
       method: 'POST',
@@ -370,6 +372,13 @@ async function generateAIPractice(): Promise<void> {
             <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.name }}</option>
           </select>
         </div>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-subject">题目科目</label>
+          <select id="ai-subject" v-model="aiSubjectId" :disabled="generatingAI">
+            <option value="">混合科目</option>
+            <option v-for="subject in subjects" :key="subject.id" :value="subject.id">{{ subject.name }}</option>
+          </select>
+        </div>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">题型</legend>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
@@ -379,6 +388,10 @@ async function generateAIPractice(): Promise<void> {
             </label>
           </div>
         </fieldset>
+        <label class="option-row" style="margin-bottom: 14px">
+          <input id="ai-furigana" v-model="aiShowFurigana" type="checkbox" :disabled="generatingAI" />
+          <span>在汉字旁标注假名</span>
+        </label>
         <div class="field" style="max-width: 280px">
           <label for="ai-difficulty">难度</label>
           <select id="ai-difficulty" v-model="aiDifficulty" :disabled="generatingAI">
