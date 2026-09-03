@@ -1,7 +1,7 @@
 PG_URL ?= postgres://$(USER)@localhost:5432/ai_shuati_dev?sslmode=disable
 export DATABASE_URL = $(PG_URL)
 
-.PHONY: help migrate seed server worker dev test test-integration build tidy
+.PHONY: help migrate seed backfill-knowledge server worker dev test test-integration build tidy
 
 help:
 	@echo "migrate  - 应用数据库迁移"
@@ -11,12 +11,16 @@ help:
 	@echo "dev      - 迁移 + seed + 启动 API（含内嵌 worker）"
 	@echo "test     - 运行 Go 测试"
 	@echo "test-integration - 在 TEST_DATABASE_URL 指定的专用库运行集成测试"
+	@echo "backfill-knowledge - 为现有发布题目创建带知识点的新版本"
 
 migrate:
 	go run ./cmd/migrate -url "$(PG_URL)" -dir migrations
 
 seed:
 	DATABASE_URL="$(PG_URL)" go run ./cmd/seed
+
+backfill-knowledge:
+	DATABASE_URL="$(PG_URL)" go run ./cmd/backfill-knowledge
 
 server:
 	DATABASE_URL="$(PG_URL)" go run ./cmd/server

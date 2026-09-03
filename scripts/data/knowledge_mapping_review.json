@@ -1,0 +1,5909 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "この店は、駅から近い（　　）、いつも混んでいる。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "しゅくだいを（　　）ひとに聞きます。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "53e79153-ad48-5407-b76a-c91a534f7659",
+        "3d11ce97-6b82-5146-abbe-dc205d0bff0a"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "メモの内容と合っているものはどれですか。",
+      "subject": "reading"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "f5aa6f4e-16ea-57eb-96bb-fb12daa45f39",
+        "9cfd9a81-f5b1-5433-82e0-0f5114194180"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "あには每朝六時（　　）おきます。",
+      "subject": "vocabulary"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "f5aa6f4e-16ea-57eb-96bb-fb12daa45f39",
+        "9cfd9a81-f5b1-5433-82e0-0f5114194180"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "このへやは（　　）です。",
+      "subject": "vocabulary"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "きのう、ともだち（　　）えいがをみました。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "わたしは毎朝七時（　　）起きます。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "「おなかがすきましたね。」　「ええ、（　　）。」",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "下列哪些助词可以表示动作发生的场所？（多选）",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "f5aa6f4e-16ea-57eb-96bb-fb12daa45f39",
+        "9cfd9a81-f5b1-5433-82e0-0f5114194180"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "これは ＿＿ です。",
+      "subject": "vocabulary"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "f5aa6f4e-16ea-57eb-96bb-fb12daa45f39",
+        "9cfd9a81-f5b1-5433-82e0-0f5114194180"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "在横线处填入合适的助词：七時（＿＿）家を出ます。",
+      "subject": "vocabulary"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "用「たい」造一个表达自己愿望的句子。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "每晩、おふろ（　　）はいってから、ねます。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "53e79153-ad48-5407-b76a-c91a534f7659",
+        "3d11ce97-6b82-5146-abbe-dc205d0bff0a"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "メモを見て、正しいものを選びなさい：図書館は何時に閉まりますか。",
+      "subject": "reading"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "在横线处填入合适的助词：わたしはコーヒー（＿＿）すきです。",
+      "subject": "grammar"
+    },
+    {
+      "confidence": 0.5,
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "method": "scope_fallback",
+      "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+      "source": "database_fallback",
+      "stem": "図書館（　　）べんきょうします。",
+      "subject": "grammar"
+    },
+    {
+      "source": "redblue",
+      "questionId": "038b9dc9-1f2c-5890-b6c2-f0b076efed5a",
+      "key": [
+        "n4",
+        "basic",
+        306
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "03ce81d4-e4dc-5fff-99db-1557e7713431",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "05401791-fc03-576a-ab8f-518c503de7b1",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        6
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "05949c50-2478-5898-9e38-5c0de87f17e4",
+      "key": [
+        "n5",
+        4,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0748cbd1-addf-56e6-b49e-d572c824d41b",
+      "key": [
+        "n4",
+        "basic",
+        270
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "07deed21-7d06-5055-be42-8627fe6f0ab2",
+      "key": [
+        "n5",
+        "basic",
+        288
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0850abfd-e268-5630-b0a3-08c7daaa6d1e",
+      "key": [
+        "n4",
+        "basic",
+        161
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0a69ae92-2d86-5737-a5f1-9192309de3bc",
+      "key": [
+        "n5",
+        "basic",
+        282
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0a7ee05e-0357-543a-8581-4a7c98abc591",
+      "key": [
+        "n5",
+        "basic",
+        66
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0a967ff9-4c1a-5b41-ab2b-eb23605d7c7b",
+      "key": [
+        "n4",
+        "basic",
+        90
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0c232c34-8a14-5406-8099-9585684f1393",
+      "key": [
+        "n4",
+        "basic",
+        354
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0d197198-65b1-56bc-af99-5274d3fe4486",
+      "key": [
+        "n4",
+        "basic",
+        203
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0e3b556d-9725-5131-ada4-548cb637a9ad",
+      "key": [
+        "n4",
+        "mock1",
+        408
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0e9ac42c-fdb8-578f-b3fa-e5753333bcdd",
+      "key": [
+        "n5",
+        "mock2",
+        494
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0ec6d45b-70d0-59ab-bf76-92240b6b838d",
+      "key": [
+        "n5",
+        "basic",
+        168
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "0efa9a29-dbda-5a7f-89dc-b83d8a4b814a",
+      "key": [
+        "n5",
+        "mock2",
+        473
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "0f867e61-edf8-54da-9201-7295076ff8f5",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "1085d354-6ed6-511f-8aee-6058a6658c91",
+      "key": [
+        "n4",
+        7,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "110c3482-224c-500e-a208-3aaba0761a5d",
+      "key": [
+        "n4",
+        7,
+        2,
+        2,
+        16
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "113c20c7-381f-5eff-b614-3cab370ea762",
+      "key": [
+        "n4",
+        "mock1",
+        402
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "117c63e9-8c96-553f-bc30-22ac598b9aef",
+      "key": [
+        "n5",
+        "mock2",
+        460
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "1189ec16-a678-5529-8129-944b4ee00b7d",
+      "key": [
+        "n4",
+        "mock2",
+        462
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "12c3db74-ceb1-53e1-80b3-a67b4985184b",
+      "key": [
+        "n4",
+        "basic",
+        180
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "12f14c67-4d90-5bb6-89eb-3de095595a18",
+      "key": [
+        "n4",
+        "basic",
+        246
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "13f43c89-f2e4-54d1-a445-a6c1a3439915",
+      "key": [
+        "n4",
+        "mock1",
+        403
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "149eec38-5793-5d92-bc92-bf60d16dea0a",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "15996ff0-1882-5797-a1ca-5e2baae684b1",
+      "key": [
+        "n4",
+        "basic",
+        299
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "161de511-82f9-5d75-89ec-46237b5f3765",
+      "key": [
+        "n5",
+        8,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "16c4322e-fe94-5a39-8796-560299e375fe",
+      "key": [
+        "n5",
+        "basic",
+        365
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "1959de45-04b4-56fa-b6c7-8dd544623490",
+      "key": [
+        "n5",
+        "basic",
+        330
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "1a591673-c95d-543a-9b1b-bddae7b6a48e",
+      "key": [
+        "n5",
+        8,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "1abb9f44-2dbc-5cdc-8a37-75c76e253d9b",
+      "key": [
+        "n5",
+        9,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "1bee177c-71a1-52c8-a41d-224a0802872d",
+      "key": [
+        "n5",
+        "mock1",
+        411
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "1c6206c7-343e-599d-be57-013cf82c277e",
+      "key": [
+        "n5",
+        8,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "1e9a2d75-ffde-534c-88ec-01222fc1c233",
+      "key": [
+        "n5",
+        4,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "203c9b66-11ea-5475-a04a-511206b26bf6",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        21
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "21d3f706-8414-53e0-a731-42175c63b2ea",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "231e827f-af69-5e15-a38f-de420fbc3e8b",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "24acdd48-2ab1-501d-b364-6a9bbac8d27c",
+      "key": [
+        "n5",
+        "mock1",
+        427
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "26451e55-94a3-5c51-8c6d-eb2ed9fc2b26",
+      "key": [
+        "n4",
+        "basic",
+        210
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "26a58769-680f-5258-b3db-02eee89a2f07",
+      "key": [
+        "n4",
+        "mock2",
+        461
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "26b06a83-2521-5f24-8030-cf7701d9fb6f",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "26f9dd20-a37d-5265-9edb-51b7666ff665",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "277da5db-f7ab-5577-992f-11f29662d585",
+      "key": [
+        "n5",
+        "mock1",
+        404
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "27c1b7d5-6125-5d63-81cc-6ca626012bae",
+      "key": [
+        "n5",
+        6,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "29263323-8892-5b43-9afa-644d13c7872c",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        16
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "2aaa33d3-a779-5237-bb55-882be34ad3f3",
+      "key": [
+        "n5",
+        "mock1",
+        421
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "2c72f4ff-ab62-53d6-b998-1405f865ec83",
+      "key": [
+        "n5",
+        "basic",
+        329
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "2c7ea0a9-38bc-583f-96df-47b9ed0426e2",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "2d2ecb44-6a7c-54ea-8e4a-35b1294bce15",
+      "key": [
+        "n5",
+        9,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "2db34cce-4b39-590a-81e5-2180dc7d5dd8",
+      "key": [
+        "n5",
+        "mock2",
+        474
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "2eb74e88-7f9b-59e7-978f-3e61eb098688",
+      "key": [
+        "n4",
+        "basic",
+        174
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "2f40f314-2f8f-5135-8952-3f469a9a5c6b",
+      "key": [
+        "n5",
+        "basic",
+        132
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "3024578c-57fb-5577-85a5-bb14a6b04fe5",
+      "key": [
+        "n4",
+        6,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "329e22d9-bf3a-584c-944f-277012356464",
+      "key": [
+        "n5",
+        7,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "33dc9b42-8991-5b30-a452-1250299e10ec",
+      "key": [
+        "n5",
+        "basic",
+        60
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "34efbc1d-6d26-542a-8515-c9a014054683",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "354632c1-4602-5341-ad30-bfe691f6d07d",
+      "key": [
+        "n4",
+        4,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "359b4f68-3c29-5a00-ac0f-f7091cedd431",
+      "key": [
+        "n5",
+        "basic",
+        78
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "3757bf01-fb15-5900-aca1-f5072d82dcad",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "37ac67e2-cfdd-5699-8cf9-69c6b31d43f4",
+      "key": [
+        "n4",
+        "basic",
+        300
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "37ce2860-a37b-5590-ba8d-3051517e9d55",
+      "key": [
+        "n4",
+        "basic",
+        276
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "38698a7f-9247-5d37-914f-9cbbe5dda1cb",
+      "key": [
+        "n4",
+        "mock2",
+        468
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "3948782e-acbd-509f-87c3-da6fcee871fe",
+      "key": [
+        "n4",
+        "mock1",
+        433
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "39d5d20d-f54c-590a-b0f3-f447f0ffa395",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "3a86d9ce-2940-5eff-b283-013794e2a0f4",
+      "key": [
+        "n5",
+        4,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "3c000eaf-7a52-5970-aaf5-628953eeaddc",
+      "key": [
+        "n4",
+        "basic",
+        341
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "401d532f-29db-57fd-8136-00ae243d0b25",
+      "key": [
+        "n5",
+        "mock1",
+        422
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "402676c2-9c7f-592a-8981-2dc335c8ab24",
+      "key": [
+        "n5",
+        2,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "40533d8e-2f1b-5544-b1cf-787ed1e7425c",
+      "key": [
+        "n4",
+        "basic",
+        257
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "407a6076-7576-5755-9ef6-afe102b40648",
+      "key": [
+        "n4",
+        3,
+        2,
+        1,
+        6
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "410e506a-1cb8-5799-956e-40ab4e1ba897",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "417772ea-06b2-5998-96cd-2854a4d9181d",
+      "key": [
+        "n4",
+        "basic",
+        353
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "453bcd05-0045-5b24-a7c5-9f17ff9db9df",
+      "key": [
+        "n4",
+        "mock2",
+        489
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "45964271-ed4f-587f-9a93-403a443ac2a0",
+      "key": [
+        "n5",
+        6,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "464f8e07-ba88-5298-b0fa-535bcbc66d9d",
+      "key": [
+        "n5",
+        "basic",
+        348
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "471309de-43da-5041-81f1-856729eb2f4a",
+      "key": [
+        "n5",
+        2,
+        2,
+        2,
+        21
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "485fdc3b-5267-513e-8676-4c0f3f1f64ee",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "49350409-111f-5c49-ae87-f5371395d274",
+      "key": [
+        "n4",
+        "mock2",
+        467
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "498b6ed9-fcca-5433-accf-d300869ccdbd",
+      "key": [
+        "n5",
+        5,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "4a5f63d9-6753-5d56-8878-36addd15abf4",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        9
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "4cd374f4-2bbf-5354-9070-a9fe23945d65",
+      "key": [
+        "n5",
+        "basic",
+        353
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "4d4d816f-e2b3-5e59-a070-5d874ad1b7cb",
+      "key": [
+        "n5",
+        7,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "4e451f2b-6c60-550c-80d8-79f74b30216e",
+      "key": [
+        "n4",
+        7,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "51116eee-ccdb-5a6e-b626-cf891d3c935d",
+      "key": [
+        "n4",
+        "basic",
+        251
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "513294f0-e93a-5fd0-9211-f57913a2ee6f",
+      "key": [
+        "n5",
+        2,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "5273743c-0925-5257-997d-f219ce841f1d",
+      "key": [
+        "n5",
+        "mock1",
+        409
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "52807683-78f2-5b8e-a36e-66ea34b208a6",
+      "key": [
+        "n5",
+        "mock1",
+        408
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "528f71cd-c1aa-53e1-857c-b328fd26803c",
+      "key": [
+        "n4",
+        7,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "52b2686e-594a-5e70-971a-a0e306735287",
+      "key": [
+        "n5",
+        "mock2",
+        461
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "553c7b89-00b7-51a7-adfd-f5c2892ac6f0",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "570bba2c-1b18-5f62-a226-0dc56e6899b8",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "5764051f-10c2-5dad-803c-1f0c4310e7de",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        2
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "59a66f0a-0ebb-5703-9495-d0245410b875",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "59ab82f7-5996-5f93-85bc-7e0117c4103a",
+      "key": [
+        "n5",
+        "basic",
+        137
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "5ae8ebba-7e1a-55cb-b95b-912d1c1c6722",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "5ed5a430-7d7d-5699-a4dc-276ccbd936ca",
+      "key": [
+        "n4",
+        "basic",
+        240
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "5fab254c-05af-5179-bcd0-fc8176275643",
+      "key": [
+        "n4",
+        "mock2",
+        487
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "61208d6f-a94d-521b-a549-adf648e1e338",
+      "key": [
+        "n4",
+        "mock1",
+        416
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6176be51-e07b-5001-bfb1-13b060cf858e",
+      "key": [
+        "n4",
+        "mock2",
+        469
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "62665908-6be8-5ac1-9efe-82863d386ef1",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        16
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "62f31461-9c11-53c4-8ffb-75f7dc8bebd3",
+      "key": [
+        "n4",
+        "basic",
+        221
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "63c8e066-5905-56d5-9326-99e95d29cd6c",
+      "key": [
+        "n5",
+        7,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "64d1c6e2-1fa1-54ba-a4a1-8bd74b0f7cb2",
+      "key": [
+        "n5",
+        "basic",
+        317
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "650b68a7-6c7a-5cad-bcf3-c44d431ee644",
+      "key": [
+        "n5",
+        "basic",
+        251
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "655d8c4c-7003-5c6c-a9a4-316e51af3045",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "656316d4-158f-5104-be50-6f38b4ad058a",
+      "key": [
+        "n5",
+        "basic",
+        341
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "66bb45dd-faba-5780-a6ee-f36e107f183c",
+      "key": [
+        "n5",
+        7,
+        2,
+        1,
+        15
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6718cc79-81e1-5646-94af-9baebaff0cc1",
+      "key": [
+        "n5",
+        "basic",
+        167
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "680072c1-2400-50ad-b281-24faa7199a77",
+      "key": [
+        "n5",
+        1,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "688d1d78-e6ab-5547-897a-23bb6a7c4e35",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "68bf93a3-528c-5c99-95fc-198b301a22b7",
+      "key": [
+        "n4",
+        "basic",
+        149
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "692cb0f2-c44c-578f-bdb7-aefa3c2bf956",
+      "key": [
+        "n5",
+        8,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6993fef4-97f3-5940-86a0-58e95cc18f88",
+      "key": [
+        "n4",
+        "basic",
+        24
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6b0b9ea6-f775-58d0-8174-4f6d68ef8da9",
+      "key": [
+        "n5",
+        "basic",
+        257
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "6b3069eb-5607-59a3-b686-27e26819940b",
+      "key": [
+        "n4",
+        7,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6c2be707-2c21-549e-ae50-ca7e17f38cf5",
+      "key": [
+        "n5",
+        "basic",
+        42
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "6d4e0649-d3fc-5a7e-a30f-5805391fe388",
+      "key": [
+        "n4",
+        2,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "6ef63c62-8cf7-5878-9cbb-7caf238388aa",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "6f324321-3ead-5ef8-82a3-6d084d364da5",
+      "key": [
+        "n4",
+        "basic",
+        318
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "6f416864-7f42-5490-a921-f1d54e375a2d",
+      "key": [
+        "n4",
+        6,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "6f484dd6-6032-5bed-9135-56f26284c2f1",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "708932cc-f82a-5a9f-872d-cd14b6ba13ab",
+      "key": [
+        "n5",
+        "mock2",
+        465
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "70a7968a-fa25-54e8-8b6e-25e6de5e68e6",
+      "key": [
+        "n4",
+        "mock2",
+        484
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "71b83473-2235-5fe4-a8b6-b7e270205ee2",
+      "key": [
+        "n4",
+        7,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "722c042b-82ad-5486-a55d-bef7606c29c6",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7268e1de-9f64-5a5a-b0c3-8e103e09f342",
+      "key": [
+        "n5",
+        "basic",
+        240
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "741a42d6-96fb-536a-8d6a-77ee26eaf45e",
+      "key": [
+        "n5",
+        "basic",
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "75828709-33eb-5962-973c-a31dfbcefc3c",
+      "key": [
+        "n4",
+        "basic",
+        119
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "75f7a650-7703-501a-a765-bf0138723f96",
+      "key": [
+        "n4",
+        3,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7752440c-9cfe-52fe-a416-397e5d1cccff",
+      "key": [
+        "n5",
+        "mock2",
+        468
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "78ddd07a-a5f5-54ff-8f19-38bbae90fab5",
+      "key": [
+        "n4",
+        4,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7a686c3d-b607-5525-b64f-db64e2b769b0",
+      "key": [
+        "n4",
+        "mock2",
+        477
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7acc87fb-63b8-54fc-9080-5349fb721f77",
+      "key": [
+        "n5",
+        10,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7b31fd9e-1cc9-5556-8206-a87b43df3219",
+      "key": [
+        "n4",
+        3,
+        2,
+        2,
+        16
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7b4b183e-df2f-57fa-b1ad-99b77e05c655",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        8
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7b7518d8-b37a-547a-9599-71a1b6660a12",
+      "key": [
+        "n4",
+        "mock1",
+        430
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7b76ce2d-7ea9-58ba-a39f-e10d338da825",
+      "key": [
+        "n5",
+        "mock1",
+        431
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7ba0fe9a-2b6c-585c-896c-62154678a91b",
+      "key": [
+        "n4",
+        3,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7baef69f-71c1-5e50-8bb4-894e488bb761",
+      "key": [
+        "n4",
+        "mock1",
+        435
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7be21591-8fc2-5fdc-8247-b0250f9b11d2",
+      "key": [
+        "n4",
+        "basic",
+        108
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7c3e17b0-a22c-55f5-a6aa-c81ea5e7c219",
+      "key": [
+        "n4",
+        9,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "7caa0a5f-8b2c-5a7e-999e-e01c52f15b9d",
+      "key": [
+        "n4",
+        "basic",
+        252
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "7f5e7198-0279-549f-88a5-a5b46edb6158",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        16
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "8050d28e-3b64-5a30-bb4b-614a1169a591",
+      "key": [
+        "n5",
+        "basic",
+        59
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "80c54359-6c5b-5b9d-b20a-60407c2abedc",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        2
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "80f4cabc-3d5f-5ac1-9b10-10dd8d7f997d",
+      "key": [
+        "n5",
+        2,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "820896ee-6371-58cf-aa32-45bd63493e6f",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        9
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "82205759-276d-50de-ba15-8405bb8ef8ed",
+      "key": [
+        "n4",
+        "basic",
+        330
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "82f86247-c5e6-5483-b0ad-1e633ce1e0ea",
+      "key": [
+        "n5",
+        "mock2",
+        469
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "83cd882f-d401-5d7f-a67a-b25f2d9a2ebb",
+      "key": [
+        "n5",
+        6,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "879cd418-8201-5fcc-b1e0-8437655d4ebd",
+      "key": [
+        "n5",
+        "mock2",
+        462
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "87f4b1c2-fb4a-5e08-85ae-7725c1863de9",
+      "key": [
+        "n4",
+        "mock2",
+        494
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8820f139-1aa9-5b68-9a2c-b2aab1b074b0",
+      "key": [
+        "n5",
+        8,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "8885c05d-f792-53b4-a605-8aa304e00ebc",
+      "key": [
+        "n4",
+        "basic",
+        233
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8b690b29-67b6-51d5-96ca-b7f87fe5e9b0",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        16
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8bef7836-7ddd-57f5-8269-b3a6533d084f",
+      "key": [
+        "n5",
+        6,
+        2,
+        1,
+        9
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8c7b2b49-c13a-59b6-aa63-720dde57bf93",
+      "key": [
+        "n4",
+        2,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "8df83b37-077a-510d-ae54-91a3a771a1bc",
+      "key": [
+        "n5",
+        "basic",
+        300
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "8e350b9f-daa5-5cc7-b9cb-3aaffc97c859",
+      "key": [
+        "n4",
+        "basic",
+        11
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8ee448d2-b726-5248-ae37-4a7a3b772bf5",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "8ffa58bb-ef0f-5017-a25e-e1615d66ef13",
+      "key": [
+        "n4",
+        2,
+        2,
+        1,
+        2
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "90d0a8e1-5aa5-5304-85f3-ee15d873c08d",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9132dc81-48de-5bd8-b0d0-d3d7b1e94abf",
+      "key": [
+        "n4",
+        "basic",
+        30
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "915f45c5-a691-5497-826f-b9a921b9e0bf",
+      "key": [
+        "n5",
+        5,
+        2,
+        2,
+        21
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "927e9efc-d9e5-5ea7-8b9d-a6e81e725a0c",
+      "key": [
+        "n5",
+        1,
+        2,
+        2,
+        21
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "92bf3e76-ce07-5534-b51c-81c64401a8de",
+      "key": [
+        "n4",
+        "basic",
+        348
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "93c3238f-a183-5e80-b610-db61a3779fb5",
+      "key": [
+        "n5",
+        "mock1",
+        423
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "93ce5cee-f372-5e0d-8dfb-4b771d110dcd",
+      "key": [
+        "n5",
+        9,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "940ffcfd-b31c-573b-a9f0-1f92208a6f60",
+      "key": [
+        "n5",
+        "basic",
+        378
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "9551551f-89fa-5c22-b5a9-2cb3e1fbdd77",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "966889ba-62f8-5a09-b4e7-700d788bedd3",
+      "key": [
+        "n5",
+        "basic",
+        324
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "96dee868-9d9c-5e37-8b79-612e6e48cd85",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "97acc44b-e60f-5186-a9a8-b9174f7ac156",
+      "key": [
+        "n5",
+        5,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "98664f8b-5fc0-5d26-bd33-20eae9e8559a",
+      "key": [
+        "n4",
+        "mock1",
+        406
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "991da2bb-9904-5679-b188-f9d19d26d77d",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "99f3681a-6f14-56c8-bd26-d402252506eb",
+      "key": [
+        "n5",
+        "basic",
+        84
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "9a2b2b96-98fa-5d2f-8e8f-80fc5de1494b",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9a4d3bb5-07fa-57e4-8f10-892779c4034e",
+      "key": [
+        "n5",
+        "mock1",
+        402
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "9c37bd7d-228f-5866-a7aa-d88fae4cd6ca",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9cd04e8d-50f9-5136-b4a7-eecba27db0f6",
+      "key": [
+        "n5",
+        "basic",
+        101
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9cf17236-293c-54e5-8759-695352eaeae7",
+      "key": [
+        "n5",
+        "basic",
+        323
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9dbfd7e4-1ee3-5794-8023-a2d35ccb47bf",
+      "key": [
+        "n4",
+        "basic",
+        378
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9eed8181-0877-5b70-8828-3455bbfe0abf",
+      "key": [
+        "n5",
+        "basic",
+        71
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "9ef12961-ec74-5954-8d4c-4c0d162ab44c",
+      "key": [
+        "n5",
+        "basic",
+        372
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a04bddc1-1797-526d-b2d9-a752f78e54d5",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a06060d6-f13e-5080-a2ef-bf9626c7536c",
+      "key": [
+        "n5",
+        9,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "a09fedd8-2bb9-5ab1-b128-41c43c0ffcc2",
+      "key": [
+        "n4",
+        "mock1",
+        410
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a17e6b8e-1e67-52d6-805b-ccce4eabd473",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "a1bbcd3e-c2bc-5759-a909-e81ce68a5973",
+      "key": [
+        "n4",
+        "basic",
+        312
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a2c83270-ea54-5a64-b8f0-53fbb1b4f6fb",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "a2f35c43-eb28-5a86-9c74-df70dd154009",
+      "key": [
+        "n5",
+        "mock1",
+        419
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "a335dab8-9d6f-507c-ad71-b692d647bfba",
+      "key": [
+        "n4",
+        "basic",
+        269
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a5259dc8-ef3f-5680-b9f6-9f48ab878acf",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a7ccdce3-139d-5e80-80c8-ece20d68de87",
+      "key": [
+        "n4",
+        5,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a8893fb8-aa6c-5b7b-8c6e-9ec2664036ba",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a8dc5e00-2dbf-5d82-ac8b-0765f8b4bf10",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        15
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "a919cbe8-c73a-546f-928d-28659d432129",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "a9f351b8-fd49-53c3-a306-82b0098ef28d",
+      "key": [
+        "n4",
+        "mock1",
+        411
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "aa3fe6d6-4d5a-5ecb-a425-1c3d802a41c0",
+      "key": [
+        "n4",
+        "mock2",
+        464
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "aafff21f-4c30-59e4-a164-b19e76a99d44",
+      "key": [
+        "n5",
+        "mock2",
+        464
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "ac3d9898-4b70-546b-8ac4-92c7e4511a21",
+      "key": [
+        "n4",
+        "mock1",
+        434
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "adaf157d-2416-5c56-b343-b30f96b00545",
+      "key": [
+        "n4",
+        "basic",
+        366
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "aecacca8-3fc8-53f1-981a-87fed6da0d8e",
+      "key": [
+        "n4",
+        "basic",
+        275
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "afb92421-a6a3-565c-9619-105036e51018",
+      "key": [
+        "n5",
+        6,
+        2,
+        1,
+        6
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b1d712de-703f-5b45-a716-35da703a4f96",
+      "key": [
+        "n5",
+        1,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "b1db3766-f423-5c82-9819-710d1163b4f7",
+      "key": [
+        "n5",
+        "basic",
+        138
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b223336d-274f-5500-b57b-a7b6c6c14858",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        9
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "b2f6ab1a-d80f-5ad5-8fe7-664e04a78247",
+      "key": [
+        "n5",
+        "basic",
+        276
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b3540553-9e71-57d5-95ab-f063231457f0",
+      "key": [
+        "n4",
+        4,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "b5e7770f-0fc9-5392-8306-4e7d1f6ea119",
+      "key": [
+        "n4",
+        "mock2",
+        465
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b6bd1771-ec2c-5569-955b-56ffbb68873e",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        15
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "b785d7a7-38d9-5810-b05f-f6f8c3c2f805",
+      "key": [
+        "n5",
+        "basic",
+        311
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b865488a-1b69-5f51-b1fe-5a754fee6d14",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b8abd277-33b6-5964-93d5-f2089e3a5a59",
+      "key": [
+        "n5",
+        7,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b9248559-8d72-57ec-892a-9ee1eeaa3004",
+      "key": [
+        "n4",
+        7,
+        2,
+        1,
+        3
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b986673a-1739-5795-acc8-60519b8411f1",
+      "key": [
+        "n4",
+        3,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "b9e52fbb-52c8-51b0-bacf-2e97f7e2606c",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "baa33126-af70-52c2-a776-385791e2f66b",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        2
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "bb2bb7c6-42d3-5b53-a83a-955e0b68f0ef",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "bb76cbac-41eb-5f10-bfb9-de8b3af561ac",
+      "key": [
+        "n4",
+        5,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "bbe38c95-1dec-5770-b1d5-b632d95e05bd",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "bc5dcdc8-80d9-5e0f-94e3-5dc94e2e7b63",
+      "key": [
+        "n4",
+        "mock1",
+        431
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "bc6a58b4-3f49-54a2-8680-ccbc7804c399",
+      "key": [
+        "n4",
+        "basic",
+        335
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "bca57527-dd2f-5c5f-8901-b1611255f2dc",
+      "key": [
+        "n5",
+        "basic",
+        41
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "bd9fcd54-8be0-5a2b-8e28-e1c0f43a3225",
+      "key": [
+        "n5",
+        "basic",
+        354
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "bfe568df-5284-5699-990d-167555d2e34d",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "bffa40c4-afe3-5476-8ba6-985a6d5d77f0",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c013765d-8fd2-5b32-b930-07f9d5aeda90",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c1b642fd-4071-5135-a3f1-bb25962e5042",
+      "key": [
+        "n4",
+        "basic",
+        311
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c215fdba-2c53-5dce-8e02-05758a294eae",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c2d380cf-7cb9-5fa4-af8c-17095534269d",
+      "key": [
+        "n5",
+        7,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c312ae15-fcca-5063-98a6-5cd67b9135f2",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c35d07ec-6680-551d-ae1c-7f83d65d518b",
+      "key": [
+        "n4",
+        "basic",
+        185
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c3cf4016-a407-5a95-8e5e-ebd27d1917a3",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c4e9e640-df7c-5517-90a1-f6bca9e2acd6",
+      "key": [
+        "n4",
+        "basic",
+        371
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c676ff25-8656-594e-916d-252112a74049",
+      "key": [
+        "n4",
+        "mock2",
+        490
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c741005f-e9b7-55fa-8b41-5bf9c96720f7",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c7456d0f-5c64-517d-9342-21b78d81d19d",
+      "key": [
+        "n5",
+        "mock1",
+        430
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c7607102-787e-5673-ba43-138793574270",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        5
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c8eca697-1ac9-5cdb-9f5e-8a3986b62c29",
+      "key": [
+        "n4",
+        2,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "c9000829-810f-562c-b829-a87a09761e03",
+      "key": [
+        "n5",
+        "mock1",
+        428
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "c9fde7d5-d915-5acd-9887-2f4293177f2a",
+      "key": [
+        "n5",
+        5,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "ca6eed51-fdda-5c4d-a8ca-4d2921509709",
+      "key": [
+        "n5",
+        "basic",
+        269
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "cb43b3cf-1582-500a-937d-839dd45329e2",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        18
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "cb7a925a-37de-549e-897e-eae69065b3fe",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        6
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "cc90632e-6f1e-5a5c-a999-419b335eb7f8",
+      "key": [
+        "n5",
+        1,
+        2,
+        2,
+        20
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "cd1d3957-8725-50e4-bc0b-1cf212b1b8c3",
+      "key": [
+        "n5",
+        "mock1",
+        405
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "d0e7010c-e44b-5d27-8f66-7c0dea511f8b",
+      "key": [
+        "n5",
+        "mock1",
+        403
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "d199d137-f5d6-5d33-bb51-bdbe7d18ca6c",
+      "key": [
+        "n4",
+        "basic",
+        150
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "d2124046-9c81-599e-9834-617cdfd37886",
+      "key": [
+        "n5",
+        "mock2",
+        463
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d290d855-68b5-5570-8541-29f6e1c92ef1",
+      "key": [
+        "n5",
+        8,
+        2,
+        1,
+        4
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d3eee8df-75f7-5bc3-bea3-47696ac6aad7",
+      "key": [
+        "n5",
+        6,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d6986cc9-8820-5998-958b-e7eee9a5fa4f",
+      "key": [
+        "n4",
+        1,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d71a0622-d2d5-55d8-be5a-7024510fa643",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d71ba830-daca-5bd4-9f61-25007a30d59e",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "d9aed378-52f3-57fe-a74a-8ac1dcb9dec4",
+      "key": [
+        "n4",
+        10,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "da34851a-2d76-5109-80a1-f9f2494e7d89",
+      "key": [
+        "n4",
+        "mock2",
+        493
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "dad74f4d-7fe6-54a3-9f9a-1cd8468d5d7d",
+      "key": [
+        "n4",
+        "mock2",
+        463
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "db587139-7062-5a14-943f-a72316d39aa7",
+      "key": [
+        "n4",
+        "basic",
+        342
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "db769ffa-1fea-5065-9860-f59791a5a532",
+      "key": [
+        "n4",
+        "basic",
+        125
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "dcf2e5c2-b941-52f0-9180-7385e12dc5cc",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        8
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "df0b328f-ccf3-5771-b7d8-a7e689b28ddd",
+      "key": [
+        "n5",
+        "mock1",
+        407
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "df91ecb2-525b-58ab-87ea-39e40a02f6d4",
+      "key": [
+        "n5",
+        10,
+        2,
+        2,
+        21
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "e167e36c-89c6-5d80-9e8e-e881d3a2f049",
+      "key": [
+        "n5",
+        6,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e3154d3f-8341-5e82-8672-4f3f0b8470ed",
+      "key": [
+        "n5",
+        "basic",
+        185
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e36842d9-8fba-5d6f-a247-90fc016ae39e",
+      "key": [
+        "n5",
+        "basic",
+        306
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e41e67b0-d991-5526-ac68-97f6c70ed722",
+      "key": [
+        "n4",
+        "basic",
+        323
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e4999847-209c-54cb-b596-c9953f525f1d",
+      "key": [
+        "n5",
+        "mock1",
+        429
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "e4cdb135-fc4e-53e1-adeb-a16e560808b8",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        1
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "e5f48728-b229-5b73-b1c2-9773531587df",
+      "key": [
+        "n5",
+        7,
+        2,
+        1,
+        10
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e5f8ca42-e9ea-5d84-b195-1c5f45faaf4f",
+      "key": [
+        "n5",
+        "basic",
+        293
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e772ff51-af40-523e-aa76-3cd85a475f14",
+      "key": [
+        "n5",
+        "basic",
+        318
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e7ca44a9-85fc-5045-927a-7cd0956ae1c6",
+      "key": [
+        "n4",
+        "basic",
+        17
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "e86db438-9e26-57cc-b7ae-65b41ed37f47",
+      "key": [
+        "n5",
+        "mock2",
+        470
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "ebf874af-50c2-5c9f-8815-f2df17115206",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        7
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "ec9071ab-f6bb-5081-82a9-4b276416314c",
+      "key": [
+        "n4",
+        "basic",
+        41
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "ed2a4b99-5091-57b3-9f6c-8444e56913d6",
+      "key": [
+        "n5",
+        6,
+        2,
+        2,
+        17
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "eebf929f-2b2c-53ea-8742-7695f32accc5",
+      "key": [
+        "n5",
+        "mock1",
+        410
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "eed0f5b7-1f94-5181-b596-5c6dd8c63bc5",
+      "key": [
+        "n5",
+        "basic",
+        299
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "efa49187-5985-5ba7-b003-272ab68af3b6",
+      "key": [
+        "n5",
+        "basic",
+        95
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "efb2fd81-8f83-541f-8be3-d241f80c59e2",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "f350ab47-52b2-5074-9eb7-b52240cb404e",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        12
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "f3d5e53b-1054-543d-86aa-03f61cd68dd2",
+      "key": [
+        "n5",
+        "mock2",
+        481
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "f3ff053e-1244-581d-8598-3ac7a63073e0",
+      "key": [
+        "n4",
+        8,
+        2,
+        1,
+        14
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "f5b7e83d-bc10-57da-98ad-5ca2216120b5",
+      "key": [
+        "n4",
+        6,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "f63742e1-faa4-5423-be1b-25fdaff814e6",
+      "key": [
+        "n5",
+        "mock1",
+        413
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "f7deb013-b41a-5a48-8d11-eaa1e5bd28d8",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        13
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "f8afc423-5257-5470-8571-0ce659eabd3e",
+      "key": [
+        "n4",
+        "basic",
+        245
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "f9f03664-3d36-5920-ab10-7fc86b6a2abe",
+      "key": [
+        "n4",
+        "basic",
+        294
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "fb0a6fab-6a47-5110-907e-8999dbeccc45",
+      "key": [
+        "n4",
+        "basic",
+        305
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "fb258b1a-3f0e-53e1-a928-4e1b9b5b22f6",
+      "key": [
+        "n4",
+        2,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "fba1a9c7-5aca-51e2-9c30-4cd076505ff1",
+      "key": [
+        "n4",
+        "basic",
+        65
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "fc311103-dff4-5e12-8b13-0f98e4f2366e",
+      "key": [
+        "n5",
+        "mock2",
+        486
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "redblue",
+      "questionId": "fc786ab6-9138-5cb0-a169-0144ac7881de",
+      "key": [
+        "n4",
+        "mock1",
+        400
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "fc79a103-9541-5542-9590-24239ba832ee",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        9
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "fcce309f-9774-505f-9db5-16c17aae99d2",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        2
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "fd14f453-1700-55ad-add8-d3ee440f82b9",
+      "key": [
+        "n5",
+        5,
+        2,
+        2,
+        19
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "fd3a130d-55c8-52be-a3b0-72de339a2658",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        11
+      ],
+      "knowledgePointIds": [
+        "2d7157f8-afb7-58a0-85ea-b3d775f216a2",
+        "52daf21c-bb98-5463-b6fb-59c3414d75c1"
+      ],
+      "level": "n5",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    },
+    {
+      "source": "blue",
+      "questionId": "ff8bf231-33de-54d0-9f98-f93590521190",
+      "key": [
+        "n4",
+        8,
+        2,
+        1,
+        8
+      ],
+      "knowledgePointIds": [
+        "e5877362-1f27-54a5-903f-528a6d53f294",
+        "345c4a89-5e1f-530b-8510-d6489b18f189"
+      ],
+      "level": "n4",
+      "subject": "grammar",
+      "method": "scope_fallback",
+      "confidence": 0.72,
+      "reviewReason": "规则无法从题干稳定区分更细语法主题，需人工抽样确认。"
+    }
+  ]
+}

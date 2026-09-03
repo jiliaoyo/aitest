@@ -102,29 +102,51 @@ func main() {
 			return err
 		}
 
-		// 知识点
-		kp := map[string]string{}
-		insertKP := func(subject, name, desc, mistakes, examples string) error {
-			var id string
-			if err := tx.QueryRow(ctx,
-				`INSERT INTO knowledge_points (exam_id, level_id, subject_id, name, description, common_mistakes, examples, status)
-				 VALUES ($1, $2, $3, $4, $5, $6, $7, 'published') RETURNING id::text`,
-				examID, levelIDs["n5"], subjectIDs[subject], name, desc, mistakes, examples).Scan(&id); err != nil {
-				return err
-			}
-			kp[name] = id
-			return nil
+		// 正式知识点由版本化 JSON 维护；seed 不再创建只有演示题使用的临时分类。
+		knowledgePath := os.Getenv("KNOWLEDGE_POINTS_FILE")
+		if knowledgePath == "" {
+			knowledgePath = "../scripts/data/knowledge_points_n4n5.json"
 		}
-		for _, k := range []struct{ subject, name, desc, mistakes, examples string }{
-			{"grammar", "助词 は 与 が", "「は」表示主题，「が」表示主格与新信息。", "把新信息用「は」引出。", "私【は】学生です。／誰【が】来ましたか。"},
-			{"grammar", "助词 に 与 で", "「に」表存在点与到达点，「で」表动作场所与手段。", "动作场所误用「に」。", "家【に】いる。／図書館【で】勉強する。"},
-			{"grammar", "て形", "动词て形用于连接先后动作与请求。", "イ段音变规则记混。", "朝起きて、顔を洗う。"},
-			{"vocabulary", "时间名词", "今天、明天、每周等高频时间词。", "每～写成「每に」。", "毎日、毎週、来週"},
-			{"vocabulary", "形容词活用", "い形容词与な形容词的敬体连接。", "な形容词接名词误加「い」。", "静かな部屋／広い部屋"},
-		} {
-			if err := insertKP(k.subject, k.name, k.desc, k.mistakes, k.examples); err != nil {
+		knowledgeJSON, err := os.ReadFile(knowledgePath)
+		if err != nil {
+			return fmt.Errorf("读取知识点数据失败: %w", err)
+		}
+		var knowledgeFile struct {
+			Points []struct {
+				ID             string  `json:"id"`
+				Slug           string  `json:"slug"`
+				Level          string  `json:"level"`
+				Subject        string  `json:"subject"`
+				ParentID       *string `json:"parentId"`
+				Name           string  `json:"name"`
+				Description    string  `json:"description"`
+				CommonMistakes string  `json:"commonMistakes"`
+				Examples       string  `json:"examples"`
+				Status         string  `json:"status"`
+			} `json:"points"`
+		}
+		if err := json.Unmarshal(knowledgeJSON, &knowledgeFile); err != nil {
+			return fmt.Errorf("解析知识点数据失败: %w", err)
+		}
+		kpBySlug := map[string]string{}
+		for _, point := range knowledgeFile.Points {
+			if _, err := tx.Exec(ctx,
+				`INSERT INTO knowledge_points (id, exam_id, level_id, subject_id, parent_id, name, description, common_mistakes, examples, status)
+				 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+				 ON CONFLICT (id) DO NOTHING`,
+				point.ID, examID, levelIDs[point.Level], subjectIDs[point.Subject], point.ParentID,
+				point.Name, point.Description, point.CommonMistakes, point.Examples, point.Status); err != nil {
 				return err
 			}
+			kpBySlug[point.Slug] = point.ID
+		}
+		kp := map[string]string{
+			"助词 は 与 が": kpBySlug["n5-grammar-particles"],
+			"助词 に 与 で": kpBySlug["n5-grammar-particles"],
+			"て形":       kpBySlug["n5-grammar-conjugation"],
+			"愿望":       kpBySlug["n5-grammar-modality"],
+			"时间名词":     kpBySlug["n5-vocabulary-meaning"],
+			"形容词活用":    kpBySlug["n5-vocabulary-usage"],
 		}
 
 		// 题目：type, stem, options, key, kpName, subject
@@ -188,7 +210,7 @@ func main() {
 				"时间名词", "vocabulary"},
 			// 无标准答案题（走 AI 判定路径）
 			{"short_answer", "用「たい」造一个表达自己愿望的句子。",
-				nil, nil, "", "grammar"},
+				nil, nil, "愿望", "grammar"},
 			// 材料题：阅读材料 + 2 个小题
 			{"single_choice", "メモを見て、正しいものを選びなさい：図書館は何時に閉まりますか。",
 				opts([2]string{"", "午後五時"}, [2]string{"", "午後六時"}, [2]string{"", "午後七時"}, [2]string{"", "午後八時"}),

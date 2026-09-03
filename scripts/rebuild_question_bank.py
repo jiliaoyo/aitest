@@ -15,6 +15,8 @@ DATA = ROOT / "scripts/data"
 BLUE_INPUT = DATA / "blue_questions.json"
 RED_INPUT = DATA / "redblue_questions.json"
 MANUAL_REVIEW = DATA / "manual_review.json"
+KNOWLEDGE_POINTS_INPUT = DATA / "knowledge_points_n4n5.json"
+KNOWLEDGE_MAPPING_INPUT = DATA / "question_knowledge_mapping.json"
 OUT = ROOT / "backend/questions"
 BLUE_SOURCE = "蓝宝书N4N5文法"
 RED_SOURCE = "红蓝宝书1000题 新日本语能力考试N4N5（练习+详解）"
@@ -23,6 +25,8 @@ NOISE = re.compile(
     r"(?:^|\s)問題\b|(?:^|\s)文字\s+語彙\s+文法\b|(?:^|\s)\d+\s+回$)",
     re.I,
 )
+OCR_SUSPECT = re.compile(r"[�□■]|(?:^|\s)(?:attsu|osem|hydraulic|press|image|text)(?:\s|$)", re.I)
+QUESTION_NUMBER_RESIDUE = re.compile(r"(?:【第\s*\d{1,4}题】|第\s*\d{1,4}\s*题)")
 
 
 def normalize(value: str) -> str:
@@ -1340,6 +1344,12 @@ def clean_choice(q: dict) -> None:
         q["answer"]["optionIds"] = [str(x).lower() for x in q["answer"]["optionIds"]]
 
 
+def question_subject(namespace: str, q: dict) -> str:
+    if namespace == "blue":
+        return "reading" if q.get("material") else "grammar"
+    return q["subject"]
+
+
 def clean_fill_blank(stem: str) -> str:
     """统一填空占位符；扫描页下划线经常被 OCR 丢成空格。"""
     stem = re.sub(r"\(\s*\)|（\s*）", "（＿＿＿）", stem)
@@ -1364,6 +1374,7 @@ def prepare_blue() -> list[dict]:
         if q["dan"] == 2 and q["mondai"] == 3:
             q["material"] = readings[blue_material_key(q)]
             q["stem"] = f"阅读短文（第{q['no']}空）"
+        q["subject"] = question_subject("blue", q)
         if q["type"] == "single_choice":
             official_answer = BLUE_OFFICIAL_ANSWERS.get(key_blue(q))
             if official_answer:
@@ -1391,8 +1402,10 @@ def prepare_red() -> list[dict]:
             q["category"] = f"{q['level'].upper()}·模拟测试第{1 if q['kind'] == 'mock1' else 2}回·問題{mock_problem(q['level'], q['kind'], q['number'])}"
         if q["kind"].startswith("mock") and q["number"] >= reading_start(q["level"], q["kind"]):
             q["material"] = READING[(q["level"], q["kind"])]
+            q["subject"] = "reading"
             q["stem"] = f"【第{q['number']:03d}题】第{q['number']}空"
         clean_choice(q)
+        q["stem"] = re.sub(r"^【第\s*\d{1,4}题】\s*", "", q["stem"])
         # 解析页 OCR 的解释混入相邻题目，未经人工复核不进入学习者结果页。
         q["explanation"] = ""
         for index, option in enumerate(q["options"], 1):
@@ -1403,6 +1416,9 @@ def prepare_red() -> list[dict]:
 def validate(blue: list[dict], red: list[dict]) -> None:
     errors: list[str] = []
     review = json.loads(MANUAL_REVIEW.read_text(encoding="utf-8"))
+    mapping = json.loads(KNOWLEDGE_MAPPING_INPUT.read_text(encoding="utf-8"))
+    mapping_keys = {(item["source"], tuple(item["key"])) for item in mapping["questions"]}
+    sampled_sections = {(item.get("book"), item.get("sourceSection")) for item in review if item.get("status") == "sampled"}
     reviewed_duplicates = {
         (item["book"], tuple(item["key"]))
         for item in review
@@ -1424,6 +1440,8 @@ def validate(blue: list[dict], red: list[dict]) -> None:
             groups.setdefault(group_key, []).append(q["no"] if book == "blue" else q["number"])
             if not q.get("category"):
                 errors.append(f"missing category {book} {key}")
+            if (book, key) not in mapping_keys:
+                errors.append(f"missing knowledge mapping {book} {key}")
             if not q.get("stem", "").strip():
                 errors.append(f"missing stem {book} {key}")
             if not q.get("answer"):
@@ -1441,6 +1459,8 @@ def validate(blue: list[dict], red: list[dict]) -> None:
                 if len({option.get("text") for option in q.get("options", [])}) != len(q.get("options", [])):
                     if (book, key) not in reviewed_duplicates:
                         errors.append(f"duplicate options {book} {key}")
+                if any(not option.get("text", "").strip() for option in q.get("options", [])):
+                    errors.append(f"empty option {book} {key}")
                 answer = q.get("answer", {}).get("optionIds", []) if q.get("answer") else []
                 valid_answer_ids = {"a", "b", "c", "d"}
                 if len(answer) != 1 or answer[0] not in valid_answer_ids:
@@ -1454,6 +1474,14 @@ def validate(blue: list[dict], red: list[dict]) -> None:
             text = " ".join([q.get("stem", "")] + [o.get("text", "") for o in q.get("options", [])])
             if NOISE.search(text):
                 errors.append(f"noise {book} {key}")
+            if OCR_SUSPECT.search(text):
+                errors.append(f"ocr suspect {book} {key}")
+            if QUESTION_NUMBER_RESIDUE.search(q.get("stem", "")):
+                errors.append(f"question number residue {book} {key}")
+            if ("material" in q) != (q.get("subject") == "reading"):
+                errors.append(f"material relation {book} {key}")
+            if not q.get("category") or (book, q["category"]) not in sampled_sections:
+                errors.append(f"missing sampled source section {book} {q.get('category')}")
         for group, numbers in groups.items():
             expected = set(range(min(numbers), max(numbers) + 1))
             if set(numbers) != expected:
@@ -1488,7 +1516,21 @@ def source_order_key(namespace: str, q: dict) -> tuple:
 
 def generate_book(source_name: str, namespace: str, questions: list[dict], output: pathlib.Path) -> None:
     questions = sorted(questions, key=lambda q: source_order_key(namespace, q))
+    knowledge = json.loads(KNOWLEDGE_POINTS_INPUT.read_text(encoding="utf-8"))["points"]
+    mappings = json.loads(KNOWLEDGE_MAPPING_INPUT.read_text(encoding="utf-8"))["questions"]
+    mapping_by_key = {(item["source"], tuple(item["key"])): item for item in mappings}
     lines = ["-- 由 scripts/rebuild_question_bank.py 生成；只接受通过严格校验的记录。", "BEGIN;"]
+    for point in knowledge:
+        parent = "NULL" if point["parentId"] is None else sql_quote(point["parentId"])
+        lines.append(
+            "INSERT INTO knowledge_points (id, exam_id, level_id, subject_id, parent_id, name, description, common_mistakes, examples, status) "
+            "SELECT "
+            f"{sql_quote(point['id'])}, e.id, l.id, s.id, {parent}, {sql_quote(point['name'])}, "
+            f"{sql_quote(point['description'])}, {sql_quote(point['commonMistakes'])}, {sql_quote(point['examples'])}, 'published' "
+            "FROM exams e JOIN exam_levels l ON l.exam_id = e.id JOIN subjects s ON s.exam_id = e.id "
+            f"WHERE e.code = 'jlpt' AND l.code = {sql_quote(point['level'])} AND s.code = {sql_quote(point['subject'])} "
+            "ON CONFLICT (id) DO NOTHING;"
+        )
     source_id = stable_uuid(namespace, "source")
     lines.append(
         "INSERT INTO sources (id, name, kind, author, publisher, year, license_note, internal_note) VALUES "
@@ -1525,7 +1567,7 @@ def generate_book(source_name: str, namespace: str, questions: list[dict], outpu
         opts = json.dumps(q.get("options", []), ensure_ascii=False, separators=(",", ":"))
         answer = json.dumps(q["answer"], ensure_ascii=False, separators=(",", ":"))
         level = q["part"] if namespace == "blue" else q["level"]
-        subject = "grammar" if namespace == "blue" else ("reading" if q.get("material") else q["subject"])
+        subject = question_subject(namespace, q)
         material_sql = "NULL"
         if "material" in q:
             material_sql = f"'{stable_uuid(namespace, 'material-version:' + material_key(q, namespace))}'"
@@ -1540,7 +1582,16 @@ def generate_book(source_name: str, namespace: str, questions: list[dict], outpu
             "INSERT INTO answer_keys (question_version_id, value, authority, explanation) VALUES "
             f"('{vid}', {sql_quote(answer)}::jsonb, 'official', {sql_quote(q.get('explanation', ''))}) ON CONFLICT (question_version_id) DO NOTHING;"
         )
-        lines.append(f"UPDATE questions SET current_version_id = '{vid}', published_version_id = '{vid}', status = 'published', published_at = COALESCE(published_at, now()) WHERE id = '{qid}';")
+        mapping = mapping_by_key.get((namespace, key))
+        if mapping is None:
+            raise ValueError(f"missing knowledge mapping {namespace} {key}")
+        for knowledge_point_id in mapping["knowledgePointIds"]:
+            lines.append(
+                "INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id) "
+                f"SELECT '{vid}', '{knowledge_point_id}' FROM questions WHERE id = '{qid}' AND published_version_id IS NULL "
+                "ON CONFLICT DO NOTHING;"
+            )
+        lines.append(f"UPDATE questions SET current_version_id = '{vid}', published_version_id = '{vid}', status = 'published', published_at = COALESCE(published_at, now()) WHERE id = '{qid}' AND published_version_id IS NULL;")
     lines.append("COMMIT;")
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -1,0 +1,3861 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        1,
+        1,
+        0
+      ],
+      "sourceSection": "N5·第1单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        1,
+        2,
+        1
+      ],
+      "sourceSection": "N5·第1单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        1,
+        3,
+        13
+      ],
+      "sourceSection": "N5·第1单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第1单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第1单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        1,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第1单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        1,
+        1,
+        0
+      ],
+      "sourceSection": "N5·第2单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        1,
+        2,
+        0
+      ],
+      "sourceSection": "N5·第2单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        1,
+        3,
+        1
+      ],
+      "sourceSection": "N5·第2单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第2单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第2单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        2,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第2单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        3,
+        1,
+        1,
+        0
+      ],
+      "sourceSection": "N5·第3单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        3,
+        1,
+        2,
+        1
+      ],
+      "sourceSection": "N5·第3单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        3,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第3单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        3,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第3单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        3,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第3单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        4,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第4单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        4,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N5·第4单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        4,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第4单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        4,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第4单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        4,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第4单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        5,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第5单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        5,
+        1,
+        2,
+        18
+      ],
+      "sourceSection": "N5·第5单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        5,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第5单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        5,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第5单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        5,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第5单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        6,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第6单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        6,
+        1,
+        2,
+        12
+      ],
+      "sourceSection": "N5·第6单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        6,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第6单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        6,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第6单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        6,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第6单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        7,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第7单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        7,
+        1,
+        2,
+        13
+      ],
+      "sourceSection": "N5·第7单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        7,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第7单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        7,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第7单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        7,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第7单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        8,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第8单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        8,
+        1,
+        2,
+        13
+      ],
+      "sourceSection": "N5·第8单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        8,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第8单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        8,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第8单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        8,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第8单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第9单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        1,
+        2,
+        22
+      ],
+      "sourceSection": "N5·第9单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        1,
+        3,
+        37
+      ],
+      "sourceSection": "N5·第9单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第9单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第9单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        9,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第9单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        10,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N5·第10单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        10,
+        2,
+        2,
+        17
+      ],
+      "sourceSection": "N5·第10单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n5",
+        10,
+        2,
+        3,
+        22
+      ],
+      "sourceSection": "N5·第10单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第1单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第1单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第1单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第1单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第1单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        1,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第1单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第2单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第2单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第2单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第2单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第2单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        2,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第2单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第3单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第3单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第3单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第3单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第3单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        3,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第3单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第4单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第4单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第4单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第4单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第4单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        4,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第4单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第5单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第5单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第5单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第5单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第5单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        5,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第5单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第6单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第6单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第6单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第6单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第6单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        6,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第6单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第7单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第7单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第7单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第7单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第7单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        7,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第7单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第8单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第8单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第8单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第8单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第8单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        8,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第8单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第9单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第9单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第9单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第9单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第9单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        9,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第9单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        1,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第10单元·基础练习·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        1,
+        2,
+        11
+      ],
+      "sourceSection": "N4·第10单元·基础练习·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        1,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第10单元·基础练习·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        2,
+        1,
+        1
+      ],
+      "sourceSection": "N4·第10单元·实战训练·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        2,
+        2,
+        16
+      ],
+      "sourceSection": "N4·第10单元·实战训练·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "blue",
+      "key": [
+        "n4",
+        10,
+        2,
+        3,
+        21
+      ],
+      "sourceSection": "N4·第10单元·实战训练·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        1
+      ],
+      "sourceSection": "N5·Unit 1·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        3
+      ],
+      "sourceSection": "N5·Unit 1·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        5
+      ],
+      "sourceSection": "N5·Unit 1·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        31
+      ],
+      "sourceSection": "N5·Unit 2·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        33
+      ],
+      "sourceSection": "N5·Unit 2·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        35
+      ],
+      "sourceSection": "N5·Unit 2·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        61
+      ],
+      "sourceSection": "N5·Unit 3·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        63
+      ],
+      "sourceSection": "N5·Unit 3·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        65
+      ],
+      "sourceSection": "N5·Unit 3·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        91
+      ],
+      "sourceSection": "N5·Unit 4·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        93
+      ],
+      "sourceSection": "N5·Unit 4·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        95
+      ],
+      "sourceSection": "N5·Unit 4·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        121
+      ],
+      "sourceSection": "N5·Unit 5·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        123
+      ],
+      "sourceSection": "N5·Unit 5·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        125
+      ],
+      "sourceSection": "N5·Unit 5·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        151
+      ],
+      "sourceSection": "N5·Unit 6·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        153
+      ],
+      "sourceSection": "N5·Unit 6·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        155
+      ],
+      "sourceSection": "N5·Unit 6·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        181
+      ],
+      "sourceSection": "N5·Unit 7·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        183
+      ],
+      "sourceSection": "N5·Unit 7·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        185
+      ],
+      "sourceSection": "N5·Unit 7·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        211
+      ],
+      "sourceSection": "N5·Unit 8·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        213
+      ],
+      "sourceSection": "N5·Unit 8·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        215
+      ],
+      "sourceSection": "N5·Unit 8·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        241
+      ],
+      "sourceSection": "N5·Unit 9·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        244
+      ],
+      "sourceSection": "N5·Unit 9·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        246
+      ],
+      "sourceSection": "N5·Unit 9·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        276
+      ],
+      "sourceSection": "N5·Unit 10·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        279
+      ],
+      "sourceSection": "N5·Unit 10·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        281
+      ],
+      "sourceSection": "N5·Unit 10·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        309
+      ],
+      "sourceSection": "N5·Unit 11·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        312
+      ],
+      "sourceSection": "N5·Unit 11·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        314
+      ],
+      "sourceSection": "N5·Unit 11·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        344
+      ],
+      "sourceSection": "N5·Unit 12·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        347
+      ],
+      "sourceSection": "N5·Unit 12·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "basic",
+        349
+      ],
+      "sourceSection": "N5·Unit 12·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        379
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        391
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        399
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        409
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題4",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        414
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題5",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        430
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題6",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock1",
+        435
+      ],
+      "sourceSection": "N5·模拟测试第1回·問題7",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        440
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        452
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        460
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        470
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題4",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        475
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題5",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        491
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題6",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n5",
+        "mock2",
+        496
+      ],
+      "sourceSection": "N5·模拟测试第2回·問題7",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        1
+      ],
+      "sourceSection": "N4·Unit 1·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        3
+      ],
+      "sourceSection": "N4·Unit 1·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        5
+      ],
+      "sourceSection": "N4·Unit 1·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        31
+      ],
+      "sourceSection": "N4·Unit 2·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        33
+      ],
+      "sourceSection": "N4·Unit 2·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        35
+      ],
+      "sourceSection": "N4·Unit 2·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        61
+      ],
+      "sourceSection": "N4·Unit 3·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        63
+      ],
+      "sourceSection": "N4·Unit 3·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        65
+      ],
+      "sourceSection": "N4·Unit 3·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        91
+      ],
+      "sourceSection": "N4·Unit 4·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        93
+      ],
+      "sourceSection": "N4·Unit 4·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        95
+      ],
+      "sourceSection": "N4·Unit 4·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        121
+      ],
+      "sourceSection": "N4·Unit 5·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        123
+      ],
+      "sourceSection": "N4·Unit 5·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        125
+      ],
+      "sourceSection": "N4·Unit 5·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        151
+      ],
+      "sourceSection": "N4·Unit 6·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        153
+      ],
+      "sourceSection": "N4·Unit 6·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        155
+      ],
+      "sourceSection": "N4·Unit 6·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        181
+      ],
+      "sourceSection": "N4·Unit 7·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        183
+      ],
+      "sourceSection": "N4·Unit 7·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        185
+      ],
+      "sourceSection": "N4·Unit 7·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        211
+      ],
+      "sourceSection": "N4·Unit 8·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        213
+      ],
+      "sourceSection": "N4·Unit 8·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        215
+      ],
+      "sourceSection": "N4·Unit 8·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        241
+      ],
+      "sourceSection": "N4·Unit 9·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        244
+      ],
+      "sourceSection": "N4·Unit 9·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        246
+      ],
+      "sourceSection": "N4·Unit 9·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        276
+      ],
+      "sourceSection": "N4·Unit 10·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        279
+      ],
+      "sourceSection": "N4·Unit 10·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        281
+      ],
+      "sourceSection": "N4·Unit 10·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        311
+      ],
+      "sourceSection": "N4·Unit 11·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        314
+      ],
+      "sourceSection": "N4·Unit 11·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        316
+      ],
+      "sourceSection": "N4·Unit 11·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        346
+      ],
+      "sourceSection": "N4·Unit 12·文字",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        349
+      ],
+      "sourceSection": "N4·Unit 12·語彙",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "basic",
+        351
+      ],
+      "sourceSection": "N4·Unit 12·文法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        381
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        390
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        396
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        406
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題4",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        411
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題5",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        416
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題6",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        430
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題7",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock1",
+        436
+      ],
+      "sourceSection": "N4·模拟测试第1回·問題8",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        441
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題1",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        450
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題2",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        456
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題3",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        460
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題4",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        466
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題5",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        471
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題6",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        491
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題7",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "redblue",
+      "key": [
+        "n4",
+        "mock2",
+        496
+      ],
+      "sourceSection": "N4·模拟测试第2回·問題8",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    },
+    {
+      "book": "seed",
+      "key": [],
+      "sourceSection": "第 1 章 基础语法",
+      "status": "sampled",
+      "checks": [
+        "stem",
+        "options",
+        "answer",
+        "source_section",
+        "material_relation"
+      ]
+    }
+  ]
+}
