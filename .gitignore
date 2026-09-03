@@ -13,3 +13,4 @@ ocr-service/data/
 pdf/
 __pycache__/
 *.pyc
+/data/
