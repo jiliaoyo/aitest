@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aishuati/backend/internal/ai"
 	"github.com/aishuati/backend/internal/config"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/store"
@@ -439,6 +440,119 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("账号学习记忆可删除并从新进度重建", func(t *testing.T) {
+		var before learning.LearningMemory
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &before)
+		if before.ConfirmedAnswered == 0 {
+			t.Fatalf("expected account memory before deletion: %+v", before)
+		}
+		sessionCount := countRows(t, pool, `SELECT count(*) FROM practice_sessions WHERE user_id = (SELECT id FROM users WHERE email = 'learner-b@example.com')`)
+		assertStatus(t, jsonRequest(t, data.learnerB, server.URL, http.MethodDelete,
+			"/api/v1/learning-memory", nil, ""), http.StatusNoContent)
+
+		var after learning.LearningMemory
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &after)
+		if after.ConfirmedAnswered != 0 || after.ConfirmedCorrect != 0 || after.Advice.Text != "" {
+			t.Fatalf("memory deletion should clear derived data: %+v", after)
+		}
+		var wrongAfterDelete struct {
+			WrongItems []json.RawMessage `json:"wrongItems"`
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/wrong-items", nil, ""), &wrongAfterDelete)
+		if len(wrongAfterDelete.WrongItems) != 0 {
+			t.Fatalf("memory deletion should hide old wrong items: %d", len(wrongAfterDelete.WrongItems))
+		}
+		learningStore := learning.NewStore(pool)
+		if err := learningStore.RebuildUserStats(context.Background(), pool, dataUserID(t, pool, "learner-b@example.com")); err != nil {
+			t.Fatal(err)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &after)
+		if after.ConfirmedAnswered != 0 {
+			t.Fatalf("rebuilding immediately after deletion must not restore old memory: %+v", after)
+		}
+		if countRows(t, pool, `SELECT count(*) FROM practice_sessions WHERE user_id = (SELECT id FROM users WHERE email = 'learner-b@example.com')`) != sessionCount {
+			t.Fatal("deleting memory must preserve practice history")
+		}
+
+		pre := createIntegrationSession(t, data, data.learnerB)
+		answers := finalAnswers(t, pool, pre.ID, data)
+		assertStatus(t, rawRequest(t, data.learnerB, server.URL, http.MethodPost,
+			"/api/v1/practice-sessions/"+pre.ID+"/submit", submitJSON(t, answers),
+			map[string]string{"Idempotency-Key": "idem-memory-after-reset"}), http.StatusOK)
+		if err := learningStore.RebuildUserStats(context.Background(), pool, dataUserID(t, pool, "learner-b@example.com")); err != nil {
+			t.Fatal(err)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &after)
+		if after.ConfirmedAnswered == 0 {
+			t.Fatalf("new progress should rebuild account memory: %+v", after)
+		}
+		if countRows(t, pool, `SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, pre.ID) != 1 {
+			t.Fatal("a new batch must keep exactly one batch AI job")
+		}
+
+		fakeAI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var request struct {
+				Messages []struct {
+					Content string `json:"content"`
+				} `json:"messages"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&request); err != nil || len(request.Messages) < 2 {
+				http.Error(w, "bad request", http.StatusBadRequest)
+				return
+			}
+			var input struct {
+				LearningMemory struct {
+					ConfirmedAnswered int `json:"confirmedAnswered"`
+				} `json:"learningMemory"`
+				Items []struct {
+					ItemID           string `json:"itemId"`
+					NeedsGrading     bool   `json:"needsGrading"`
+					NeedsExplanation bool   `json:"needsExplanation"`
+				} `json:"items"`
+			}
+			if err := json.Unmarshal([]byte(request.Messages[1].Content), &input); err != nil || input.LearningMemory.ConfirmedAnswered == 0 {
+				http.Error(w, "missing learning memory", http.StatusBadRequest)
+				return
+			}
+			grades := []map[string]any{}
+			explanations := []map[string]string{}
+			for _, item := range input.Items {
+				if item.NeedsGrading {
+					grades = append(grades, map[string]any{
+						"itemId": item.ItemID, "correctness": "cannot_determine",
+						"correctAnswer": nil, "explanation": "无法可靠判定。",
+					})
+				}
+				if item.NeedsExplanation {
+					explanations = append(explanations, map[string]string{"itemId": item.ItemID, "text": "根据权威答案判断。"})
+				}
+			}
+			content, _ := json.Marshal(map[string]any{
+				"summary": "继续练习最近暴露的薄弱知识点。", "grades": grades, "explanations": explanations,
+			})
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{{"message": map[string]string{"content": string(content)}}},
+			})
+		}))
+		defer fakeAI.Close()
+		aiClient := ai.NewClient(ai.Config{BaseURL: fakeAI.URL, APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, logger)
+		batchHandler := ai.NewService(pool, aiClient, logger).Handlers()["analyze_practice_session_ai"]
+		if err := batchHandler(context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+pre.ID+`"}`)); err != nil {
+			t.Fatalf("batch AI should update account advice: %v", err)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &after)
+		if after.Advice.Status != "completed" || after.Advice.Text == "" {
+			t.Fatalf("successful batch AI should persist account advice: %+v", after)
+		}
+	})
+
 	t.Run("导入任务重试不重复发布", func(t *testing.T) {
 		var jobID, itemID string
 		if err := pool.QueryRow(context.Background(),
@@ -653,6 +767,15 @@ func countRows(t *testing.T, pool *pgxpool.Pool, query string, args ...any) int 
 		t.Fatal(err)
 	}
 	return count
+}
+
+func dataUserID(t *testing.T, pool *pgxpool.Pool, email string) string {
+	t.Helper()
+	var id string
+	if err := pool.QueryRow(context.Background(), `SELECT id::text FROM users WHERE email = $1`, email).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }
 
 func resetIntegrationDatabase(t *testing.T, pool *pgxpool.Pool) {

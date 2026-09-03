@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/aishuati/backend/internal/jobs"
+	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/practice"
 	"github.com/aishuati/backend/internal/store"
 	"github.com/jackc/pgx/v5"
@@ -223,8 +224,9 @@ type batchAnalysisItem struct {
 }
 
 type batchAnalysisInput struct {
-	Materials map[string]string   `json:"materials,omitempty"`
-	Items     []batchAnalysisItem `json:"items"`
+	Materials      map[string]string         `json:"materials,omitempty"`
+	Items          []batchAnalysisItem       `json:"items"`
+	LearningMemory learning.AIMemorySnapshot `json:"learningMemory"`
 }
 
 func (s *Service) needsExplanation(row batchAnalysisRow) bool {
@@ -251,6 +253,30 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	if err := strictDecode(payload, &req); err != nil {
 		return err
 	}
+	userID, resetAt, err := s.sessionMemoryContext(ctx, s.pool, req.SessionID)
+	if err != nil {
+		err = fmt.Errorf("加载账号学习记忆失败: %w", err)
+		if attempts >= maxAttempts {
+			return s.failBatchAnalysis(ctx, req.SessionID, err)
+		}
+		return err
+	}
+	// 批次 AI 需要看到本批确定性成绩；重算仍是唯一统计写入路径。
+	if err := learning.NewStore(s.pool).RebuildUserStats(ctx, s.pool, userID); err != nil {
+		err = fmt.Errorf("更新账号学习记忆失败: %w", err)
+		if attempts >= maxAttempts {
+			return s.failBatchAnalysis(ctx, req.SessionID, err)
+		}
+		return err
+	}
+	memory, err := learning.NewStore(s.pool).MemorySnapshotForAI(ctx, userID)
+	if err != nil {
+		err = fmt.Errorf("读取账号学习记忆失败: %w", err)
+		if attempts >= maxAttempts {
+			return s.failBatchAnalysis(ctx, req.SessionID, err)
+		}
+		return err
+	}
 	rows, err := s.loadBatch(ctx, req.SessionID)
 	if err != nil {
 		err = fmt.Errorf("加载批次分析数据失败: %w", err)
@@ -259,7 +285,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		}
 		return err
 	}
-	input := batchAnalysisInput{Materials: map[string]string{}, Items: make([]batchAnalysisItem, 0, len(rows))}
+	input := batchAnalysisInput{Materials: map[string]string{}, Items: make([]batchAnalysisItem, 0, len(rows)), LearningMemory: memory}
 	for _, row := range rows {
 		section := ""
 		if row.SourceSection != nil {
@@ -425,7 +451,10 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		if err := practice.NewStore(tx).CompleteIfDone(ctx, tx, req.SessionID); err != nil {
 			return err
 		}
-		return practice.NewStore(tx).SetAISummary(ctx, req.SessionID, "completed", summary)
+		if err := practice.NewStore(tx).SetAISummary(ctx, req.SessionID, "completed", summary); err != nil {
+			return err
+		}
+		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", summary)
 	})
 	if err != nil {
 		return fmt.Errorf("写回批次 AI 分析失败: %w", err)
@@ -446,12 +475,38 @@ func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause
 		if err := practice.NewStore(tx).CompleteIfDone(ctx, tx, sessionID); err != nil {
 			return err
 		}
-		return practice.NewStore(tx).SetAISummary(ctx, sessionID, "failed", message)
+		if err := practice.NewStore(tx).SetAISummary(ctx, sessionID, "failed", message); err != nil {
+			return err
+		}
+		userID, resetAt, err := s.sessionMemoryContext(ctx, tx, sessionID)
+		if err != nil {
+			return err
+		}
+		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "failed", "AI 建议暂时不可用，请稍后重试。")
 	})
 	if err != nil {
 		return err
 	}
 	return cause
+}
+
+func (s *Service) sessionMemoryContext(ctx context.Context, db store.DBTx, sessionID string) (string, any, error) {
+	var userID string
+	var resetAt *string
+	err := db.QueryRow(ctx,
+		`SELECT ps.user_id::text, ulm.reset_at::text
+		 FROM practice_sessions ps
+		 LEFT JOIN user_learning_memory ulm ON ulm.user_id = ps.user_id
+		 WHERE ps.id = $1`, sessionID,
+	).Scan(&userID, &resetAt)
+	if err != nil {
+		return "", nil, err
+	}
+	var resetArg any
+	if resetAt != nil {
+		resetArg = *resetAt
+	}
+	return userID, resetArg, nil
 }
 
 func jsonValue(value *string) any {

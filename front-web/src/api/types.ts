@@ -210,6 +210,20 @@ export interface DashboardDTO {
   recommendations: Recommendation[]
   comprehensive?: Recommendation | null
   statsEmpty: boolean
+  memory: LearningMemoryDTO
+}
+
+export interface LearningMemoryDTO {
+  confirmedAnswered: number
+  confirmedCorrect: number
+  aiAnswered: number
+  aiCorrect: number
+  statsUpdatedAt?: string | null
+  advice: {
+    status: 'not_requested' | 'pending' | 'completed' | 'failed'
+    text: string
+    updatedAt?: string | null
+  }
 }
 
 export interface WrongItem {

@@ -33,15 +33,15 @@ type KnowledgePointDetail struct {
 }
 
 type Recommendation struct {
-	Type             string  `json:"type"` // knowledge | comprehensive
-	KnowledgePointID *string `json:"knowledgePointId,omitempty"`
-	Name             string  `json:"name"`
-	RecentAnswered   int     `json:"recentAnswered"`
-	RecentWrongCount int     `json:"recentWrongCount"`
-	Accuracy         *float64 `json:"accuracy,omitempty"`
-	ConsecutiveWrong int     `json:"consecutiveWrong"`
-	SuggestedCount   int     `json:"suggestedCount"`
-	Reason           string  `json:"reason"`
+	Type              string   `json:"type"` // knowledge | comprehensive
+	KnowledgePointID  *string  `json:"knowledgePointId,omitempty"`
+	Name              string   `json:"name"`
+	RecentAnswered    int      `json:"recentAnswered"`
+	RecentWrongCount  int      `json:"recentWrongCount"`
+	Accuracy          *float64 `json:"accuracy,omitempty"`
+	ConsecutiveWrong  int      `json:"consecutiveWrong"`
+	SuggestedCount    int      `json:"suggestedCount"`
+	Reason            string   `json:"reason"`
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
 }
 
@@ -52,11 +52,41 @@ type ActiveSession struct {
 }
 
 type Dashboard struct {
-	ActiveSession  *ActiveSession      `json:"activeSession"`
-	RecentSessions []RecentSession     `json:"recentSessions"`
-	Recommendations []Recommendation   `json:"recommendations"`
-	Comprehensive  *Recommendation     `json:"comprehensive,omitempty"`
-	StatsEmpty     bool                `json:"statsEmpty"`
+	ActiveSession   *ActiveSession   `json:"activeSession"`
+	RecentSessions  []RecentSession  `json:"recentSessions"`
+	Recommendations []Recommendation `json:"recommendations"`
+	Comprehensive   *Recommendation  `json:"comprehensive,omitempty"`
+	StatsEmpty      bool             `json:"statsEmpty"`
+	Memory          LearningMemory   `json:"memory"`
+}
+
+type MemoryAdvice struct {
+	Status    string  `json:"status"`
+	Text      string  `json:"text"`
+	UpdatedAt *string `json:"updatedAt,omitempty"`
+}
+
+// LearningMemory 是当前账号的可重置学习档案；原始练习记录不包含在删除范围内。
+type LearningMemory struct {
+	ConfirmedAnswered int          `json:"confirmedAnswered"`
+	ConfirmedCorrect  int          `json:"confirmedCorrect"`
+	AIAnswered        int          `json:"aiAnswered"`
+	AICorrect         int          `json:"aiCorrect"`
+	StatsUpdatedAt    *string      `json:"statsUpdatedAt,omitempty"`
+	Advice            MemoryAdvice `json:"advice"`
+}
+
+type AIMemorySnapshot struct {
+	ConfirmedAnswered int                 `json:"confirmedAnswered"`
+	ConfirmedCorrect  int                 `json:"confirmedCorrect"`
+	WeakPoints        []AIMemoryWeakPoint `json:"weakPoints"`
+}
+
+type AIMemoryWeakPoint struct {
+	Name             string `json:"name"`
+	RecentAnswered   int    `json:"recentAnswered"`
+	RecentCorrect    int    `json:"recentCorrect"`
+	ConsecutiveWrong int    `json:"consecutiveWrong"`
 }
 
 type RecentSession struct {

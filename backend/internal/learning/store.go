@@ -137,6 +137,98 @@ func (s *Store) KnowledgePointDetailForUser(ctx context.Context, userID, id stri
 	return d, nil
 }
 
+// MemoryForUser 返回账号级学习记忆。user_knowledge_stats 是可重算缓存，建议文本则由整批 AI 任务更新。
+func (s *Store) MemoryForUser(ctx context.Context, userID string) (LearningMemory, error) {
+	var memory LearningMemory
+	var adviceStatus, adviceText string
+	var adviceUpdatedAt, statsUpdatedAt *string
+	err := s.db.QueryRow(ctx,
+		`SELECT coalesce(ulm.ai_advice_status, 'not_requested'), coalesce(ulm.ai_advice, ''),
+		        ulm.ai_advice_updated_at::text,
+		        (SELECT max(updated_at)::text FROM user_knowledge_stats WHERE user_id = $1)
+		 FROM users u LEFT JOIN user_learning_memory ulm ON ulm.user_id = u.id
+		 WHERE u.id = $1`, userID,
+	).Scan(&adviceStatus, &adviceText, &adviceUpdatedAt, &statsUpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return memory, httpapi.ErrNotFound
+	}
+	if err != nil {
+		return memory, err
+	}
+	if err := s.db.QueryRow(ctx,
+		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0),
+		        coalesce(sum(ai_answered), 0), coalesce(sum(ai_correct), 0)
+		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
+	).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect, &memory.AIAnswered, &memory.AICorrect); err != nil {
+		return memory, err
+	}
+	memory.StatsUpdatedAt = statsUpdatedAt
+	memory.Advice = MemoryAdvice{Status: adviceStatus, Text: adviceText, UpdatedAt: adviceUpdatedAt}
+	return memory, nil
+}
+
+// MemorySnapshotForAI 只返回可解释的统计事实，不把账号身份或原始答案发送给模型。
+func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemorySnapshot, error) {
+	var snapshot AIMemorySnapshot
+	if err := s.db.QueryRow(ctx,
+		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
+		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
+	).Scan(&snapshot.ConfirmedAnswered, &snapshot.ConfirmedCorrect); err != nil {
+		return snapshot, err
+	}
+	rows, err := store.CollectRows[recommendationRow](ctx, s.db,
+		`SELECT kp.id::text, kp.name, st.recent_answered, st.recent_correct,
+		        st.consecutive_wrong, st.last_practiced_at::text
+		 FROM user_knowledge_stats st
+		 JOIN knowledge_points kp ON kp.id = st.knowledge_point_id
+		 WHERE st.user_id = $1 AND st.recent_answered >= 5 AND kp.status = 'published'
+		 ORDER BY (st.recent_correct::float / greatest(st.recent_answered, 1)) ASC,
+		          st.consecutive_wrong DESC, st.last_practiced_at ASC NULLS LAST
+		 LIMIT 5`, userID)
+	if err != nil {
+		return snapshot, err
+	}
+	snapshot.WeakPoints = make([]AIMemoryWeakPoint, 0, len(rows))
+	for _, row := range rows {
+		snapshot.WeakPoints = append(snapshot.WeakPoints, AIMemoryWeakPoint{
+			Name: row.Name, RecentAnswered: row.RecentAnswered,
+			RecentCorrect: row.RecentCorrect, ConsecutiveWrong: row.ConsecutiveWrong,
+		})
+	}
+	return snapshot, nil
+}
+
+// DeleteMemory 清除派生学习记忆并设置新的统计起点；练习历史和成绩仍保留。
+func (s *Store) DeleteMemory(ctx context.Context, pool *pgxpool.Pool, userID string) error {
+	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO user_learning_memory
+			   (user_id, reset_at, ai_advice, ai_advice_status, ai_advice_updated_at, updated_at)
+			 VALUES ($1, now(), '', 'not_requested', NULL, now())
+			 ON CONFLICT (user_id) DO UPDATE
+			 SET reset_at = now(), ai_advice = '', ai_advice_status = 'not_requested',
+			     ai_advice_updated_at = NULL, updated_at = now()`, userID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM user_knowledge_stats WHERE user_id = $1`, userID)
+		return err
+	})
+}
+
+// WriteAIAdviceTx 只在重置边界没有变化时写入，避免删除记忆后旧任务复活旧建议。
+func (s *Store) WriteAIAdviceTx(ctx context.Context, tx pgx.Tx, userID string, resetAt any, status, text string) error {
+	_, err := tx.Exec(ctx,
+		`INSERT INTO user_learning_memory
+		   (user_id, reset_at, ai_advice, ai_advice_status, ai_advice_updated_at, updated_at)
+		 VALUES ($1, $2, $3, $4, now(), now())
+		 ON CONFLICT (user_id) DO UPDATE
+		 SET ai_advice = EXCLUDED.ai_advice, ai_advice_status = EXCLUDED.ai_advice_status,
+		     ai_advice_updated_at = now(), updated_at = now()
+		 WHERE user_learning_memory.reset_at IS NOT DISTINCT FROM EXCLUDED.reset_at`,
+		userID, resetAt, text, status)
+	return err
+}
+
 // ---------- 仪表盘 ----------
 
 func (s *Store) ActiveSession(ctx context.Context, userID string) (*ActiveSession, error) {
@@ -221,6 +313,16 @@ func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID
 
 func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string) error {
 	if _, err := tx.Exec(ctx,
+		`INSERT INTO user_learning_memory (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
+		return err
+	}
+	// 与删除记忆共用同一行锁，保证重算不会在删除提交后把旧统计写回来。
+	if err := tx.QueryRow(ctx,
+		`SELECT user_id::text FROM user_learning_memory WHERE user_id = $1 FOR UPDATE`, userID,
+	).Scan(new(string)); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx,
 		`DELETE FROM user_knowledge_stats WHERE user_id = $1`, userID); err != nil {
 		return err
 	}
@@ -233,7 +335,9 @@ WITH joined AS (
   JOIN practice_items pi ON pi.id = gr.item_id
   JOIN practice_sessions ps ON ps.id = pi.session_id
   JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = pi.question_version_id
+  LEFT JOIN user_learning_memory mem ON mem.user_id = $1
   WHERE ps.user_id = $1 AND ps.status IN ('grading', 'completed', 'analysis_failed')
+    AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
 ),
 confirmed AS (
   SELECT * FROM joined
@@ -331,15 +435,18 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string,
 		          mv.material_id::text, mv.title, mv.content,
 		          kp.id::text, kp.name,
 		          gr.status, gr.answer_authority, gr.correct_value::text, gr.user_value::text,
-		          gr.explanation, gr.explanation_source, gr.updated_at::text
+		          gr.explanation, gr.explanation_source, gr.updated_at::text AS graded_at
 		   FROM grading_results gr
 		   JOIN practice_items pi ON pi.id = gr.item_id
 		   JOIN practice_sessions ps ON ps.id = pi.session_id
+		   LEFT JOIN user_learning_memory mem ON mem.user_id = ps.user_id
 		   JOIN question_versions v ON v.id = pi.question_version_id
 		   LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		   LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
 		   LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
-		   WHERE ps.user_id = $1 AND (
+		   WHERE ps.user_id = $1
+		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
+		     AND (
 		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
 		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))`+where+`
 		   ORDER BY pi.question_id, gr.updated_at DESC

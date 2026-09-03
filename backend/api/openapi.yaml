@@ -130,6 +130,24 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Dashboard' }
+  /learning-memory:
+    get:
+      tags: [learning]
+      summary: 当前账号的全局做题记忆与 AI 建议
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LearningMemory' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [learning]
+      summary: 删除当前账号的派生做题记忆
+      description: 清除统计和 AI 建议并从现在重新累计；原始练习历史与成绩保留。
+      responses:
+        '204': { description: 已删除 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /knowledge-points:
     get:
       tags: [learning]
@@ -863,6 +881,23 @@ components:
               knowledgePointIds: { type: array, items: { type: string } }
         comprehensive: { type: object, nullable: true }
         statsEmpty: { type: boolean }
+        memory: { $ref: '#/components/schemas/LearningMemory' }
+    LearningMemory:
+      type: object
+      required: [confirmedAnswered, confirmedCorrect, aiAnswered, aiCorrect, advice]
+      properties:
+        confirmedAnswered: { type: integer }
+        confirmedCorrect: { type: integer }
+        aiAnswered: { type: integer, description: AI 判定数量，不计入正式正确率 }
+        aiCorrect: { type: integer, description: AI 判定正确数量，不计入正式正确率 }
+        statsUpdatedAt: { type: string, nullable: true }
+        advice:
+          type: object
+          required: [status, text]
+          properties:
+            status: { type: string, enum: [not_requested, pending, completed, failed] }
+            text: { type: string }
+            updatedAt: { type: string, nullable: true }
     QuestionInput:
       type: object
       required: [type, stem, levelId, subjectId]

@@ -108,6 +108,29 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
         </div>
       </section>
 
+      <section v-if="dashboard.memory" aria-labelledby="memory-title">
+        <h2 id="memory-title" style="font-size: 17px">全局做题记忆</h2>
+        <div class="card">
+          <p class="mono">
+            已确认作答 {{ dashboard.memory.confirmedAnswered }} 题，正确 {{ dashboard.memory.confirmedCorrect }} 题
+          </p>
+          <p v-if="dashboard.memory.aiAnswered > 0" class="muted">
+            另有 AI 判定 {{ dashboard.memory.aiAnswered }} 题（不计入正式正确率）。
+          </p>
+          <div v-if="dashboard.memory.advice.status === 'completed' && dashboard.memory.advice.text">
+            <p><strong>AI 学习建议</strong></p>
+            <p class="muted" style="white-space: pre-wrap">{{ dashboard.memory.advice.text }}</p>
+          </div>
+          <p v-else-if="dashboard.memory.advice.status === 'pending'" class="muted" role="status">
+            AI 正在根据最新进度整理建议。
+          </p>
+          <p v-else-if="dashboard.memory.advice.status === 'failed'" class="muted">
+            AI 建议暂时不可用，统计和专项推荐仍可正常使用。
+          </p>
+          <p v-else class="muted">完成一批练习后，AI 会结合你的累计进度给出建议。</p>
+        </div>
+      </section>
+
       <section aria-labelledby="recent-title">
         <h2 id="recent-title" style="font-size: 17px">最近练习</h2>
         <div v-if="dashboard.recentSessions.length === 0" class="card">

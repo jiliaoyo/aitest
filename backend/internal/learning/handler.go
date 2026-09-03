@@ -46,6 +46,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, adminMux *http.ServeMux) {
 		mux.HandleFunc("GET /api/v1/knowledge-points", h.listKnowledgePoints)
 		mux.HandleFunc("GET /api/v1/knowledge-points/{id}", h.knowledgePointDetail)
 		mux.HandleFunc("GET /api/v1/dashboard", h.dashboard)
+		mux.HandleFunc("GET /api/v1/learning-memory", h.memory)
+		mux.HandleFunc("DELETE /api/v1/learning-memory", h.deleteMemory)
 		mux.HandleFunc("GET /api/v1/wrong-items", h.wrongItems)
 		mux.HandleFunc("POST /api/v1/issue-reports", h.createIssueReport)
 	}
@@ -95,6 +97,13 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	d.RecentSessions = recent
 
+	memory, err := h.store.MemoryForUser(ctx, userID)
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	d.Memory = memory
+
 	weak, err := h.store.WeakKnowledgePoints(ctx, userID, 3)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
@@ -104,10 +113,10 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 	for _, w := range weak {
 		rec := Recommendation{
 			Type: "knowledge", KnowledgePointID: &w.ID, Name: w.Name,
-			RecentAnswered: w.RecentAnswered,
-			RecentWrongCount: w.RecentAnswered - w.RecentCorrect,
-			ConsecutiveWrong: w.ConsecutiveWrong,
-			SuggestedCount: 10,
+			RecentAnswered:    w.RecentAnswered,
+			RecentWrongCount:  w.RecentAnswered - w.RecentCorrect,
+			ConsecutiveWrong:  w.ConsecutiveWrong,
+			SuggestedCount:    10,
 			KnowledgePointIDs: []string{w.ID},
 		}
 		if w.RecentAnswered > 0 {
@@ -123,10 +132,27 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 		d.Comprehensive = &Recommendation{
 			Type: "comprehensive", Name: "综合练习",
 			SuggestedCount: 20,
-			Reason: "数据不足，暂时无法定位薄弱知识点，建议先做一组综合练习积累数据。",
+			Reason:         "数据不足，暂时无法定位薄弱知识点，建议先做一组综合练习积累数据。",
 		}
 	}
 	httpapi.WriteJSON(w, http.StatusOK, d)
+}
+
+func (h *Handler) memory(w http.ResponseWriter, r *http.Request) {
+	memory, err := h.store.MemoryForUser(r.Context(), ctxkeys.UserID(r.Context()))
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, memory)
+}
+
+func (h *Handler) deleteMemory(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.DeleteMemory(r.Context(), h.pool, ctxkeys.UserID(r.Context())); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {

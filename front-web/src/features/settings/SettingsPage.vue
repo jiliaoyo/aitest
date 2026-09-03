@@ -13,6 +13,9 @@ const form = reactive({ defaultLevelId: '' })
 const saving = ref(false)
 const saved = ref(false)
 const errorMessage = ref('')
+const deletingMemory = ref(false)
+const memoryDeleted = ref(false)
+const memoryError = ref('')
 
 onMounted(async () => {
   const me = sessionUser()
@@ -50,6 +53,21 @@ async function logout(): Promise<void> {
     await router.replace('/login')
   }
 }
+
+async function deleteMemory(): Promise<void> {
+  if (!window.confirm('确定删除账号的全局做题记忆和 AI 建议吗？练习历史与成绩会保留。')) return
+  deletingMemory.value = true
+  memoryDeleted.value = false
+  memoryError.value = ''
+  try {
+    await request<void>('/learning-memory', { method: 'DELETE' })
+    memoryDeleted.value = true
+  } catch (err) {
+    memoryError.value = err instanceof ApiError ? err.message : '删除记忆失败'
+  } finally {
+    deletingMemory.value = false
+  }
+}
 </script>
 
 <template>
@@ -68,6 +86,16 @@ async function logout(): Promise<void> {
       <p v-if="errorMessage" class="error-summary" role="alert">{{ errorMessage }}</p>
       <button class="primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存' }}</button>
     </form>
+
+    <div class="card" style="max-width: 520px">
+      <h2 style="font-size: 16px">全局做题记忆</h2>
+      <p class="muted">删除统计和 AI 建议后，会从下一批练习重新累计；已有练习历史与成绩不会删除。</p>
+      <p v-if="memoryDeleted" class="tag" data-tone="success" role="status">已删除，新的进度会重新累计</p>
+      <p v-if="memoryError" class="error-summary" role="alert">{{ memoryError }}</p>
+      <button class="danger" :disabled="deletingMemory" @click="deleteMemory">
+        {{ deletingMemory ? '删除中…' : '删除做题记忆' }}
+      </button>
+    </div>
 
     <div class="card" style="max-width: 520px">
       <h2 style="font-size: 16px">账号</h2>
