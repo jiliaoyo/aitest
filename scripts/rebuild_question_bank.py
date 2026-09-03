@@ -1350,6 +1350,10 @@ def clean_choice(q: dict) -> None:
 
 def question_subject(namespace: str, q: dict) -> str:
     if namespace == "blue":
+        # 蓝宝书整体是文法来源，但 N5 第一单元问题 3 专门考助数词；
+        # 来源章节不能覆盖题目本身已经明确的文字词汇语义。
+        if q.get("part") == "n5" and q.get("unit") == 1 and q.get("dan") == 1 and q.get("mondai") == 3:
+            return "vocabulary"
         return "reading" if q.get("material") else "grammar"
     return q["subject"]
 

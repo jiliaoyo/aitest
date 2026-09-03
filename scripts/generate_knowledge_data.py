@@ -135,6 +135,9 @@ def classify(q: dict[str, Any], namespace: str) -> dict[str, Any]:
         if "語彙" in q.get("category", ""):
             return {"level": level, "subject": "vocabulary", "leaf": "usage", "confidence": 0.95,
                     "method": "source_section", "basis": "来源章节明确标为语汇用法。"}
+    if namespace == "blue" and q.get("subject") == "vocabulary":
+        return {"level": level, "subject": "vocabulary", "leaf": None, "confidence": 0.98,
+                "method": "source_section", "basis": "N5 第一单元问题 3 明确考查助数词，按文字词汇归类。"}
 
     child = grammar_child(q) if q.get("subject") == "grammar" else None
     if child:
