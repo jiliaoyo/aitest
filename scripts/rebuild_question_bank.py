@@ -15,6 +15,7 @@ DATA = ROOT / "scripts/data"
 BLUE_INPUT = DATA / "blue_questions.json"
 RED_INPUT = DATA / "redblue_questions.json"
 MANUAL_REVIEW = DATA / "manual_review.json"
+SOURCE_SECTION_SAMPLES = DATA / "source_section_samples.json"
 KNOWLEDGE_POINTS_INPUT = DATA / "knowledge_points_n4n5.json"
 KNOWLEDGE_MAPPING_INPUT = DATA / "question_knowledge_mapping.json"
 OUT = ROOT / "backend/questions"
@@ -1291,7 +1292,10 @@ def red_basic_category(level: str, number: int) -> str:
     categories = ("文字", "文字", "語彙", "語彙", "文法", "文法") if unit <= 8 else (
         "文字", "文字", "文字", "語彙", "語彙", "文法", "文法"
     )
-    return categories[(number - first) % len(categories)]
+    offset = number - first
+    while offset >= len(categories):
+        offset -= len(categories)
+    return categories[offset]
 
 
 def mock_problem(level: str, kind: str, number: int) -> int:
@@ -1416,9 +1420,27 @@ def prepare_red() -> list[dict]:
 def validate(blue: list[dict], red: list[dict]) -> None:
     errors: list[str] = []
     review = json.loads(MANUAL_REVIEW.read_text(encoding="utf-8"))
+    samples = json.loads(SOURCE_SECTION_SAMPLES.read_text(encoding="utf-8"))
     mapping = json.loads(KNOWLEDGE_MAPPING_INPUT.read_text(encoding="utf-8"))
+    points = json.loads(KNOWLEDGE_POINTS_INPUT.read_text(encoding="utf-8"))["points"]
+    point_by_id = {point["id"]: point for point in points}
     mapping_keys = {(item["source"], tuple(item["key"])) for item in mapping["questions"]}
-    sampled_sections = {(item.get("book"), item.get("sourceSection")) for item in review if item.get("status") == "sampled"}
+    mapping_by_key = {(item["source"], tuple(item["key"])): item for item in mapping["questions"]}
+    pending_sections = set()
+    for item in samples.get("items", []):
+        required = ("book", "key", "sourceSection", "status", "checks")
+        if any(not item.get(field) and field != "key" for field in required) or item.get("status") != "pending":
+            errors.append(f"invalid pending source sample: {item}")
+        elif len(item.get("checks", [])) < 5:
+            errors.append(f"incomplete pending source sample: {item}")
+        pending_sections.add((item.get("book"), item.get("sourceSection")))
+    for item in review:
+        if item.get("status") == "sampled":
+            errors.append(f"manual review contains unverified sample: {item}")
+        if item.get("status") == "source_verified":
+            required = ("book", "key", "sourceSection", "page", "reviewMethod", "reviewedAt", "checks", "note")
+            if any(not item.get(field) and field != "key" for field in required) or len(item.get("checks", [])) < 5:
+                errors.append(f"incomplete source verification: {item}")
     reviewed_duplicates = {
         (item["book"], tuple(item["key"]))
         for item in review
@@ -1442,6 +1464,22 @@ def validate(blue: list[dict], red: list[dict]) -> None:
                 errors.append(f"missing category {book} {key}")
             if (book, key) not in mapping_keys:
                 errors.append(f"missing knowledge mapping {book} {key}")
+            mapping_item = mapping_by_key.get((book, key))
+            if mapping_item is None or mapping_item.get("reviewStatus") != "not_required":
+                errors.append(f"formal mapping is not confirmed {book} {key}")
+            elif not mapping_item.get("knowledgePointIds"):
+                errors.append(f"formal mapping has no root {book} {key}")
+            else:
+                formal_ids = set(mapping_item["knowledgePointIds"])
+                suggested_ids = set(mapping_item.get("suggestedKnowledgePointIds", []))
+                if formal_ids & suggested_ids or (suggested_ids and mapping_item.get("suggestedReviewStatus") != "pending"):
+                    errors.append(f"pending suggestion entered formal mapping {book} {key}")
+                for point_id in mapping_item["knowledgePointIds"] + list(suggested_ids):
+                    point = point_by_id.get(point_id)
+                    if point is None or point.get("status") != "published":
+                        errors.append(f"mapping uses unknown or unpublished knowledge point {book} {key} {point_id}")
+                    elif point.get("level") != (q["part"] if book == "blue" else q["level"]) or point.get("subject") != q.get("subject"):
+                        errors.append(f"mapping scope mismatch {book} {key} {point_id}")
             if not q.get("stem", "").strip():
                 errors.append(f"missing stem {book} {key}")
             if not q.get("answer"):
@@ -1480,8 +1518,8 @@ def validate(blue: list[dict], red: list[dict]) -> None:
                 errors.append(f"question number residue {book} {key}")
             if ("material" in q) != (q.get("subject") == "reading"):
                 errors.append(f"material relation {book} {key}")
-            if not q.get("category") or (book, q["category"]) not in sampled_sections:
-                errors.append(f"missing sampled source section {book} {q.get('category')}")
+            if not q.get("category") or (book, q["category"]) not in pending_sections:
+                errors.append(f"missing pending source section {book} {q.get('category')}")
         for group, numbers in groups.items():
             expected = set(range(min(numbers), max(numbers) + 1))
             if set(numbers) != expected:
