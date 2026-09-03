@@ -11,6 +11,7 @@ const loadError = ref('');
 const levelId = ref('');
 const subjectId = ref('');
 const sourceId = ref('');
+const sourceSectionId = ref('');
 const mode = ref('comprehensive');
 const selectionOrder = ref('source_order');
 const knowledgePointIds = ref([]);
@@ -39,7 +40,7 @@ onMounted(async () => {
 });
 const levels = computed(() => exams.value.flatMap((e) => e.levels));
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects));
-watch([levelId, subjectId, mode, selectionOrder, sourceId, knowledgePointIds], async () => {
+watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId, knowledgePointIds], async () => {
     await refreshAvailability();
     if (mode.value === 'knowledge') {
         await loadKnowledgePoints();
@@ -58,6 +59,9 @@ watch([levelId, subjectId], async () => {
         sources.value = res.sources;
         if (!sources.value.some((source) => source.id === sourceId.value)) {
             sourceId.value = '';
+        }
+        if (!sources.value.find((source) => source.id === sourceId.value)?.sections.some((section) => section.id === sourceSectionId.value)) {
+            sourceSectionId.value = '';
         }
     }
     catch (err) {
@@ -89,6 +93,8 @@ function refreshAvailability() {
                 params.set('subjectId', subjectId.value);
             if (sourceId.value)
                 params.set('sourceId', sourceId.value);
+            if (sourceSectionId.value)
+                params.set('sourceSectionId', sourceSectionId.value);
             if (mode.value === 'knowledge' && knowledgePointIds.value.length) {
                 params.set('knowledgePointIds', knowledgePointIds.value.join(','));
             }
@@ -135,6 +141,7 @@ async function create() {
                 levelId: levelId.value,
                 subjectId: subjectId.value,
                 sourceId: sourceId.value,
+                sourceSectionId: sourceSectionId.value,
                 mode: mode.value,
                 selectionOrder: selectionOrder.value,
                 knowledgePointIds: knowledgePointIds.value,
@@ -291,6 +298,29 @@ else {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
             ...{ class: "muted" },
         });
+    }
+    if (__VLS_ctx.sourceId) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+            ...{ class: "field" },
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+            for: "source-section",
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+            id: "source-section",
+            value: (__VLS_ctx.sourceSectionId),
+        });
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            value: "",
+        });
+        for (const [section] of __VLS_getVForSourceType((__VLS_ctx.sources.find((source) => source.id === __VLS_ctx.sourceId)?.sections ?? []))) {
+            __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+                key: (section.id),
+                value: (section.id),
+            });
+            (section.name);
+            (section.questionCount);
+        }
     }
     __VLS_asFunctionalElement(__VLS_intrinsicElements.fieldset, __VLS_intrinsicElements.fieldset)({
         ...{ class: "field" },
@@ -479,6 +509,7 @@ var __VLS_2;
 /** @type {__VLS_StyleScopedClasses['error']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
@@ -509,6 +540,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             levelId: levelId,
             subjectId: subjectId,
             sourceId: sourceId,
+            sourceSectionId: sourceSectionId,
             mode: mode,
             selectionOrder: selectionOrder,
             knowledgePointIds: knowledgePointIds,

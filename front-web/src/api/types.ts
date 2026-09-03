@@ -40,6 +40,13 @@ export interface PracticeSource {
   id: string
   name: string
   questionCount: number
+  sections: PracticeSourceSection[]
+}
+
+export interface PracticeSourceSection {
+  id: string
+  name: string
+  questionCount: number
 }
 
 // ---- knowledge ----

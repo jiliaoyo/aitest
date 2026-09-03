@@ -16,6 +16,7 @@ const loadError = ref('')
 const levelId = ref('')
 const subjectId = ref('')
 const sourceId = ref('')
+const sourceSectionId = ref('')
 const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items'>('comprehensive')
 const selectionOrder = ref<'source_order' | 'random'>('source_order')
 const knowledgePointIds = ref<string[]>([])
@@ -48,7 +49,7 @@ onMounted(async () => {
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
 
-watch([levelId, subjectId, mode, selectionOrder, sourceId, knowledgePointIds], async () => {
+watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId, knowledgePointIds], async () => {
   await refreshAvailability()
   if (mode.value === 'knowledge') {
     await loadKnowledgePoints()
@@ -66,6 +67,9 @@ watch([levelId, subjectId], async () => {
     sources.value = res.sources
     if (!sources.value.some((source) => source.id === sourceId.value)) {
       sourceId.value = ''
+    }
+    if (!sources.value.find((source) => source.id === sourceId.value)?.sections.some((section) => section.id === sourceSectionId.value)) {
+      sourceSectionId.value = ''
     }
   } catch (err) {
     sources.value = []
@@ -92,6 +96,7 @@ function refreshAvailability(): void {
       })
       if (subjectId.value) params.set('subjectId', subjectId.value)
       if (sourceId.value) params.set('sourceId', sourceId.value)
+      if (sourceSectionId.value) params.set('sourceSectionId', sourceSectionId.value)
       if (mode.value === 'knowledge' && knowledgePointIds.value.length) {
         params.set('knowledgePointIds', knowledgePointIds.value.join(','))
       }
@@ -139,6 +144,7 @@ async function create(): Promise<void> {
         levelId: levelId.value,
         subjectId: subjectId.value,
         sourceId: sourceId.value,
+        sourceSectionId: sourceSectionId.value,
         mode: mode.value,
         selectionOrder: selectionOrder.value,
         knowledgePointIds: knowledgePointIds.value,
@@ -195,6 +201,16 @@ async function create(): Promise<void> {
           <p v-if="sourcesLoading" class="muted">加载数据来源…</p>
           <p v-else-if="sourcesError" class="error">{{ sourcesError }}</p>
           <p v-else-if="sources.length === 0" class="muted">当前级别暂无可用数据来源。</p>
+        </div>
+
+        <div v-if="sourceId" class="field">
+          <label for="source-section">来源章节（可选）</label>
+          <select id="source-section" v-model="sourceSectionId">
+            <option value="">该来源全部章节</option>
+            <option v-for="section in sources.find((source) => source.id === sourceId)?.sections ?? []" :key="section.id" :value="section.id">
+              {{ section.name }}（{{ section.questionCount }}题）
+            </option>
+          </select>
         </div>
 
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
