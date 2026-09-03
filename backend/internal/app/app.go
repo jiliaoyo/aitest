@@ -42,7 +42,11 @@ func Run(ctx context.Context) error {
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           finalHandler,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 	errCh := make(chan error, 1)
 	go func() {
@@ -67,8 +71,8 @@ func Run(ctx context.Context) error {
 func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
 	// 各领域模块
 	authStore := auth.NewStore(pool)
-	authService := auth.NewService(authStore, logger, cfg.SessionTTL)
-	authHandler := auth.NewHandler(authService, cfg.AppEnv, cfg.SecureCookie())
+	authService := auth.NewService(authStore, pool, logger, cfg.SessionTTL)
+	authHandler := auth.NewHandler(authService, cfg.AppEnv, cfg.SecureCookie(), cfg.TrustedProxyCIDRs)
 
 	catalogStore := catalog.NewStore(pool)
 	catalogHandler := catalog.NewHandler(catalogStore, logger)

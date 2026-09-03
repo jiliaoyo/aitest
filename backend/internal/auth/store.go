@@ -11,6 +11,8 @@ type Store struct{ db store.DBTx }
 
 func NewStore(db store.DBTx) *Store { return &Store{db: db} }
 
+func (s *Store) With(db store.DBTx) *Store { return &Store{db: db} }
+
 func (s *Store) CreateUser(ctx context.Context, email, emailNormalized, passwordHash string, role Role) (User, error) {
 	var u User
 	err := s.db.QueryRow(ctx,
@@ -46,7 +48,11 @@ func (s *Store) SetDefaultLevel(ctx context.Context, userID string, levelID *str
 }
 
 func (s *Store) UpdatePassword(ctx context.Context, userID, passwordHash string) error {
-	_, err := s.db.Exec(ctx,
+	return s.UpdatePasswordTx(ctx, s.db, userID, passwordHash)
+}
+
+func (s *Store) UpdatePasswordTx(ctx context.Context, db store.DBTx, userID, passwordHash string) error {
+	_, err := db.Exec(ctx,
 		`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`,
 		userID, passwordHash)
 	return err
@@ -87,14 +93,24 @@ func (s *Store) CreatePasswordResetToken(ctx context.Context, userID, tokenHash 
 
 // ConsumePasswordResetToken 一次性消费找回令牌，返回对应用户 ID。
 func (s *Store) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (string, error) {
+	return s.ConsumePasswordResetTokenTx(ctx, s.db, tokenHash)
+}
+
+func (s *Store) ConsumePasswordResetTokenTx(ctx context.Context, db store.DBTx, tokenHash string) (string, error) {
 	var userID string
-	err := s.db.QueryRow(ctx,
+	err := db.QueryRow(ctx,
 		`UPDATE password_reset_tokens SET used_at = now()
 		 WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
 		 RETURNING user_id`,
 		tokenHash,
 	).Scan(&userID)
 	return userID, err
+}
+
+func (s *Store) RevokeUserSessionsTx(ctx context.Context, db store.DBTx, userID string) error {
+	_, err := db.Exec(ctx,
+		`UPDATE auth_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, userID)
+	return err
 }
 
 // HitRateLimit 在固定窗口内对 key 计数；超过 limit 返回 false。

@@ -324,6 +324,22 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			t.Fatal("import retry duplicated an item, published question, or job")
 		}
 	})
+
+	t.Run("重置密码与令牌消费原子完成并撤销旧会话", func(t *testing.T) {
+		resetClient := newIntegrationClient(t)
+		var reset struct {
+			ResetToken string `json:"resetToken"`
+		}
+		decodeResponse(t, jsonRequest(t, resetClient, server.URL, http.MethodPost,
+			"/api/v1/auth/password-reset/request", map[string]string{"email": "learner-a@example.com"}, ""), &reset)
+		if reset.ResetToken == "" {
+			t.Fatal("dev password reset should return a test token")
+		}
+		assertStatus(t, jsonRequest(t, resetClient, server.URL, http.MethodPost,
+			"/api/v1/auth/password-reset/confirm", map[string]string{"token": reset.ResetToken, "password": "learner-new-pass-123"}, ""), http.StatusOK)
+		assertStatus(t, jsonRequest(t, data.learnerA, server.URL, http.MethodGet, "/api/v1/me", nil, ""), http.StatusUnauthorized)
+		loginIntegration(t, newIntegrationClient(t), server.URL, "learner-a@example.com", "learner-new-pass-123")
+	})
 }
 
 func newIntegrationClient(t *testing.T) *http.Client {

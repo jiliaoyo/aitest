@@ -2,6 +2,8 @@ package auth
 
 import (
 	"net/http"
+	"net/netip"
+	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
@@ -10,13 +12,14 @@ import (
 const sessionCookie = "session"
 
 type Handler struct {
-	service *Service
-	appEnv  string
-	secure  bool
+	service           *Service
+	appEnv            string
+	secure            bool
+	trustedProxyCIDRs []netip.Prefix
 }
 
-func NewHandler(service *Service, appEnv string, secureCookie bool) *Handler {
-	return &Handler{service: service, appEnv: appEnv, secure: secureCookie}
+func NewHandler(service *Service, appEnv string, secureCookie bool, trustedProxyCIDRs []netip.Prefix) *Handler {
+	return &Handler{service: service, appEnv: appEnv, secure: secureCookie, trustedProxyCIDRs: trustedProxyCIDRs}
 }
 
 // RegisterRoutes 挂载认证路由。mux 的路径已包含 /api/v1 前缀。
@@ -75,7 +78,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	u, token, err := h.service.Login(r.Context(), req.Email, req.Password, clientIP(r))
+	u, token, err := h.service.Login(r.Context(), req.Email, req.Password, clientIP(r, h.trustedProxyCIDRs))
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
@@ -175,11 +178,36 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, http.StatusOK, meResponse{u})
 }
 
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return fwd
+func clientIP(r *http.Request, trustedProxyCIDRs []netip.Prefix) string {
+	remoteIP, ok := parseRemoteIP(r.RemoteAddr)
+	if !ok || !isTrustedProxy(remoteIP, trustedProxyCIDRs) {
+		return r.RemoteAddr
+	}
+	for _, candidate := range strings.Split(r.Header.Get("X-Forwarded-For"), ",") {
+		if ip, err := netip.ParseAddr(strings.TrimSpace(candidate)); err == nil {
+			return ip.String()
+		}
 	}
 	return r.RemoteAddr
+}
+
+func parseRemoteIP(remoteAddr string) (netip.Addr, bool) {
+	if addr, err := netip.ParseAddrPort(remoteAddr); err == nil {
+		return addr.Addr(), true
+	}
+	if addr, err := netip.ParseAddr(remoteAddr); err == nil {
+		return addr, true
+	}
+	return netip.Addr{}, false
+}
+
+func isTrustedProxy(remoteIP netip.Addr, trustedProxyCIDRs []netip.Prefix) bool {
+	for _, prefix := range trustedProxyCIDRs {
+		if prefix.Contains(remoteIP) {
+			return true
+		}
+	}
+	return false
 }
 
 // Token 从请求中读取 session token，供鉴权中间件调用。

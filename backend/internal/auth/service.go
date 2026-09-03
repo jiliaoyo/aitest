@@ -12,12 +12,15 @@ import (
 	"time"
 
 	"github.com/aishuati/backend/internal/httpapi"
+	"github.com/aishuati/backend/internal/store"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
 	minPasswordLen  = 8
+	maxPasswordByte = 72
 	resetTokenTTL   = time.Hour
 	loginRateLimit  = 10
 	resetRateLimit  = 5
@@ -26,12 +29,13 @@ const (
 
 type Service struct {
 	store      *Store
+	pool       *pgxpool.Pool
 	logger     *slog.Logger
 	sessionTTL time.Duration
 }
 
-func NewService(store *Store, logger *slog.Logger, sessionTTL time.Duration) *Service {
-	return &Service{store: store, logger: logger, sessionTTL: sessionTTL}
+func NewService(store *Store, pool *pgxpool.Pool, logger *slog.Logger, sessionTTL time.Duration) *Service {
+	return &Service{store: store, pool: pool, logger: logger, sessionTTL: sessionTTL}
 }
 
 func HashToken(token string) string {
@@ -65,8 +69,8 @@ func (s *Service) Register(ctx context.Context, email, password string) (User, s
 	if !ValidEmail(normalized) {
 		fields["email"] = "请输入有效的邮箱地址"
 	}
-	if len(password) < minPasswordLen {
-		fields["password"] = "密码至少 8 位"
+	if err := validatePassword(password); err != nil {
+		fields["password"] = err.Message
 	}
 	if len(fields) > 0 {
 		return User{}, "", httpapi.ValidationError(fields)
@@ -171,21 +175,42 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, appEnv string
 }
 
 func (s *Service) ConfirmPasswordReset(ctx context.Context, token, newPassword string) error {
-	if len(newPassword) < minPasswordLen {
-		return httpapi.ValidationError(map[string]string{"password": "密码至少 8 位"})
-	}
-	userID, err := s.store.ConsumePasswordResetToken(ctx, HashToken(token))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return httpapi.E(http.StatusBadRequest, "invalid_reset_token", "找回链接无效或已过期")
-	}
-	if err != nil {
-		return fmt.Errorf("校验找回令牌失败: %w", err)
+	if err := validatePassword(newPassword); err != nil {
+		return err
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("密码哈希失败: %w", err)
 	}
-	return s.store.UpdatePassword(ctx, userID, string(hash))
+	var userID string
+	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		st := s.store.With(tx)
+		userID, err = st.ConsumePasswordResetTokenTx(ctx, tx, HashToken(token))
+		if err != nil {
+			return err
+		}
+		if err := st.UpdatePasswordTx(ctx, tx, userID, string(hash)); err != nil {
+			return err
+		}
+		return st.RevokeUserSessionsTx(ctx, tx, userID)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return httpapi.E(http.StatusBadRequest, "invalid_reset_token", "找回链接无效或已过期")
+	}
+	if err != nil {
+		return fmt.Errorf("完成密码重置失败: %w", err)
+	}
+	return nil
+}
+
+func validatePassword(password string) *httpapi.APIError {
+	if len([]byte(password)) < minPasswordLen {
+		return httpapi.ValidationError(map[string]string{"password": "密码至少 8 位"})
+	}
+	if len([]byte(password)) > maxPasswordByte {
+		return httpapi.ValidationError(map[string]string{"password": "密码不能超过 72 字节"})
+	}
+	return nil
 }
 
 func (s *Service) issueSession(ctx context.Context, userID string) (string, error) {

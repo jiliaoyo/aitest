@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ type Config struct {
 	AppEnv            string // dev | prod
 	HTTPAddr          string
 	PublicOrigin      string
+	TrustedProxyCIDRs []netip.Prefix
 	DatabaseURL       string
 	SessionTTL        time.Duration
 	UploadDir         string
@@ -45,6 +47,11 @@ func Load() (Config, error) {
 		AIAPIKey:     os.Getenv("AI_API_KEY"),
 		AIModel:      getenv("AI_MODEL", ""),
 	}
+	trustedProxyCIDRs, err := parseTrustedProxyCIDRs(os.Getenv("TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		return c, err
+	}
+	c.TrustedProxyCIDRs = trustedProxyCIDRs
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("缺少必填环境变量 DATABASE_URL")
 	}
@@ -85,6 +92,21 @@ func Load() (Config, error) {
 func (c Config) SecureCookie() bool { return c.AppEnv == "prod" }
 
 func (c Config) AIConfigured() bool { return c.AIBaseURL != "" && c.AIAPIKey != "" && c.AIModel != "" }
+
+func parseTrustedProxyCIDRs(raw string) ([]netip.Prefix, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	prefixes := make([]netip.Prefix, 0)
+	for _, value := range strings.Split(raw, ",") {
+		prefix, err := netip.ParsePrefix(strings.TrimSpace(value))
+		if err != nil {
+			return nil, fmt.Errorf("TRUSTED_PROXY_CIDRS 无效: %w", err)
+		}
+		prefixes = append(prefixes, prefix.Masked())
+	}
+	return prefixes, nil
+}
 
 func getenv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
