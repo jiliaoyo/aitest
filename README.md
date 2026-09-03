@@ -1,88 +1,195 @@
-# AI 刷题 App
+<div align="center">
 
-以“批次练习、延迟反馈、长期薄弱点追踪”为核心的 JLPT（首发）刷题平台。
+# AI 刷题
 
-- 后端：Go 模块化单体 + PostgreSQL + 同库异步 worker（`backend/`）
-- 前端：Vue 3 + TypeScript + Vite，无 UI 框架依赖（`front-web/`）
-- 契约：`backend/api/openapi.yaml`（JSON camelCase、枚举 snake_case、游标分页、统一错误结构）
-- 需求与规范：`docs/`（PRD、前端规范、后端规范）
+**让每一次答题，都变成下一次进步的依据。**
 
-## 已实现范围（规范中的阶段 1 + 学习档案 + 管理端基础）
+JLPT 学习平台 · 批次练习 · 延迟反馈 · 知识点追踪 · AI 批次分析
 
-- 账号：邮箱注册/登录/退出/找回密码；bcrypt + SHA-256 哈希的 opaque session token（HttpOnly Cookie）；登录限流；learner/admin 角色。
-- 题库：来源/章节、材料版本、题目不可变版本、知识点多对多、**独立私有答案表 answer_keys**（学习端查询根本不连接该表）。
-- 刷题闭环：可用题量查询 → 创建批次（综合/知识点/错题重练，优先最近未做过的题）→ 自动保存（单飞 + 本地草稿恢复）→ 标记待检查 → 携带全部最终答案 + `Idempotency-Key` 幂等提交 → 确定性判分（单选/多选/填空归一化/未答规则）→ 分层结果页（已确认正确率 vs AI 判定 vs 待分析）→ 历史/错题本。
-- 学习档案：`user_knowledge_stats` 由原始判分全量重算（可重建）；仪表盘推荐使用可解释规则（近 30 天已确认作答 ≥5 题 → 正确率升序 → 连错降序）；知识点列表/详情 + 专项练习。
-- 异步任务：PostgreSQL 任务表 + worker（`FOR UPDATE SKIP LOCKED`、租约、指数退避、失败保留错误摘要）；批次 AI 分析、统计重算，以及题库文件提取/结构化整理处理器。
-- AI：OpenAI 兼容 HTTP 客户端、版本化 prompt（`go:embed`）、严格 JSON 解码、`ai_runs` 审计；每批练习用一次请求生成整批总结、逐题解析和必要的 AI 判分；**AI 不可用时确定性判分完全不受影响**。
-- 管理端：内容概览、题目 CRUD（编辑产生新版本、发布切换 `published_version_id`、下架保留历史快照）、TXT/Markdown/CSV/DOCX/可提取文字 PDF 导入、AI 整理草稿、原文对照审核发布、知识点/来源管理、举报处理、`audit_logs` 审计。
-- 安全：角色中间件 + SQL 内带 user_id 条件（越权一律 404）、非 GET 校验 Origin、请求体大小限制 + 严格 JSON 解码、结构化访问日志与 request_id。
+[![CI](https://github.com/jiliaoyo/aitest/actions/workflows/ci.yml/badge.svg)](https://github.com/jiliaoyo/aitest/actions/workflows/ci.yml)
+[![Go](https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Vue](https://img.shields.io/badge/Vue-3-42B883?logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16%2B-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-**未实现（后续阶段）**：扫描件 OCR、AI 补题、邮箱通知。
+[快速开始](#快速开始) · [产品亮点](#产品亮点) · [技术架构](#技术架构) · [参与贡献](#参与贡献)
+
+</div>
+
+## 这是什么？
+
+AI 刷题是一个可自托管的 JLPT 学习平台。
+
+它关注的不是“完成了多少题”，而是每一批练习之后，能不能清楚回答：
+
+- 哪些知识点正在反复出错？
+- 这一次的判断依据是什么？
+- 下一批练习应该从哪里开始？
+
+系统把确定性判分、权威答案和 AI 分析分开呈现。AI 不可用时，基础判分和学习记录仍然正常工作。
+
+## 产品亮点
+
+| 能力 | 解决的问题 |
+| --- | --- |
+| **批次练习，延迟反馈** | 答题过程中不被即时对错打断，提交本批练习后统一查看结果 |
+| **AI 批次分析** | 一次分析整批表现、薄弱知识点和下一步建议，避免逐题调用造成噪声和成本 |
+| **分层结果** | 确定性结果、权威答案和 `AI 判定(可能有误)` 分开统计，不混淆事实与解释 |
+| **知识点画像** | 记录累计正确率、连续错误和近期表现，支持专项练习与可解释推荐 |
+| **可追溯题库** | 题目版本不可变，保留来源、章节、材料和答案依据 |
+| **自托管优先** | Go + PostgreSQL + Vue 3 + Docker，数据和模型配置掌握在自己手里 |
+
+仓库当前附带的本地题库快照包含 **2,063 道题目、5,161 个题目版本、1,132 个知识点**。
+
+## 当前功能
+
+- JLPT 级别、科目、知识点树和来源章节管理
+- 综合练习、知识点专项练习、错题重练和 AI 个性化练习
+- 自动保存、断线恢复、幂等提交和练习历史
+- 单选、多选、填空、简答等题型
+- 确定性判分、权威答案和 AI 判定分层展示
+- 知识点统计、薄弱点推荐和错题本
+- 管理端题目版本、材料、答案、知识点和来源维护
+- TXT、Markdown、CSV、DOCX、可提取文字 PDF 导入
+- 本地扫描 OCR 服务与结构化 JSON 导入管线
+
+## 技术架构
+
+```mermaid
+flowchart LR
+    U[学习者 / 管理员] --> F[Vue 3 + TypeScript]
+    F --> A[Go HTTP API]
+    A --> P[(PostgreSQL)]
+    A --> W[同库 Worker]
+    W --> P
+    W -. 可选 .-> M[OpenAI 兼容模型]
+```
+
+- **前端**：Vue 3、TypeScript、Vite、原生 CSS token，无 UI 组件库
+- **后端**：Go 模块化单体，手写 SQL，API 与 worker 可同进程或分进程运行
+- **数据库**：PostgreSQL；迁移目录中的 `0001_auth.sql` 是当前结构基线
+- **AI**：兼容 OpenAI Chat Completions 的模型服务，AI 为可选能力
+- **部署**：Docker Compose，包含 PostgreSQL、API、worker、frontend
+
+### 安全边界
+
+- 答题前接口不返回 `answer_keys` 或正确答案
+- 会话使用 HttpOnly Cookie，数据库只保存 token 哈希
+- 写操作校验 Origin，接口按用户身份隔离数据
+- 提交使用幂等键，避免重复记录和重复判分
+- 题目编辑创建新版本，不覆盖历史题目事实
 
 ## 快速开始
 
-```bash
-# 1. 后端（需 Go 1.24+ 与 PostgreSQL 16）
-cd backend
-createdb ai_shuati_dev            # 如已存在可跳过
-make migrate                      # 应用迁移（兼容 goose 格式）
-# 先在本地环境设置 SEED_ADMIN_PASSWORD、SEED_LEARNER_PASSWORD，再运行：
-make seed                         # 演示数据 + 两个账号
-make dev                          # 启动 API :8080（内嵌 worker，RUN_WORKER=true）
+### 本地开发
 
-# 2. 前端（需 Node 20+）
-cd ../front-web
-npm install
-npm run dev                       # http://localhost:5173（/api 代理到 :8080）
+依赖：Go 1.24+、PostgreSQL 16+、Node 20+。
+
+```bash
+# 1. 创建开发数据库
+createdb ai_shuati_dev
+
+# 2. 初始化结构与演示数据
+cd backend
+make migrate
+
+# seed 只读取本地环境中的密码，不把固定密码写入代码或 Git
+export SEED_ADMIN_PASSWORD='自定义管理员密码'
+export SEED_LEARNER_PASSWORD='自定义学习者密码'
+make seed
+
+# 3. 启动 API
+make dev
 ```
 
-演示账号：
+另开终端启动前端：
 
-| 角色 | 邮箱 | 密码 |
-| --- | --- | --- |
-| 学习者 | learner@example.com | 由 `SEED_LEARNER_PASSWORD` 设置 |
-| 管理员 | admin@example.com | 由 `SEED_ADMIN_PASSWORD` 设置 |
+```bash
+cd front-web
+npm install
+npm run dev
+```
+
+打开 <http://localhost:5173>。未配置 `AI_BASE_URL`、`AI_API_KEY`、`AI_MODEL` 时，确定性判分仍可使用。
+
+### 导入完整本地题库快照
+
+快照包含考试目录、知识点、来源、材料、题目版本、权威答案和 AI 题目数据；不包含用户、会话、练习记录和创建者字段。
+
+在空数据库中执行迁移后导入，先知识点、后题库：
+
+```bash
+cd backend
+export PG_URL='postgres://postgres@localhost:5432/ai_shuati_dev?sslmode=disable'
+psql "$PG_URL" -f questions/current_knowledge_points.sql
+psql "$PG_URL" -f questions/current_question_bank.sql
+```
+
+快照已经包含内容目录，不要和 `make seed` 混用；导入后可以直接注册新账号。
+
+### Docker
+
+```bash
+# 在仓库根目录创建 .env，至少设置：
+# POSTGRES_PASSWORD=自定义数据库密码
+# PUBLIC_ORIGIN=http://localhost:9091
+
+docker compose up -d postgres
+docker compose run --rm backend /app/migrate -dir /app/migrations
+docker compose exec -T postgres psql -U ai_shuati -d ai_shuati < backend/questions/current_knowledge_points.sql
+docker compose exec -T postgres psql -U ai_shuati -d ai_shuati < backend/questions/current_question_bank.sql
+docker compose up -d backend worker frontend
+```
 
 ## 常用命令
 
 ```bash
+# 后端
 cd backend
-make test      # Go 测试（判分表驱动 + DTO 泄漏防护）
-go build ./... # 编译
+make test
+make build
+make worker
 
+# 前端
 cd front-web
-npm test       # Vitest（自动保存竞态/草稿恢复 + 结果分层展示）
-npm run build  # vue-tsc 严格类型检查 + 产物构建
+npm test
+npm run build
 ```
 
-独立 worker（生产形态）：`make worker`；API 与 worker 共用领域代码，仅进程分离。
+## 题库导入与重建
 
-## 当前题库快照导入
+`backend/questions/` 保存当前本地数据库快照，适合在空库中快速恢复内容。
 
-当前本地题库已导出为可重复执行的 INSERT SQL；先导入知识点，再导入题库：
-
-```bash
-psql "$PG_URL" -f backend/questions/current_knowledge_points.sql
-psql "$PG_URL" -f backend/questions/current_question_bank.sql
-```
-
-## PDF 题库重建（开发工具）
+如果需要从 OCR 结构化数据重新生成书籍题库，使用开发管线，并将生成文件放到临时目录：
 
 ```bash
 python3 scripts/rebuild_question_bank.py --out-dir /tmp/ai-shuati-generated-questions
-# 重建已有书籍题库前执行；只删除两本书及其依赖，保留自建题和自建练习
-psql "$PG_URL" -f scripts/data/reset_book_question_bank.sql
 ```
 
-脚本读取 `scripts/data/` 中的 OCR 快照，按来源章节细分分类，并在发现题号、选项、答案或 OCR 噪声异常时拒绝生成 SQL。
+扫描书导入服务位于 `ocr-service/`：上传 PDF → 本地 OCR → 人工审核 → 结构化 JSON → 管理端导入。
 
-创建练习默认按 PDF 的来源顺序出题；选择“随机”时才使用随机顺序。
+## 参与贡献
 
-## 关键设计边界（与规范一一对应）
+欢迎提交 Issue 和 Pull Request，尤其是：
 
-1. **提交前不泄漏**：答题前 DTO 由独立结构体构造（`practice.PreSubmitSession`），并有单元测试断言序列化结果不含任何答案相关字段。
-2. **幂等提交**：提交本批练习事务内 `SELECT ... FOR UPDATE` 锁批次 → 校验幂等键与请求体哈希 → 覆盖最终答案 → 确定性判分 → AI 任务入队（同事务）。
-3. **历史可复现**：`practice_items` 引用不可变 `question_version_id`；编辑创建新版本，发布切换 `published_version_id`，旧批次仍读旧版本。
-4. **答案隔离**：`answer_keys.authority` 仅 `official` / `human_verified`；AI 结果只写 `grading_results`，永不回写答案表。
-5. **统计可重算**：正式正确率只聚合确定性 + 权威答案；AI 判定单独计数，不混入。
+- 新题型、判分规则和边界测试
+- 知识点分类质量与来源校对
+- 前端可访问性和移动端体验
+- 更多考试类型与自托管部署文档
+
+开始改动前请先阅读 `docs/` 下的产品、前端和后端规范。
+
+## 数据与许可证
+
+- 应用代码的开源许可证需要在仓库根目录单独声明；本仓库当前不默认授予代码以外内容的再分发权。
+- `backend/questions/` 和扫描导入资料包含书籍衍生题库；相关版权归原出版者或权利人所有，公开部署和再分发前请确认授权范围。
+- API 密钥、数据库连接串、部署环境变量和本地 `.env` 不应提交到 Git。
+
+## 目录结构
+
+```text
+backend/       Go API、worker、迁移与数据库结构
+front-web/     Vue 3 学习端与管理端
+ocr-service/   扫描 PDF 的本地 OCR 审核服务
+scripts/       题库解析、校验和导出工具
+docs/          产品与工程规范
+```
