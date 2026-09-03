@@ -100,20 +100,7 @@ export const statusText: Record<string, string> = {
   extracting: '提取文字中',
   structuring: 'AI 整理中',
   review_ready: '待审核',
-}
-
-export const importJobStatusText: Record<string, string> = {
-  uploaded: '等待提取',
-  extracting: '提取文字中',
-  structuring: 'AI 整理中',
-  review_ready: '待审核',
-  published: '已发布',
-  failed: '处理失败',
-}
-
-export const importReviewStatusText: Record<string, string> = {
   pending: '待审核',
   approved: '已审核',
-  published: '已发布',
   rejected: '已退回',
 }

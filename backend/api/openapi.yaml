@@ -3,7 +3,7 @@ info:
   title: AI 刷题 App API
   version: 0.1.0
   description: |
-    首版接口契约（阶段 1：可靠刷题闭环 + 学习档案 + 管理端内容维护）。
+    首版接口契约（可靠刷题闭环 + 学习档案 + 管理端内容维护与题库导入）。
     - 前缀 /api/v1；JSON 字段 camelCase，枚举值小写 snake_case。
     - 时间为 UTC RFC 3339；列表使用游标分页 ?cursor=&limit=（默认 20，最大 100）。
     - 认证：HttpOnly Cookie（session）；写请求校验 Origin。
@@ -492,6 +492,101 @@ paths:
       responses:
         '200': { description: OK }
         '409': { description: issue_already_handled }
+  /admin/import-jobs:
+    post:
+      tags: [admin]
+      summary: 上传题库文件并创建异步导入任务
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: TXT、Markdown、CSV、DOCX 或可提取文字的 PDF，默认最大 10 MB
+      responses:
+        '201': { description: 已创建, content: { application/json: { schema: { type: object, properties: { job: { $ref: '#/components/schemas/ImportJob' } } } } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '413': { description: file_too_large }
+    get:
+      tags: [admin]
+      summary: 导入任务列表
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs: { type: array, items: { $ref: '#/components/schemas/ImportJob' } }
+  /admin/import-jobs/{id}:
+    get:
+      tags: [admin]
+      summary: 导入任务进度、提取原文和结构化草稿
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job: { $ref: '#/components/schemas/ImportJob' }
+                  items: { type: array, items: { $ref: '#/components/schemas/ImportItem' } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/import-jobs/{id}/retry:
+    post:
+      tags: [admin]
+      summary: 从安全阶段重试失败的导入任务
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { job: { $ref: '#/components/schemas/ImportJob' } } } } } }
+        '409': { description: import_not_failed }
+  /admin/import-items/{id}:
+    get:
+      tags: [admin]
+      summary: 查看单个导入项的原文对照和结构化草稿
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { item: { $ref: '#/components/schemas/ImportItem' } } } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [admin]
+      summary: 保存导入项草稿（保存后回到待审核）
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [draft]
+              properties: { draft: { $ref: '#/components/schemas/ImportDraft' } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /admin/import-items/{id}/approve:
+    post:
+      tags: [admin]
+      summary: 确认审核导入项
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK }, '400': { $ref: '#/components/responses/ValidationError' } }
+  /admin/import-items/{id}/publish:
+    post:
+      tags: [admin]
+      summary: 发布已审核导入项到公共题库
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: OK }
+        '409': { description: import_item_not_approved / question_invalid }
 
 components:
   responses:
@@ -781,4 +876,60 @@ components:
         hasAnswer: { type: boolean }
         publishedVersionId: { type: string, nullable: true }
         currentVersion: { type: object, nullable: true }
+        updatedAt: { type: string }
+    ImportJob:
+      type: object
+      properties:
+        id: { type: string }
+        fileName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer, format: int64 }
+        status: { type: string, enum: [uploaded, extracting, structuring, review_ready, published, failed] }
+        stageError: { type: string }
+        extractedText: { type: string }
+        itemCount: { type: integer }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    ImportAnswer:
+      type: object
+      properties:
+        value: { type: object }
+        authority: { type: string, enum: [official, human_verified] }
+        explanation: { type: string }
+    ImportSuggestion:
+      type: object
+      properties:
+        value: { type: object }
+        explanation: { type: string }
+    ImportDraft:
+      type: object
+      required: [type, stem, options, levelId, subjectId, difficulty, knowledgePointIds]
+      properties:
+        materialKey: { type: string }
+        type: { type: string, enum: [single_choice, multiple_choice, fill_blank, short_answer] }
+        stem: { type: string }
+        options: { type: array, items: { type: object, properties: { id: { type: string }, label: { type: string }, text: { type: string } } } }
+        materialTitle: { type: string }
+        materialContent: { type: string }
+        levelId: { type: string }
+        subjectId: { type: string }
+        sourceSectionId: { type: string, nullable: true }
+        difficulty: { type: integer, minimum: 1, maximum: 5 }
+        knowledgePointIds: { type: array, items: { type: string } }
+        answer: { allOf: [{ $ref: '#/components/schemas/ImportAnswer' }], nullable: true }
+        sourceAnswer: { allOf: [{ $ref: '#/components/schemas/ImportAnswer' }], nullable: true }
+        aiSuggestedAnswer: { allOf: [{ $ref: '#/components/schemas/ImportSuggestion' }], nullable: true }
+    ImportItem:
+      type: object
+      properties:
+        id: { type: string }
+        jobId: { type: string }
+        position: { type: integer }
+        rawExcerpt: { type: string }
+        draft: { allOf: [{ $ref: '#/components/schemas/ImportDraft' }], nullable: true }
+        anomalies: { type: array, items: { type: string } }
+        reviewStatus: { type: string, enum: [pending, approved, published, rejected] }
+        publishedQuestionId: { type: string, nullable: true }
+        jobStatus: { type: string }
+        createdAt: { type: string }
         updatedAt: { type: string }

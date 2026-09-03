@@ -25,6 +25,7 @@ const tone = computed(() => {
         case 'official':
         case 'human_verified':
         case 'resolved':
+        case 'approved':
             return 'success';
         case 'pending':
         case 'grading':
@@ -40,6 +41,7 @@ const tone = computed(() => {
         case 'failed':
         case 'analysis_failed':
         case 'retired':
+        case 'rejected':
             return 'danger';
         case 'active':
         case 'ai':
