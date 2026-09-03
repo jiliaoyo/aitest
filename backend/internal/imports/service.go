@@ -18,6 +18,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -252,7 +253,10 @@ func (s *Service) handleStructure(ctx context.Context, attempts, maxAttempts int
 	}
 	items := make([]Item, 0, len(response.Items))
 	for i, raw := range response.Items {
-		draft := raw.toDraft()
+		draft, normalizedAnomalies, err := raw.toDraft()
+		if err != nil {
+			return s.failStage(ctx, attempts, maxAttempts, req.JobID, "structuring", fmt.Errorf("第 %d 题：%w", i+1, err))
+		}
 		if err := validateDraft(&draft); err != nil {
 			return s.failStage(ctx, attempts, maxAttempts, req.JobID, "structuring", fmt.Errorf("第 %d 题：%w", i+1, err))
 		}
@@ -267,6 +271,7 @@ func (s *Service) handleStructure(ctx context.Context, attempts, maxAttempts int
 		if anomalies == nil {
 			anomalies = []string{}
 		}
+		anomalies = append(anomalies, normalizedAnomalies...)
 		items = append(items, Item{Position: i + 1, RawExcerpt: rawExcerpt, Draft: &draft, Anomalies: anomalies})
 	}
 	if err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -279,29 +284,58 @@ func (s *Service) handleStructure(ctx context.Context, attempts, maxAttempts int
 }
 
 type aiDraft struct {
-	RawExcerpt        string               `json:"rawExcerpt"`
-	MaterialKey       string               `json:"materialKey"`
-	Type              string               `json:"type"`
-	Stem              string               `json:"stem"`
-	Options           []content.Option     `json:"options"`
-	MaterialTitle     string               `json:"materialTitle"`
-	MaterialContent   string               `json:"materialContent"`
-	LevelID           string               `json:"levelId"`
-	SubjectID         string               `json:"subjectId"`
-	SourceSectionID   *string              `json:"sourceSectionId"`
-	Difficulty        int                  `json:"difficulty"`
-	KnowledgePointIDs []string             `json:"knowledgePointIds"`
-	SourceAnswer      *content.AnswerInput `json:"sourceAnswer"`
-	AISuggestedAnswer *AnswerSuggestion    `json:"aiSuggestedAnswer"`
-	Anomalies         []string             `json:"anomalies"`
+	RawExcerpt        string            `json:"rawExcerpt"`
+	MaterialKey       string            `json:"materialKey"`
+	Type              string            `json:"type"`
+	Stem              string            `json:"stem"`
+	Options           []content.Option  `json:"options"`
+	MaterialTitle     string            `json:"materialTitle"`
+	MaterialContent   string            `json:"materialContent"`
+	LevelID           string            `json:"levelId"`
+	SubjectID         string            `json:"subjectId"`
+	SourceSectionID   *string           `json:"sourceSectionId"`
+	Difficulty        int               `json:"difficulty"`
+	KnowledgePointIDs []string          `json:"knowledgePointIds"`
+	SourceAnswer      json.RawMessage   `json:"sourceAnswer"`
+	AISuggestedAnswer *AnswerSuggestion `json:"aiSuggestedAnswer"`
+	Anomalies         []string          `json:"anomalies"`
 }
 
-func (d aiDraft) toDraft() Draft {
-	return Draft{MaterialKey: d.MaterialKey, Type: d.Type, Stem: d.Stem, Options: d.Options,
+func (d aiDraft) toDraft() (Draft, []string, error) {
+	draft := Draft{MaterialKey: d.MaterialKey, Type: d.Type, Stem: d.Stem, Options: d.Options,
 		MaterialTitle: d.MaterialTitle, MaterialContent: d.MaterialContent, LevelID: d.LevelID,
 		SubjectID: d.SubjectID, SourceSectionID: d.SourceSectionID, Difficulty: d.Difficulty,
-		KnowledgePointIDs: d.KnowledgePointIDs, Answer: d.SourceAnswer, SourceAnswer: d.SourceAnswer,
+		KnowledgePointIDs: d.KnowledgePointIDs,
 		AISuggestedAnswer: d.AISuggestedAnswer}
+	anomalies := []string{}
+	if len(d.SourceAnswer) == 0 || string(d.SourceAnswer) == "null" {
+		return draft, anomalies, nil
+	}
+	var sourceAnswer content.AnswerInput
+	if err := strictDecode(d.SourceAnswer, &sourceAnswer); err == nil {
+		draft.Answer = &sourceAnswer
+		draft.SourceAnswer = &sourceAnswer
+		return draft, anomalies, nil
+	}
+	var scalar string
+	if err := json.Unmarshal(d.SourceAnswer, &scalar); err != nil || scalar == "" {
+		return Draft{}, nil, errors.New("sourceAnswer 必须是标准答案对象")
+	}
+	for index, option := range d.Options {
+		if strings.EqualFold(scalar, option.ID) || strings.EqualFold(scalar, option.Label) || scalar == strconv.Itoa(index+1) {
+			value, _ := json.Marshal(map[string]any{"optionIds": []string{option.ID}})
+			draft.AISuggestedAnswer = &AnswerSuggestion{Value: value, Explanation: "AI 从原文识别到候选答案，请人工确认。"}
+			anomalies = append(anomalies, "AI 返回了非标准答案对象，已降级为 AI 建议答案，请人工确认。")
+			return draft, anomalies, nil
+		}
+	}
+	if d.Type == "fill_blank" || d.Type == "short_answer" {
+		value, _ := json.Marshal(map[string]string{"text": scalar})
+		draft.AISuggestedAnswer = &AnswerSuggestion{Value: value, Explanation: "AI 从原文识别到候选答案，请人工确认。"}
+		anomalies = append(anomalies, "AI 返回了非标准答案对象，已降级为 AI 建议答案，请人工确认。")
+		return draft, anomalies, nil
+	}
+	return Draft{}, nil, errors.New("sourceAnswer 未匹配到选项，已拒绝自动转换")
 }
 
 func validateDraft(d *Draft) error {
