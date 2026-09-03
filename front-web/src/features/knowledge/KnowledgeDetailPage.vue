@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { AIGeneratedSession, AIGenerationDifficulty, KnowledgePointDetail } from '@/api/types'
+import type { AIGeneratedSession, AIGenerationDifficulty, AIGenerationQuestionType, KnowledgePointDetail } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { formatPercent, formatDateTime } from '@/app/format'
@@ -18,6 +18,15 @@ const creating = ref(false)
 const generatingAI = ref(false)
 const generateAIError = ref('')
 const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
+const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
+
+const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[] = [
+  { value: 'mixed', label: '混合题型' },
+  { value: 'single_choice', label: '单项选择' },
+  { value: 'multiple_choice', label: '多项选择' },
+  { value: 'fill_blank', label: '填空题' },
+  { value: 'short_answer', label: '简答题' },
+]
 
 async function load(): Promise<void> {
   state.value = 'loading'
@@ -78,6 +87,7 @@ async function generateAIPractice(): Promise<void> {
         knowledgePointIds: [detail.value.id],
         count: 20,
         difficulty: aiDifficulty.value,
+        questionType: aiQuestionType.value,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -112,6 +122,12 @@ async function generateAIPractice(): Promise<void> {
       <section class="card" aria-labelledby="ai-generation-title">
         <h2 id="ai-generation-title" style="font-size: 18px; margin-top: 0">AI 生成题目</h2>
         <p class="muted">围绕当前知识点生成 20 道新题，仅用于本次账号练习，不会自动进入公共题库。</p>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-question-type">题型</label>
+          <select id="ai-question-type" v-model="aiQuestionType" :disabled="generatingAI">
+            <option v-for="option in aiQuestionTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
         <div class="field" style="max-width: 280px">
           <label for="ai-difficulty">难度</label>
           <select id="ai-difficulty" v-model="aiDifficulty" :disabled="generatingAI">
