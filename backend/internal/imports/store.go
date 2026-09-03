@@ -171,7 +171,7 @@ func (s *Store) MarkFailed(ctx context.Context, id, stage string, cause error) e
 	}
 	_, err := s.db.Exec(ctx,
 		`UPDATE import_jobs SET status = 'failed', stage_error = $2,
-		 stage_times = stage_times || jsonb_build_object($3, now()), updated_at = now() WHERE id = $1`,
+		 stage_times = stage_times || jsonb_build_object($3::text, now()), updated_at = now() WHERE id = $1`,
 		id, message, stage+"FailedAt")
 	return err
 }
