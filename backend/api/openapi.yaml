@@ -174,6 +174,8 @@ paths:
         - { name: levelId, in: query, schema: { type: string } }
         - { name: subjectId, in: query, schema: { type: string } }
         - { name: q, in: query, schema: { type: string }, description: 名称模糊搜索 }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:
         '200':
           description: OK
@@ -185,6 +187,7 @@ paths:
                   knowledgePoints:
                     type: array
                     items: { $ref: '#/components/schemas/KnowledgePointItem' }
+                  nextCursor: { type: string }
   /knowledge-points/{id}:
     get:
       tags: [learning]
@@ -197,7 +200,10 @@ paths:
     get:
       tags: [learning]
       summary: 错题本（每题取最近一次错误作答）
-      parameters: [{ name: knowledgePointId, in: query, schema: { type: string } }]
+      parameters:
+        - { name: knowledgePointId, in: query, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:
         '200':
           description: OK
@@ -209,6 +215,7 @@ paths:
                   wrongItems:
                     type: array
                     items: { $ref: '#/components/schemas/WrongItem' }
+                  nextCursor: { type: string }
   /wrong-items/{id}:
     delete:
       tags: [learning]
@@ -519,8 +526,20 @@ paths:
     get:
       tags: [admin]
       summary: 知识点管理列表
-      parameters: [{ name: levelId, in: query, schema: { type: string } }]
-      responses: { '200': { description: OK } }
+      parameters:
+        - { name: levelId, in: query, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  knowledgePoints: { type: array, items: { $ref: '#/components/schemas/AdminKnowledgePoint' } }
+                  nextCursor: { type: string }
     post:
       tags: [admin]
       summary: 新建知识点（默认草稿）
@@ -550,7 +569,19 @@ paths:
     get:
       tags: [admin]
       summary: 来源与章节列表
-      responses: { '200': { description: OK } }
+      parameters:
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sources: { type: array, items: { $ref: '#/components/schemas/Source' } }
+                  nextCursor: { type: string }
     post:
       tags: [admin]
       summary: 新建来源（必须记录授权说明）
@@ -571,8 +602,20 @@ paths:
     get:
       tags: [admin]
       summary: 举报列表
-      parameters: [{ name: status, in: query, schema: { type: string, enum: [open, resolved, dismissed] } }]
-      responses: { '200': { description: OK } }
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, resolved, dismissed] } }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issueReports: { type: array, items: { $ref: '#/components/schemas/IssueReport' } }
+                  nextCursor: { type: string }
   /admin/issue-reports/{id}:
     patch:
       tags: [admin]
@@ -606,6 +649,7 @@ paths:
       summary: 导入任务列表
       parameters:
         - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
       responses:
         '200':
           description: OK
@@ -615,11 +659,15 @@ paths:
                 type: object
                 properties:
                   jobs: { type: array, items: { $ref: '#/components/schemas/ImportJob' } }
+                  nextCursor: { type: string }
   /admin/import-jobs/{id}:
     get:
       tags: [admin]
       summary: 导入任务进度、提取原文和结构化草稿
-      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的导入项位置游标 }
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:
         '200':
           description: OK
@@ -630,6 +678,7 @@ paths:
                 properties:
                   job: { $ref: '#/components/schemas/ImportJob' }
                   items: { type: array, items: { $ref: '#/components/schemas/ImportItem' } }
+                  nextCursor: { type: string }
         '404': { $ref: '#/components/responses/NotFound' }
   /admin/import-jobs/{id}/retry:
     post:
@@ -905,6 +954,51 @@ components:
             commonMistakes: { type: string }
             examples: { type: string }
             status: { type: string }
+    AdminKnowledgePoint:
+      type: object
+      properties:
+        id: { type: string }
+        examId: { type: string }
+        levelId: { type: string }
+        subjectId: { type: string }
+        parentId: { type: string, nullable: true }
+        name: { type: string }
+        description: { type: string }
+        commonMistakes: { type: string }
+        examples: { type: string }
+        status: { type: string, enum: [draft, published, retired] }
+        questionCount: { type: integer }
+    Source:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [book, past_exam, self_made, ai_generated] }
+        author: { type: string }
+        publisher: { type: string }
+        year: { type: integer, nullable: true }
+        licenseNote: { type: string }
+        internalNote: { type: string }
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              sourceId: { type: string }
+              name: { type: string }
+    IssueReport:
+      type: object
+      properties:
+        id: { type: string }
+        targetType: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [open, resolved, dismissed] }
+        resolutionNote: { type: string }
+        createdAt: { type: string }
+        userEmail: { type: string }
+        stem: { type: string }
+        questionId: { type: string }
     WrongItem:
       type: object
       properties:

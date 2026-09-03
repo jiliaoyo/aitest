@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/store"
@@ -63,13 +65,29 @@ type sourceRow struct {
 	Year         *int
 	LicenseNote  string
 	InternalNote string
+	CreatedAt    string
 }
 
-func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
+func (s *Store) ListSources(ctx context.Context, cursor string, limit int) ([]Source, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	args := []any{}
+	where := "true"
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 2 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1])
+		where = "(created_at, id) > ($1::timestamptz, $2::uuid)"
+	}
+	args = append(args, limit)
 	rows, err := store.CollectRows[sourceRow](ctx, s.db,
-		`SELECT id, name, kind, author, publisher, year, license_note, internal_note FROM sources ORDER BY created_at`)
+		`SELECT id, name, kind, author, publisher, year, license_note, internal_note, created_at::text
+		 FROM sources WHERE `+where+` ORDER BY created_at, id LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]Source, 0, len(rows))
 	for _, r := range rows {
@@ -79,21 +97,33 @@ func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
 			Sections: []SourceSection{},
 		})
 	}
-	sections, err := store.CollectRows[SourceSection](ctx, s.db,
-		`SELECT id, source_id, name, sort_order FROM source_sections ORDER BY sort_order`)
-	if err != nil {
-		return nil, err
-	}
-	idx := map[string]int{}
-	for i := range out {
-		idx[out[i].ID] = i
-	}
-	for _, sec := range sections {
-		if i, ok := idx[sec.SourceID]; ok {
-			out[i].Sections = append(out[i].Sections, sec)
+	if len(out) > 0 {
+		sourceIDs := make([]string, 0, len(out))
+		for _, src := range out {
+			sourceIDs = append(sourceIDs, src.ID)
+		}
+		sections, err := store.CollectRows[SourceSection](ctx, s.db,
+			`SELECT id, source_id, name, sort_order FROM source_sections
+			 WHERE source_id = ANY($1::uuid[]) ORDER BY sort_order, id`, sourceIDs)
+		if err != nil {
+			return nil, "", err
+		}
+		idx := map[string]int{}
+		for i := range out {
+			idx[out[i].ID] = i
+		}
+		for _, sec := range sections {
+			if i, ok := idx[sec.SourceID]; ok {
+				out[i].Sections = append(out[i].Sections, sec)
+			}
 		}
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = r.CreatedAt + "\x00" + r.ID
+	}
+	return out, next, nil
 }
 
 func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID string) ([]PracticeSource, error) {

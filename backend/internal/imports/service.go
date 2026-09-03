@@ -487,17 +487,17 @@ func (s *Service) Retry(ctx context.Context, jobID string) (Job, error) {
 	return s.store.JobByID(ctx, jobID)
 }
 
-func (s *Service) ListJobs(ctx context.Context, limit int) ([]Job, error) {
-	return s.store.ListJobs(ctx, limit)
+func (s *Service) ListJobs(ctx context.Context, cursor string, limit int) ([]Job, string, error) {
+	return s.store.ListJobs(ctx, cursor, limit)
 }
 
-func (s *Service) GetJob(ctx context.Context, id string) (Job, []Item, error) {
+func (s *Service) GetJob(ctx context.Context, id, cursor string, limit int) (Job, []Item, string, error) {
 	job, err := s.store.JobByID(ctx, id)
 	if err != nil {
-		return Job{}, nil, err
+		return Job{}, nil, "", err
 	}
-	items, err := s.store.ItemsByJob(ctx, id)
-	return job, items, err
+	items, nextCursor, err := s.store.ItemsByJob(ctx, id, cursor, limit)
+	return job, items, nextCursor, err
 }
 
 func (s *Service) GetItem(ctx context.Context, id string) (Item, error) {

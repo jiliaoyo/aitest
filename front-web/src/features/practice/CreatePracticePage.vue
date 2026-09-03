@@ -47,7 +47,9 @@ const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[
 ]
 
 const kps = ref<KnowledgePointItem[]>([])
+const kpNextCursor = ref('')
 const kpsLoading = ref(false)
+const kpsLoadingMore = ref(false)
 const sources = ref<PracticeSource[]>([])
 const sourcesLoading = ref(false)
 const sourcesError = ref('')
@@ -69,12 +71,14 @@ const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
 const selectedLevelName = computed(() => levels.value.find((level) => level.id === aiLevelId.value)?.name ?? '指定级别')
 
-watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId, knowledgePointIds], async () => {
+watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], async () => {
   await refreshAvailability()
   if (mode.value === 'knowledge') {
     await loadKnowledgePoints()
   }
 }, { deep: true })
+
+watch(knowledgePointIds, () => void refreshAvailability(), { deep: true })
 
 watch([levelId, subjectId], async () => {
   if (!levelId.value) return
@@ -131,16 +135,23 @@ function refreshAvailability(): void {
   }, 250)
 }
 
-async function loadKnowledgePoints(): Promise<void> {
+async function loadKnowledgePoints(append = false): Promise<void> {
   if (!levelId.value) return
-  kpsLoading.value = true
+  if (append) kpsLoadingMore.value = true
+  else {
+    kpsLoading.value = true
+    kpNextCursor.value = ''
+  }
   try {
-    const params = new URLSearchParams({ levelId: levelId.value })
+    const params = new URLSearchParams({ levelId: levelId.value, limit: '20' })
     if (subjectId.value) params.set('subjectId', subjectId.value)
-    const res = await request<{ knowledgePoints: KnowledgePointItem[] }>(`/knowledge-points?${params}`)
-    kps.value = res.knowledgePoints
+    if (append && kpNextCursor.value) params.set('cursor', kpNextCursor.value)
+    const res = await request<{ knowledgePoints: KnowledgePointItem[]; nextCursor?: string }>(`/knowledge-points?${params}`)
+    kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
+    kpNextCursor.value = res.nextCursor ?? ''
   } finally {
     kpsLoading.value = false
+    kpsLoadingMore.value = false
   }
 }
 
@@ -304,6 +315,9 @@ async function generateAIPractice(): Promise<void> {
               </span>
             </label>
             <p v-if="kps.length === 0" class="muted">该级别下暂无已发布知识点。</p>
+            <button v-if="kpNextCursor" type="button" :disabled="kpsLoadingMore" @click="loadKnowledgePoints(true)">
+              {{ kpsLoadingMore ? '加载中…' : '加载更多知识点' }}
+            </button>
           </template>
         </div>
 

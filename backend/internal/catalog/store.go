@@ -3,6 +3,8 @@ package catalog
 import (
 	"context"
 	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/store"
@@ -110,13 +112,15 @@ type kpRow struct {
 	Examples       string
 	Status         string
 	QuestionCount  int
+	CreatedAt      string
 }
 
 const kpColumns = `kp.id, kp.exam_id, kp.level_id::text, kp.subject_id::text, kp.parent_id, kp.name,
  kp.description, kp.common_mistakes, kp.examples, kp.status,
  (SELECT count(*) FROM question_version_knowledge_points qvkp
   JOIN question_versions v ON v.id = qvkp.question_version_id
-  WHERE qvkp.knowledge_point_id = kp.id) AS question_count`
+  WHERE qvkp.knowledge_point_id = kp.id) AS question_count,
+ kp.created_at::text`
 
 func toKP(r kpRow) KnowledgePoint {
 	return KnowledgePoint{
@@ -139,19 +143,39 @@ func (s *Store) KnowledgePointByID(ctx context.Context, id string) (KnowledgePoi
 	return toKP(r), nil
 }
 
-func (s *Store) ListKnowledgePointsAdmin(ctx context.Context, levelID string) ([]KnowledgePoint, error) {
+func (s *Store) ListKnowledgePointsAdmin(ctx context.Context, levelID, cursor string, limit int) ([]KnowledgePoint, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	args := []any{levelID}
+	where := "($1 = '' OR kp.level_id::text = $1)"
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 2 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1])
+		n := len(args)
+		where += " AND (kp.created_at, kp.id) > ($" + strconv.Itoa(n-1) + "::timestamptz, $" + strconv.Itoa(n) + "::uuid)"
+	}
+	args = append(args, limit)
 	rows, err := store.CollectRows[kpRow](ctx, s.db,
 		`SELECT `+kpColumns+` FROM knowledge_points kp
-		 WHERE ($1 = '' OR kp.level_id::text = $1)
-		 ORDER BY kp.created_at`, levelID)
+		 WHERE `+where+`
+		 ORDER BY kp.created_at, kp.id LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]KnowledgePoint, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, toKP(r))
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = r.CreatedAt + "\x00" + r.ID
+	}
+	return out, next, nil
 }
 
 func (s *Store) CreateKnowledgePoint(ctx context.Context, kp *KnowledgePoint) error {

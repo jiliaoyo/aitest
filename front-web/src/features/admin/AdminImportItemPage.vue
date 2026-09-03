@@ -15,6 +15,8 @@ const item = ref<ImportItemDTO | null>(null)
 const exams = ref<Exam[]>([])
 const sources = ref<SourceDTO[]>([])
 const kps = ref<AdminKnowledgePoint[]>([])
+const kpNextCursor = ref('')
+const kpLoadingMore = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -107,12 +109,20 @@ async function load(): Promise<void> {
   }
 }
 
-async function loadKPs(): Promise<void> {
+async function loadKPs(append = false): Promise<void> {
   if (!form.levelId) return
-  const params = new URLSearchParams({ levelId: form.levelId })
+  if (!append) kpNextCursor.value = ''
+  const params = new URLSearchParams({ levelId: form.levelId, limit: '20' })
   if (form.subjectId) params.set('subjectId', form.subjectId)
-  const res = await request<{ knowledgePoints: AdminKnowledgePoint[] }>(`/admin/knowledge-points?${params}`)
-  kps.value = res.knowledgePoints
+  if (append && kpNextCursor.value) params.set('cursor', kpNextCursor.value)
+  if (append) kpLoadingMore.value = true
+  try {
+    const res = await request<{ knowledgePoints: AdminKnowledgePoint[]; nextCursor?: string }>(`/admin/knowledge-points?${params}`)
+    kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
+    kpNextCursor.value = res.nextCursor ?? ''
+  } finally {
+    kpLoadingMore.value = false
+  }
 }
 
 watch(() => [form.levelId, form.subjectId], () => void loadKPs())
@@ -274,7 +284,7 @@ onMounted(() => void load())
             <div class="field"><label for="import-subject">科目</label><select id="import-subject" v-model="form.subjectId"><option v-for="subject in exams.flatMap((exam) => exam.subjects)" :key="subject.id" :value="subject.id">{{ subject.name }}</option></select><p v-if="fieldErr.subjectId" class="error">{{ fieldErr.subjectId }}</p></div>
           </div>
           <div class="field"><label for="import-section">来源章节</label><select id="import-section" v-model="form.sourceSectionId"><option value="">不关联</option><option v-for="section in sections" :key="section.id" :value="section.id">{{ section.sourceName }} / {{ section.name }}</option></select></div>
-          <div class="field"><span>知识点</span><label v-for="kp in kps" :key="kp.id" class="option-row"><input v-model="form.knowledgePointIds" type="checkbox" :value="kp.id" />{{ kp.name }}</label></div>
+          <div class="field"><span>知识点</span><label v-for="kp in kps" :key="kp.id" class="option-row"><input v-model="form.knowledgePointIds" type="checkbox" :value="kp.id" />{{ kp.name }}</label><button v-if="kpNextCursor" type="button" :disabled="kpLoadingMore" @click="loadKPs(true)">{{ kpLoadingMore ? '加载中…' : '加载更多知识点' }}</button></div>
 
           <fieldset class="import-answer-fieldset">
             <legend>标准答案</legend>

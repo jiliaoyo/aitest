@@ -336,8 +336,8 @@ func (s *Service) SubmitReview(ctx context.Context, adminID, questionID string) 
 
 // ---------- 来源管理 ----------
 
-func (s *Service) ListSources(ctx context.Context) ([]Source, error) {
-	return s.store.ListSources(ctx)
+func (s *Service) ListSources(ctx context.Context, cursor string, limit int) ([]Source, string, error) {
+	return s.store.ListSources(ctx, cursor, limit)
 }
 
 func (s *Service) CreateSource(ctx context.Context, adminID string, src *Source) error {

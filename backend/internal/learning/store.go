@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/store"
@@ -28,6 +29,7 @@ type kpStatRow struct {
 	LevelCode         string
 	SubjectID         string
 	SubjectName       string
+	SubjectSortOrder  int
 	ParentID          *string
 	QuestionCount     int
 	ConfirmedAnswered int
@@ -58,7 +60,7 @@ func (r kpStatRow) toItem() KnowledgePointItem {
 	return item
 }
 
-const kpStatsColumns = `kp.id::text, kp.name, kp.level_id::text, l.code, kp.subject_id::text, s.name,
+const kpStatsColumns = `kp.id::text, kp.name, kp.level_id::text, l.code, kp.subject_id::text, s.name, s.sort_order,
  kp.parent_id,
 	 (SELECT count(*) FROM question_version_knowledge_points qvkp
 	  JOIN question_versions v ON v.id = qvkp.question_version_id
@@ -78,7 +80,10 @@ const kpStatsJoins = `FROM knowledge_points kp
  JOIN subjects s ON s.id = kp.subject_id
  LEFT JOIN user_knowledge_stats st ON st.knowledge_point_id = kp.id AND st.user_id = $1`
 
-func (s *Store) KnowledgePoints(ctx context.Context, userID, levelID, subjectID, search string) ([]KnowledgePointItem, error) {
+func (s *Store) KnowledgePoints(ctx context.Context, userID, levelID, subjectID, search, cursor string, limit int) ([]KnowledgePointItem, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 	args := []any{userID}
 	where := "kp.status = 'published'"
 	if levelID != "" {
@@ -93,16 +98,31 @@ func (s *Store) KnowledgePoints(ctx context.Context, userID, levelID, subjectID,
 		args = append(args, "%"+search+"%")
 		where += " AND kp.name ILIKE $" + strconv.Itoa(len(args))
 	}
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 3 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1], parts[2])
+		n := len(args)
+		where += " AND (s.sort_order, kp.name, kp.id) > ($" + strconv.Itoa(n-2) + ", $" + strconv.Itoa(n-1) + ", $" + strconv.Itoa(n) + "::uuid)"
+	}
+	args = append(args, limit)
 	rows, err := store.CollectRows[kpStatRow](ctx, s.db,
-		`SELECT `+kpStatsColumns+` `+kpStatsJoins+` WHERE `+where+` ORDER BY s.sort_order, kp.name`, args...)
+		`SELECT `+kpStatsColumns+` `+kpStatsJoins+` WHERE `+where+` ORDER BY s.sort_order, kp.name, kp.id LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]KnowledgePointItem, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, r.toItem())
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = strconv.Itoa(r.SubjectSortOrder) + "\x00" + r.Name + "\x00" + r.ID
+	}
+	return out, next, nil
 }
 
 func (s *Store) KnowledgePointDetailForUser(ctx context.Context, userID, id string) (KnowledgePointDetail, error) {
@@ -117,7 +137,7 @@ func (s *Store) KnowledgePointDetailForUser(ctx context.Context, userID, id stri
 		 JOIN subjects s ON s.id = kp.subject_id
 		 LEFT JOIN user_knowledge_stats st ON st.knowledge_point_id = kp.id AND st.user_id = $1
 		 WHERE kp.id = $2 AND kp.status = 'published'`, userID, id,
-	).Scan(&row.ID, &row.Name, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.SubjectName,
+	).Scan(&row.ID, &row.Name, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.SubjectName, &row.SubjectSortOrder,
 		&row.ParentID, &row.QuestionCount,
 		&row.ConfirmedAnswered, &row.ConfirmedCorrect, &row.RecentAnswered, &row.RecentCorrect,
 		&row.AIAnswered, &row.AICorrect, &row.ConsecutiveWrong, &row.LastPracticedAt, &row.StatsFound,
@@ -456,7 +476,10 @@ type wrongItemRow struct {
 }
 
 // WrongItems 返回每个错题（最近一次错误作答）及其解析，支持按知识点筛选。
-func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string, limit int) ([]wrongItemRow, error) {
+func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, cursor string, limit int) ([]wrongItemRow, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 	args := []any{userID}
 	where := ""
 	if knowledgePointID != "" {
@@ -465,9 +488,19 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string,
 		     WHERE qvkp2.question_version_id = pi.question_version_id
 		       AND qvkp2.knowledge_point_id::text = $2)`
 	}
+	outerWhere := ""
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 2 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1])
+		n := len(args)
+		outerWhere = " WHERE (w.graded_at::timestamptz, w.item_id::uuid) < ($" + strconv.Itoa(n-1) + "::timestamptz, $" + strconv.Itoa(n) + "::uuid)"
+	}
 	args = append(args, limit)
 	limitPh := "$" + strconv.Itoa(len(args))
-	return store.CollectRows[wrongItemRow](ctx, s.db,
+	rows, err := store.CollectRows[wrongItemRow](ctx, s.db,
 		`SELECT w.* FROM (
 		   SELECT DISTINCT ON (pi.question_id)
 		          pi.id::text AS item_id, ps.id::text AS session_id, pi.question_id::text,
@@ -490,7 +523,16 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string,
 		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
 		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))`+where+`
 		   ORDER BY pi.question_id, gr.updated_at DESC
-		 ) w ORDER BY w.graded_at DESC LIMIT `+limitPh, args...)
+		 ) w`+outerWhere+` ORDER BY w.graded_at DESC, w.item_id DESC LIMIT `+limitPh, args...)
+	if err != nil {
+		return nil, "", err
+	}
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = r.GradedAt + "\x00" + r.ItemID
+	}
+	return rows, next, nil
 }
 
 func (s *Store) DeleteWrongItem(ctx context.Context, userID, itemID string) error {
@@ -585,12 +627,24 @@ type issueListRow struct {
 	QuestionID     string
 }
 
-func (s *Store) ListIssueReports(ctx context.Context, status string, limit int) ([]IssueReport, error) {
+func (s *Store) ListIssueReports(ctx context.Context, status, cursor string, limit int) ([]IssueReport, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 	args := []any{}
 	where := "true"
 	if status != "" {
 		args = append(args, status)
 		where = "ir.status = $1"
+	}
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 2 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1])
+		n := len(args)
+		where += " AND (ir.created_at, ir.id) < ($" + strconv.Itoa(n-1) + "::timestamptz, $" + strconv.Itoa(n) + "::uuid)"
 	}
 	args = append(args, limit)
 	rows, err := store.CollectRows[issueListRow](ctx, s.db,
@@ -601,9 +655,9 @@ func (s *Store) ListIssueReports(ctx context.Context, status string, limit int) 
 		 JOIN users u ON u.id = ir.user_id
 		 JOIN question_versions v ON v.id = ir.question_version_id
 		 WHERE `+where+`
-		 ORDER BY ir.created_at DESC LIMIT `+"$"+strconv.Itoa(len(args)), args...)
+		 ORDER BY ir.created_at DESC, ir.id DESC LIMIT `+"$"+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]IssueReport, 0, len(rows))
 	for _, r := range rows {
@@ -613,7 +667,12 @@ func (s *Store) ListIssueReports(ctx context.Context, status string, limit int) 
 			CreatedAt: r.CreatedAt, UserEmail: r.UserEmail, Stem: r.Stem, QuestionID: r.QuestionID,
 		})
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = r.CreatedAt + "\x00" + r.ID
+	}
+	return out, next, nil
 }
 
 func (s *Store) ResolveIssueReport(ctx context.Context, pool *pgxpool.Pool, adminID, id, status, note string) error {

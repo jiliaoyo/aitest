@@ -134,12 +134,14 @@ func (h *Handler) retire(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listSources(w http.ResponseWriter, r *http.Request) {
-	sources, err := h.service.ListSources(r.Context())
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	sources, nextCursor, err := h.service.ListSources(r.Context(), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"sources": sources})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"sources": sources, "nextCursor": nextCursor})
 }
 
 func (h *Handler) createSource(w http.ResponseWriter, r *http.Request) {

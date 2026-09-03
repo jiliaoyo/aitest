@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
@@ -60,13 +61,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, adminMux *http.ServeMux) {
 
 func (h *Handler) listKnowledgePoints(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	items, err := h.store.KnowledgePoints(r.Context(), ctxkeys.UserID(r.Context()),
-		q.Get("levelId"), q.Get("subjectId"), q.Get("q"))
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	items, nextCursor, err := h.store.KnowledgePoints(r.Context(), ctxkeys.UserID(r.Context()),
+		q.Get("levelId"), q.Get("subjectId"), q.Get("q"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"knowledgePoints": items})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"knowledgePoints": items, "nextCursor": nextCursor})
 }
 
 func (h *Handler) knowledgePointDetail(w http.ResponseWriter, r *http.Request) {
@@ -157,8 +159,10 @@ func (h *Handler) deleteMemory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.store.WrongItems(r.Context(), ctxkeys.UserID(r.Context()),
-		r.URL.Query().Get("knowledgePointId"), 50)
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	rows, nextCursor, err := h.store.WrongItems(r.Context(), ctxkeys.UserID(r.Context()),
+		q.Get("knowledgePointId"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
@@ -209,7 +213,7 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 	for _, id := range order {
 		out = append(out, items[id])
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"wrongItems": out})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"wrongItems": out, "nextCursor": nextCursor})
 }
 
 func (h *Handler) deleteWrongItem(w http.ResponseWriter, r *http.Request) {
@@ -252,13 +256,14 @@ func (h *Handler) createIssueReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listIssueReports(w http.ResponseWriter, r *http.Request) {
-	limit := 50
-	reports, err := h.store.ListIssueReports(r.Context(), r.URL.Query().Get("status"), limit)
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	reports, nextCursor, err := h.store.ListIssueReports(r.Context(), q.Get("status"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"issueReports": reports})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"issueReports": reports, "nextCursor": nextCursor})
 }
 
 func (h *Handler) resolveIssueReport(w http.ResponseWriter, r *http.Request) {

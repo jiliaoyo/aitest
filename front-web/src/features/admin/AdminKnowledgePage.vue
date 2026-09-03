@@ -7,6 +7,8 @@ import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const kps = ref<AdminKnowledgePoint[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const exams = ref<Exam[]>([])
 const levelFilter = ref('')
 const state = ref<'loading' | 'ready' | 'error'>('loading')
@@ -28,18 +30,25 @@ const saving = ref(false)
 
 const subjects = ref<Exam['subjects']>([])
 
-async function load(): Promise<void> {
-  state.value = 'loading'
+async function load(append = false): Promise<void> {
+  if (append) loadingMore.value = true
+  else state.value = 'loading'
   try {
-    const res = await request<{ knowledgePoints: AdminKnowledgePoint[] }>(
-      `/admin/knowledge-points?levelId=${levelFilter.value}`,
+    const params = new URLSearchParams({ limit: '20' })
+    if (levelFilter.value) params.set('levelId', levelFilter.value)
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const res = await request<{ knowledgePoints: AdminKnowledgePoint[]; nextCursor?: string }>(
+      `/admin/knowledge-points?${params}`,
     )
-    kps.value = res.knowledgePoints
+    kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
+    nextCursor.value = res.nextCursor ?? ''
     state.value = 'ready'
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -177,7 +186,7 @@ async function unpublish(k: AdminKnowledgePoint): Promise<void> {
 
     <div class="field" style="max-width: 260px">
       <label for="k-filter">按级别筛选</label>
-      <select id="k-filter" v-model="levelFilter" @change="load">
+      <select id="k-filter" v-model="levelFilter" @change="() => load()">
         <option value="">全部</option>
         <option v-for="l in exams.flatMap((e) => e.levels)" :key="l.id" :value="l.id">{{ l.name }}</option>
       </select>
@@ -212,6 +221,9 @@ async function unpublish(k: AdminKnowledgePoint): Promise<void> {
           </tr>
         </tbody>
       </table>
+      <p v-if="nextCursor" style="margin: 12px 0 0; text-align: center">
+        <button :disabled="loadingMore" @click="load(true)">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+      </p>
     </div>
   </AppShell>
 </template>

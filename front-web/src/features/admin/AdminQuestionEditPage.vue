@@ -15,6 +15,8 @@ const questionID = computed(() => route.params.questionId as string | undefined)
 const exams = ref<Exam[]>([])
 const sources = ref<SourceDTO[]>([])
 const kps = ref<AdminKnowledgePoint[]>([])
+const kpNextCursor = ref('')
+const kpLoadingMore = ref(false)
 
 const pageState = ref<'loading' | 'ready' | 'error' | 'notfound'>('loading')
 const loadError = ref('')
@@ -117,12 +119,20 @@ async function loadQuestion(): Promise<void> {
   }
 }
 
-async function loadKPs(): Promise<void> {
+async function loadKPs(append = false): Promise<void> {
   if (!form.levelId) return
-  const params = new URLSearchParams({ levelId: form.levelId })
+  if (!append) kpNextCursor.value = ''
+  const params = new URLSearchParams({ levelId: form.levelId, limit: '20' })
   if (form.subjectId) params.set('subjectId', form.subjectId)
-  const res = await request<{ knowledgePoints: AdminKnowledgePoint[] }>(`/admin/knowledge-points?${params}`)
-  kps.value = res.knowledgePoints
+  if (append && kpNextCursor.value) params.set('cursor', kpNextCursor.value)
+  if (append) kpLoadingMore.value = true
+  try {
+    const res = await request<{ knowledgePoints: AdminKnowledgePoint[]; nextCursor?: string }>(`/admin/knowledge-points?${params}`)
+    kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
+    kpNextCursor.value = res.nextCursor ?? ''
+  } finally {
+    kpLoadingMore.value = false
+  }
 }
 
 watch(() => [form.levelId, form.subjectId], () => void loadKPs())
@@ -361,6 +371,9 @@ async function retire(): Promise<void> {
             <input v-model="form.knowledgePointIds" type="checkbox" :value="k.id" />
             <span>{{ k.name }} <span class="muted">{{ k.status === 'published' ? '已发布' : '草稿' }}</span></span>
           </label>
+          <button v-if="kpNextCursor" type="button" :disabled="kpLoadingMore" @click="loadKPs(true)">
+            {{ kpLoadingMore ? '加载中…' : '加载更多知识点' }}
+          </button>
           <p v-if="fieldErr.knowledgePointIds" class="error">{{ fieldErr.knowledgePointIds }}</p>
         </div>
 

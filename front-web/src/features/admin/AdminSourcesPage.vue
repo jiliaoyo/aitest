@@ -7,6 +7,8 @@ import AppStatus from '@/components/AppStatus.vue'
 import { sourceKindText } from '@/app/format'
 
 const sources = ref<SourceDTO[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -25,16 +27,23 @@ const fieldErr = reactive<Record<string, string>>({})
 const topError = ref('')
 const saving = ref(false)
 
-async function load(): Promise<void> {
-  state.value = 'loading'
+async function load(append = false): Promise<void> {
+  if (append) loadingMore.value = true
+  else state.value = 'loading'
   try {
-    const res = await request<{ sources: SourceDTO[] }>('/admin/sources')
-    sources.value = res.sources
+    const params = new URLSearchParams({ limit: '20' })
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const path = append ? `/admin/sources?${params}` : '/admin/sources'
+    const res = await request<{ sources: SourceDTO[]; nextCursor?: string }>(path)
+    sources.value = append ? [...sources.value, ...res.sources] : res.sources
+    nextCursor.value = res.nextCursor ?? ''
     state.value = 'ready'
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -164,6 +173,9 @@ async function addSection(source: SourceDTO): Promise<void> {
           <button @click="addSection(s)">添加章节</button>
         </div>
       </article>
+      <p v-if="nextCursor" style="margin: 0; text-align: center">
+        <button :disabled="loadingMore" @click="load(true)">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+      </p>
     </div>
   </AppShell>
 </template>

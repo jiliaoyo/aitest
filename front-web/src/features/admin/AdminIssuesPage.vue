@@ -8,6 +8,8 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import { formatDateTime } from '@/app/format'
 
 const reports = ref<IssueReportDTO[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -21,16 +23,22 @@ const targetTypeText: Record<string, string> = {
   ai_grading: 'AI 判定',
 }
 
-async function load(): Promise<void> {
-  state.value = 'loading'
+async function load(append = false): Promise<void> {
+  if (append) loadingMore.value = true
+  else state.value = 'loading'
   try {
-    const res = await request<{ issueReports: IssueReportDTO[] }>(`/admin/issue-reports?status=${statusFilter.value}`)
-    reports.value = res.issueReports
+    const params = new URLSearchParams({ status: statusFilter.value, limit: '20' })
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const res = await request<{ issueReports: IssueReportDTO[]; nextCursor?: string }>(`/admin/issue-reports?${params}`)
+    reports.value = append ? [...reports.value, ...res.issueReports] : res.issueReports
+    nextCursor.value = res.nextCursor ?? ''
     state.value = 'ready'
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -55,7 +63,7 @@ async function handle(report: IssueReportDTO, status: 'resolved' | 'dismissed'):
       <h1 style="font-size: 24px; margin: 0">举报处理</h1>
       <label style="display: flex; align-items: center; gap: 8px">
         <span class="muted">状态</span>
-        <select v-model="statusFilter" @change="load">
+        <select v-model="statusFilter" @change="() => load()">
           <option value="open">待处理</option>
           <option value="resolved">已解决</option>
           <option value="dismissed">已驳回</option>
@@ -95,6 +103,9 @@ async function handle(report: IssueReportDTO, status: 'resolved' | 'dismissed'):
         </div>
         <p v-else-if="r.resolutionNote" class="muted" style="margin-top: 10px">处理备注：{{ r.resolutionNote }}</p>
       </article>
+      <p v-if="nextCursor" style="margin: 0; text-align: center">
+        <button :disabled="loadingMore" @click="load(true)">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+      </p>
     </div>
   </AppShell>
 </template>

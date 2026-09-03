@@ -51,22 +51,25 @@ func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listJobs(w http.ResponseWriter, r *http.Request) {
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	jobs, err := h.service.ListJobs(r.Context(), limit)
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	jobs, nextCursor, err := h.service.ListJobs(r.Context(), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"jobs": jobs})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"jobs": jobs, "nextCursor": nextCursor})
 }
 
 func (h *Handler) getJob(w http.ResponseWriter, r *http.Request) {
-	job, items, err := h.service.GetJob(r.Context(), r.PathValue("id"))
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	job, items, nextCursor, err := h.service.GetJob(r.Context(), r.PathValue("id"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"job": job, "items": items})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"job": job, "items": items, "nextCursor": nextCursor})
 }
 
 func (h *Handler) retryJob(w http.ResponseWriter, r *http.Request) {

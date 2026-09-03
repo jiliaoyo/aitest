@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
@@ -41,13 +42,14 @@ func (h *Handler) catalog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) adminListKnowledgePoints(w http.ResponseWriter, r *http.Request) {
-	levelID := r.URL.Query().Get("levelId")
-	kps, err := h.store.ListKnowledgePointsAdmin(r.Context(), levelID)
+	q := r.URL.Query()
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	kps, nextCursor, err := h.store.ListKnowledgePointsAdmin(r.Context(), q.Get("levelId"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"knowledgePoints": kps})
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"knowledgePoints": kps, "nextCursor": nextCursor})
 }
 
 func (h *Handler) adminCreateKnowledgePoint(w http.ResponseWriter, r *http.Request) {

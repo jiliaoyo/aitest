@@ -8,6 +8,8 @@ import { formatPercent, formatDateTime } from '@/app/format'
 
 const exams = ref<Exam[]>([])
 const items = ref<KnowledgePointItem[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const levelId = ref('')
 const subjectId = ref('')
 const search = ref('')
@@ -17,20 +19,25 @@ const requestID = ref('')
 
 let timer: ReturnType<typeof setTimeout> | null = null
 
-async function load(): Promise<void> {
-  state.value = 'loading'
+async function load(append = false): Promise<void> {
+  if (append) loadingMore.value = true
+  else state.value = 'loading'
   try {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ limit: '20' })
     if (levelId.value) params.set('levelId', levelId.value)
     if (subjectId.value) params.set('subjectId', subjectId.value)
     if (search.value) params.set('q', search.value)
-    const res = await request<{ knowledgePoints: KnowledgePointItem[] }>(`/knowledge-points?${params}`)
-    items.value = res.knowledgePoints
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const res = await request<{ knowledgePoints: KnowledgePointItem[]; nextCursor?: string }>(`/knowledge-points?${params}`)
+    items.value = append ? [...items.value, ...res.knowledgePoints] : res.knowledgePoints
+    nextCursor.value = res.nextCursor ?? ''
     state.value = 'ready'
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -117,6 +124,9 @@ function mastery(k: KnowledgePointItem): string {
           </tr>
         </tbody>
       </table>
+      <p v-if="nextCursor" style="margin: 12px 0 0; text-align: center">
+        <button :disabled="loadingMore" @click="load(true)">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+      </p>
     </div>
   </AppShell>
 </template>

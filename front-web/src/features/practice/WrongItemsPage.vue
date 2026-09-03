@@ -10,6 +10,8 @@ import { authorityText, formatAIText, gradingStatusText } from '@/app/format'
 const router = useRouter()
 
 const items = ref<WrongItem[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const kps = ref<KnowledgePointItem[]>([])
 const kpFilter = ref('')
 const state = ref<'loading' | 'ready' | 'error'>('loading')
@@ -19,18 +21,23 @@ const creating = ref(false)
 const deletingItemID = ref('')
 const deleteError = ref('')
 
-async function load(): Promise<void> {
-  state.value = 'loading'
+async function load(append = false): Promise<void> {
+  if (append) loadingMore.value = true
+  else state.value = 'loading'
   try {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ limit: '20' })
     if (kpFilter.value) params.set('knowledgePointId', kpFilter.value)
-    const res = await request<{ wrongItems: WrongItem[] }>(`/wrong-items?${params}`)
-    items.value = res.wrongItems
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const res = await request<{ wrongItems: WrongItem[]; nextCursor?: string }>(`/wrong-items?${params}`)
+    items.value = append ? [...items.value, ...res.wrongItems] : res.wrongItems
+    nextCursor.value = res.nextCursor ?? ''
     state.value = 'ready'
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
 }
 
@@ -114,7 +121,7 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
 
     <div class="field" style="max-width: 320px">
       <label for="kp-filter">按知识点筛选</label>
-      <select id="kp-filter" v-model="kpFilter" @change="load">
+      <select id="kp-filter" v-model="kpFilter" @change="() => load()">
         <option value="">全部知识点</option>
         <option v-for="k in kps" :key="k.id" :value="k.id">{{ k.name }}</option>
       </select>
@@ -148,6 +155,9 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           </button>
         </div>
       </article>
+      <p v-if="nextCursor" style="margin: 0; text-align: center">
+        <button :disabled="loadingMore" @click="load(true)">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+      </p>
     </div>
   </AppShell>
 </template>

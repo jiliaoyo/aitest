@@ -13,6 +13,8 @@ const router = useRouter()
 const jobID = route.params.importJobId as string
 const job = ref<ImportJobDTO | null>(null)
 const items = ref<ImportItemDTO[]>([])
+const nextCursor = ref('')
+const loadingMore = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -28,19 +30,32 @@ function schedule(): void {
   if (shouldPoll()) timer = setTimeout(() => void load(false), 3000)
 }
 
-async function load(initial = true): Promise<void> {
+async function load(initial = true, append = false): Promise<void> {
   if (initial) state.value = 'loading'
+  if (append) loadingMore.value = true
   try {
-    const res = await request<{ job: ImportJobDTO; items: ImportItemDTO[] }>(`/admin/import-jobs/${jobID}`)
+    const params = new URLSearchParams({ limit: '20' })
+    if (append && nextCursor.value) params.set('cursor', nextCursor.value)
+    const res = await request<{ job: ImportJobDTO; items: ImportItemDTO[]; nextCursor?: string }>(`/admin/import-jobs/${jobID}?${params}`)
     job.value = res.job
-    items.value = res.items
+    if (append) items.value = [...items.value, ...res.items]
+    else if (initial || items.value.length === 0) {
+      items.value = res.items
+      nextCursor.value = res.nextCursor ?? ''
+    }
     state.value = 'ready'
     schedule()
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     state.value = 'error'
+  } finally {
+    loadingMore.value = false
   }
+}
+
+function loadMore(): void {
+  void load(false, true)
 }
 
 async function retry(): Promise<void> {
@@ -96,6 +111,9 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer) })
             </tr>
           </tbody>
         </table>
+        <p v-if="nextCursor" style="margin: 12px 0 0; text-align: center">
+          <button :disabled="loadingMore" @click="loadMore">{{ loadingMore ? '加载中…' : '加载更多' }}</button>
+        </p>
       </div>
       <p v-else-if="job.status === 'review_ready'" class="muted">没有生成可审核的题目。</p>
       <p v-if="job.status === 'uploaded' || job.status === 'extracting' || job.status === 'structuring'" class="muted" role="status">任务处理中，页面每 3 秒刷新。</p>

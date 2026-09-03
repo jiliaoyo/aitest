@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/jobs"
@@ -55,20 +57,37 @@ func (s *Store) JobByID(ctx context.Context, id string) (Job, error) {
 	return toJob(r), nil
 }
 
-func (s *Store) ListJobs(ctx context.Context, limit int) ([]Job, error) {
+func (s *Store) ListJobs(ctx context.Context, cursor string, limit int) ([]Job, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
+	args := []any{}
+	where := "true"
+	if cursor != "" {
+		parts := strings.Split(cursor, "\x00")
+		if len(parts) != 2 {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, parts[0], parts[1])
+		where = "(ij.created_at, ij.id) < ($1::timestamptz, $2::uuid)"
+	}
+	args = append(args, limit)
 	rows, err := store.CollectRows[jobRow](ctx, s.db,
-		`SELECT `+jobListColumns+` FROM import_jobs ij ORDER BY ij.created_at DESC LIMIT $1`, limit)
+		`SELECT `+jobListColumns+` FROM import_jobs ij WHERE `+where+`
+		 ORDER BY ij.created_at DESC, ij.id DESC LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]Job, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, toJob(r))
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		r := rows[len(rows)-1]
+		next = r.CreatedAt + "\x00" + r.ID
+	}
+	return out, next, nil
 }
 
 func (s *Store) InsertJob(ctx context.Context, tx pgx.Tx, adminID, fileName, storedPath, sha256, mimeType string, size int64) (string, error) {
@@ -216,22 +235,39 @@ const itemColumns = `ii.id::text, ii.import_job_id::text, ii.position, ii.raw_ex
  ii.anomalies::text, ii.review_status, ii.published_question_id::text, ij.status,
  ii.created_at::text, ii.updated_at::text`
 
-func (s *Store) ItemsByJob(ctx context.Context, jobID string) ([]Item, error) {
+func (s *Store) ItemsByJob(ctx context.Context, jobID, cursor string, limit int) ([]Item, string, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	args := []any{jobID}
+	where := "ii.import_job_id = $1"
+	if cursor != "" {
+		if _, err := strconv.Atoi(cursor); err != nil {
+			return nil, "", httpapi.ValidationError(map[string]string{"cursor": "游标无效"})
+		}
+		args = append(args, cursor)
+		where += " AND ii.position > $" + strconv.Itoa(len(args))
+	}
+	args = append(args, limit)
 	rows, err := store.CollectRows[itemRow](ctx, s.db,
 		`SELECT `+itemColumns+` FROM import_items ii JOIN import_jobs ij ON ij.id = ii.import_job_id
-		 WHERE ii.import_job_id = $1 ORDER BY ii.position`, jobID)
+		 WHERE `+where+` ORDER BY ii.position LIMIT $`+strconv.Itoa(len(args)), args...)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	out := make([]Item, 0, len(rows))
 	for _, r := range rows {
 		item, err := itemFromRow(r)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		out = append(out, item)
 	}
-	return out, nil
+	next := ""
+	if len(rows) == limit {
+		next = strconv.Itoa(rows[len(rows)-1].Position)
+	}
+	return out, next, nil
 }
 
 func (s *Store) ItemByID(ctx context.Context, id string) (Item, error) {
