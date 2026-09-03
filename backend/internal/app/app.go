@@ -182,5 +182,8 @@ func devOrigins(cfg config.Config) []string {
 	if cfg.AppEnv != "dev" {
 		return nil
 	}
-	return []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+	return []string{
+		"http://localhost:5173", "http://127.0.0.1:5173",
+		"http://localhost:5174", "http://127.0.0.1:5174",
+	}
 }
