@@ -29,14 +29,18 @@ scripts/          OCR / 解析 / 建库脚本(见下文)
 
 ## 环境与常用命令
 
-依赖:Go 1.24+、Node(前端)、本机 PostgreSQL。两个 Python venv:`.venv/`(pymupdf 等工具)、`.venv-ocr/`(mlx-vlm==0.3.10 + DeepSeek-OCR 模型,**必须锁 0.3.10**,0.6.x 与该模型不兼容会输出乱码)。
+依赖:Go 1.24+、Node(前端)、本机 PostgreSQL。两个 Python venv:`.venv/`(pymupdf 等工具)、`.venv-ocr/`(mlx-vlm==0.3.10 + DeepSeek-OCR 模型,**必须锁 0.3.10**,0.6.x 与该模型不兼容会输出乱码)。后端启动时自动读取当前目录的 `.env`，从仓库根目录启动时也会读取 `backend/.env`；已有进程环境变量优先。开发环境内嵌 worker 默认开启，生产环境使用独立 `cmd/worker`。
+
+AI 配置使用 `AI_BASE_URL`、`AI_API_KEY`、`AI_MODEL`、`AI_TIMEOUT`。不要把真实 API key 写入日志、提交记录或聊天内容。
 
 ```bash
 # 后端(数据库默认 ai_shuati_dev,可用 PG_URL 覆盖)
 cd backend
 make migrate   # 应用迁移
 make seed      # 写入演示数据(幂等,已有 jlpt 考试则跳过)
-make dev       # 迁移 + seed + 启动 API(内嵌 worker),监听 :8080
+make dev       # 启动 API(开发环境默认内嵌 worker),监听 :8080
+make server    # 启动 API；RUN_WORKER 可显式覆盖默认值
+make worker    # 启动独立 worker
 make test      # go test ./...
 go build ./... # 编译检查
 
@@ -61,8 +65,10 @@ npm run test       # vitest
 6. **前端禁用 UI 组件库**;样式用 `front-web/src/styles/tokens.css` 的 oklch token;触控目标 ≥44px。
 7. 迁移只增不改:已应用的迁移文件不允许修改,需要变更就新增一个迁移文件。
 8. 写操作接口都要过 Origin 校验 + 会话 Cookie(HttpOnly),新增公开路由要显式在 `internal/app/app.go` 挂载。
+9. AI 分析按批次执行:新批次只入队一个 `analyze_practice_session_ai`，一次请求同时处理整批总结、未缓存题目解析和必要的 AI 判分；禁止恢复逐题 AI 解析入队。
+10. 题目级 AI 解析写入 `question_ai_explanations`，以不可变的 `question_version_id` 为键；题目版本变化后才重新生成。批次结果写入 `practice_sessions.ai_summary`，学习端通过 `aiAnalysis` 展示。
 
-## PDF 题库导入管线(scripts/,进行中)
+## PDF 题库导入管线(scripts/,已完成首轮建库)
 
 目标:把 `pdf/蓝宝书N4N5.pdf`(210 页扫描版,华东理工《蓝宝书》N5N4 文法,ISBN 978-7-5628-3205-8,官方自述 537 基础练习 + 510 实战练习)的 20 个单元练习题提取成符合后端 schema 的 SQL。
 
@@ -74,18 +80,27 @@ npm run test       # vitest
 4. **解析**:`scripts/parse_questions.py` → `/tmp/n4n5/parsed/questions.json` + `report.txt`。题型映射:表格题→`short_answer`(reference),共享选项框/四选一→`single_choice`,计数词·助词填空→`fill_blank`,并替题(もんだい2実戦)→`single_choice`(题干用参考句还原 `＿★＿＿` 槽位)。
 5. **并替题 ★ 定位**:`scripts/star_layout.py` 像素分析(下划线段 + ★ 实心块),与答案页【参考句】互相验证;Vision 行级坐标辅助脚本 `scripts/ocr_lines.swift`(postgresOS Vision,日语;注意 postgresOS Vision 对这本书的扫描质量识别很差,只能用于坐标,不能用于内容)。
 
-已知进度:OCR 全部 102 页完成,答案页中 N5 全部 + N4 大部分已人工校对转录(答案是最关键数据,OCR 不稳的页一律看图手抄)。解析器仍在迭代(目标 ≈1047 题)。
+已知结果:蓝宝书 986 题 / 986 答案,红蓝宝书 1000 题 / 1000 答案,来源章节 213 个。重建基线会清理书籍题目及其依赖练习记录并保留自建演示练习；用户后来创建的练习记录属于运行数据,不作为题库建库基线。`backend/questions/*.sql` 只接受通过严格校验的记录；再次重建前先执行清理脚本。
 
-`/tmp/n4n5/` 是临时目录,重建方法:重新执行 1-2 步即可,人工转录的答案页内容以 `git grep` 能搜到的 `cat > /tmp/...` 无从恢复——所以**这些转录内容如有需要应挪进仓库**(暂存于 ocr txt,后续随 SQL 一起归档)。
+原始 OCR 中间产物仍在 `/tmp/n4n5/`，不可作为唯一事实源；人工复核记录、异常和修正放在 `scripts/data/`，生成 SQL 和已导入数据库是可复现交付物。
+
+## 刷题与 AI 结果约定
+
+- 创建练习支持 `sourceId` 数据来源筛选；不传表示全部来源。默认 `source_order` 按 PDF 来源顺序，`random` 才随机。
+- 答题前 DTO 永不返回答案；答题后结果通过 `sourceSectionName` 展示来源章节，通过 `aiAnalysis` 展示整批 AI 总结。
+- `question_ai_explanations` 只缓存与题目本身无关用户作答的权威题目解析；主观题或依赖具体作答的 AI 判定不写入题目缓存。
+- 批次 AI 请求应去重共享材料，并严格校验模型返回的题目 ID、结论和文本长度；失败任务保留在 jobs 中，不能静默写入残缺结果。
+- 最新迁移为 `0010_import_extraction.sql`；新增字段或缓存策略只能追加迁移。
 
 ## 代码风格
 
 - Go:标准 gofmt;错误要包一层上下文;JSON 日志用 slog;注释解释「为什么」而不是「做什么」。
 - Vue SFC 全部 `<script setup lang="ts">`;API 调用统一走 `src/api/client.ts` 的 `request<T>`(自动处理 401/ApiError);状态文本用 `src/app/format.ts` 的映射,不要在组件里硬编码。
+- 全局原生 `select` 样式在 `src/styles/base.css` 维护，使用项目 token 和自定义箭头，不在单个页面恢复浏览器默认外观。
 - 提交信息/PR 描述用中文,说明「改了什么、为什么」。
 
 ## 测试底线
 
 - 后端:`make test` 全绿(含 grading 纯函数表测、practice DTO 泄漏检查)。
 - 前端:`npm run test`(vitest,jsdom,注意 `tests/setup.ts` 里有 Node 的 localStorage shim,别删)+ `npm run build`(vue-tsc strict 必须零错误)。
-- 涉及刷题闭环的改动,用 `curl`/HTTP 走一遍:create session → autosave → submit(幂等键)→ result 的冒烟,再下结论。
+- 涉及刷题闭环的改动,用 `curl`/HTTP 走一遍:create session → autosave → submit(幂等键)→ result 的冒烟,并确认批次 AI 任务数量为 1、结果页可轮询到 `aiAnalysis`。
