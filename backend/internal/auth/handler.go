@@ -180,15 +180,18 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 
 func clientIP(r *http.Request, trustedProxyCIDRs []netip.Prefix) string {
 	remoteIP, ok := parseRemoteIP(r.RemoteAddr)
-	if !ok || !isTrustedProxy(remoteIP, trustedProxyCIDRs) {
-		return r.RemoteAddr
+	if !ok {
+		return ""
+	}
+	if !isTrustedProxy(remoteIP, trustedProxyCIDRs) {
+		return remoteIP.String()
 	}
 	for _, candidate := range strings.Split(r.Header.Get("X-Forwarded-For"), ",") {
 		if ip, err := netip.ParseAddr(strings.TrimSpace(candidate)); err == nil {
 			return ip.String()
 		}
 	}
-	return r.RemoteAddr
+	return remoteIP.String()
 }
 
 func parseRemoteIP(remoteAddr string) (netip.Addr, bool) {

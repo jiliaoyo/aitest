@@ -13,7 +13,7 @@ func TestClientIPOnlyTrustsConfiguredProxy(t *testing.T) {
 	r.RemoteAddr = "192.0.2.10:1234"
 	r.Header.Set("X-Forwarded-For", "198.51.100.20, 198.51.100.21")
 
-	if got := clientIP(r, nil); got != r.RemoteAddr {
+	if got := clientIP(r, nil); got != "192.0.2.10" {
 		t.Fatalf("untrusted proxy should use RemoteAddr, got %q", got)
 	}
 	trusted := []netip.Prefix{netip.MustParsePrefix("192.0.2.0/24")}
@@ -25,7 +25,7 @@ func TestClientIPOnlyTrustsConfiguredProxy(t *testing.T) {
 		t.Fatalf("should skip invalid forwarded IP, got %q", got)
 	}
 	r.RemoteAddr = "203.0.113.10:1234"
-	if got := clientIP(r, trusted); got != r.RemoteAddr {
+	if got := clientIP(r, trusted); got != "203.0.113.10" {
 		t.Fatalf("unmatched proxy should use RemoteAddr, got %q", got)
 	}
 }
