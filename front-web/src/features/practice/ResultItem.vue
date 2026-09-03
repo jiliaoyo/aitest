@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { OptionDTO, ResultItem as ResultItemDTO } from '@/api/types'
-import { authorityText, explanationSourceText, gradingStatusText, questionTypeText } from '@/app/format'
+import { authorityText, explanationSourceText, formatAIText, gradingStatusText, questionTypeText } from '@/app/format'
 import ReportDialog from '@/features/issues/ReportDialog.vue'
 
 // 逐题解析：正式分层（确定性）与 AI 判定分开呈现，来源标签始终可见。
@@ -73,7 +73,7 @@ const reportItemID = computed(() => props.item.id)
       <p class="tag" data-tone="neutral" style="margin-bottom: 6px">
         {{ explanationSourceText[item.explanation.source] ?? item.explanation.source }}
       </p>
-      <p style="margin: 0; white-space: pre-wrap">{{ item.explanation.text }}</p>
+      <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
     </div>
     <p v-else-if="item.gradingStatus === 'failed'" class="muted" style="margin-top: 10px">
       分析失败，稍后可重试；确定性成绩不受影响。

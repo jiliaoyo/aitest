@@ -49,7 +49,7 @@ describe('结果分层展示', () => {
           ...baseItem,
           gradingSource: 'ai',
           gradingStatus: 'correct',
-          explanation: { text: 'AI 解析内容', source: 'ai' },
+          explanation: { text: 'AI 第一句。AI 第二句。', source: 'ai' },
         },
       },
     })
@@ -57,6 +57,7 @@ describe('结果分层展示', () => {
     expect(text).toContain('AI 判定')
     expect(text).toContain('AI 解析（可能有误）')
     expect(text).toContain('正确')
+    expect(wrapper.find('.ai-text').element.textContent).toContain('AI 第一句。\nAI 第二句。')
   })
 
   it('pending 题不显示标准答案，避免 AI 未完成时误导', () => {

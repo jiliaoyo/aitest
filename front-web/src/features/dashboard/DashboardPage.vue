@@ -6,7 +6,7 @@ import type { DashboardDTO } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { formatDateTime, formatPercent } from '@/app/format'
+import { formatAIText, formatDateTime, formatPercent } from '@/app/format'
 
 const router = useRouter()
 const dashboard = ref<DashboardDTO | null>(null)
@@ -124,7 +124,7 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
           </p>
           <div v-if="dashboard.memory.advice.status === 'completed' && dashboard.memory.advice.text">
             <p><strong>AI 学习建议</strong></p>
-            <p class="muted" style="white-space: pre-wrap">{{ dashboard.memory.advice.text }}</p>
+            <p class="muted ai-text">{{ formatAIText(dashboard.memory.advice.text) }}</p>
           </div>
           <p v-else-if="dashboard.memory.advice.status === 'pending'" class="muted" role="status">
             AI 正在根据最新进度整理建议。

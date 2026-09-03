@@ -165,6 +165,11 @@ button.ghost {
   margin-bottom: 14px;
 }
 
+.ai-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 table.data {
   width: 100%;
   border-collapse: collapse;

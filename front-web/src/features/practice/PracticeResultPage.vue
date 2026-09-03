@@ -6,7 +6,7 @@ import type { ResultSession } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { aiAnalysisStatusText, formatDateTime, formatPercent } from '@/app/format'
+import { aiAnalysisStatusText, formatAIText, formatDateTime, formatPercent } from '@/app/format'
 import ResultItem from './ResultItem.vue'
 
 const route = useRoute()
@@ -147,7 +147,7 @@ const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.valu
         <p v-else-if="result.aiAnalysis.status === 'not_requested'" class="muted" style="margin: 12px 0 0">
           该批次没有生成 AI 总结。
         </p>
-        <p v-else style="margin: 12px 0 0; white-space: pre-wrap">{{ result.aiAnalysis.text }}</p>
+        <p v-else class="ai-text" style="margin: 12px 0 0">{{ formatAIText(result.aiAnalysis.text) }}</p>
       </section>
 
       <section aria-label="逐题解析" style="display: flex; flex-direction: column; gap: 18px">

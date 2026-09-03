@@ -41,6 +41,19 @@ export function formatTime(value: string | null | undefined): string {
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
 }
 
+// AI 可能返回单行总结或把换行编码成字面量；保持纯文本渲染，避免引入不安全的 HTML。
+export function formatAIText(value: string): string {
+  const text = value.replace(/\r\n?/g, '\n').replace(/\\n/g, '\n').trim()
+  if (text.includes('\n')) return text
+  return text
+    .replace(/\s+(?=(?:[-*•]|\d+[.)、])\s+)/g, '\n')
+    .replace(/([。！？；])\s*/g, '$1\n')
+    .replace(/([：])\s*/g, '$1\n')
+    .replace(/(:)\s+(?=\S)/g, '$1\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export const sessionStatusText: Record<string, string> = {
   generating: 'AI 出题中',
   active: '答题中',

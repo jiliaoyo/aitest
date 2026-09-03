@@ -5,7 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { KnowledgePointItem, WrongItem } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
-import { authorityText, gradingStatusText } from '@/app/format'
+import { authorityText, formatAIText, gradingStatusText } from '@/app/format'
 
 const router = useRouter()
 
@@ -122,7 +122,7 @@ async function retrain(): Promise<void> {
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
           </p>
-          <p style="margin: 0; white-space: pre-wrap">{{ item.explanation.text }}</p>
+          <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
         </div>
       </article>
     </div>
