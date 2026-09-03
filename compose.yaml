@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_shuati
+      POSTGRES_USER: ai_shuati
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ai_shuati -d ai_shuati"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: prod
+      HTTP_ADDR: :8080
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      DATABASE_URL: postgres://ai_shuati:${POSTGRES_PASSWORD}@postgres:5432/ai_shuati?sslmode=disable
+      RUN_WORKER: "false"
+      WORKER_ID: api
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      UPLOAD_DIR: /app/data/uploads
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TIMEOUT: ${AI_TIMEOUT:-300s}
+    ports:
+      - "9090:8080"
+    volumes:
+      - upload_data:/app/data/uploads
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["/app/worker"]
+    environment:
+      APP_ENV: prod
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      DATABASE_URL: postgres://ai_shuati:${POSTGRES_PASSWORD}@postgres:5432/ai_shuati?sslmode=disable
+      WORKER_ID: ${WORKER_ID:-worker-1}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      UPLOAD_DIR: /app/data/uploads
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-10485760}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_TIMEOUT: ${AI_TIMEOUT:-300s}
+    volumes:
+      - upload_data:/app/data/uploads
+    healthcheck:
+      disable: true
+
+  frontend:
+    build: ./front-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "9091:80"
+
+volumes:
+  postgres_data:
+    name: ai_shuati_postgres_data
+  upload_data:
+    name: ai_shuati_uploads

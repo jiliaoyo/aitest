@@ -53,6 +53,24 @@ npm run test       # vitest
 
 演示账号:`admin@example.com / [local seed password]`(管理员)、`learner@example.com / [local seed password]`。
 
+## Docker 部署约定
+
+- 根目录 `compose.yaml` 定义 `postgres`、`backend`、`worker`、`frontend` 四个服务；后端镜像默认启动 API，`/app/worker` 用于独立 worker，`/app/migrate` 用于迁移，`/app/seed` 用于演示数据初始化。
+- 生产部署目录为 `<deployment-directory>`。后端映射宿主机 `9090 -> 8080`，前端 Nginx 映射宿主机 `9091 -> 80`；公网只通过现有入口 Nginx 的 `443` 虚拟主机按域名反代到 `127.0.0.1:9091`。宿主机 `80` 保留给现有服务，不要由本项目绑定。
+- PostgreSQL 持久卷固定为 `ai_shuati_postgres_data`，上传文件卷固定为 `ai_shuati_uploads`。更新服务禁止使用 `docker compose down -v`；涉及数据同步前先做 `pg_dump` 备份。
+- 首次初始化顺序：启动 `postgres` → `/app/migrate` → 挂载 `scripts/data/knowledge_points_n4n5.json` 执行 `/app/seed` → 导入 `backend/questions/blue_questions.sql` 和 `backend/questions/redblue_questions.sql` → 启动 `backend`、`worker`、`frontend`。题库 SQL 可幂等重跑，但不要执行题库重置脚本覆盖线上运行数据。
+- 后端 `.env` 只放服务器环境变量和密钥，不提交、不打印；AI 服务必须同时配置 `AI_BASE_URL`、`AI_API_KEY`、`AI_MODEL`。前端 `nginx.conf` 使用 Docker DNS 动态解析 `backend`，避免后端容器重建后反代缓存旧 IP。
+- 常规更新：`sudo docker compose build backend frontend && sudo docker compose up -d --force-recreate backend worker frontend`；完成后检查 `/health/live`、前端 `/api` 反代和容器健康状态。
+
+### 线上更新流程
+
+1. 本地先运行 `cd backend && go build ./...`、`cd front-web && npm run build`。
+2. 将代码同步到 `<deployment-directory>`，排除所有 `.env`、`node_modules/`、`dist/`、`pdf/`、`.venv*/`；不要使用会删除远端文件的 `rsync --delete`。
+3. 更新前备份数据库：`backup=backups/pre-update-$(date +%Y%m%d%H%M%S).dump && sudo docker compose exec -T postgres pg_dump -U ai_shuati -d ai_shuati --format=custom > "$backup" && chmod 600 "$backup"`。
+4. 后端或迁移有变化时执行 `sudo docker compose build backend worker`，再执行 `sudo docker compose run --rm backend /app/migrate -dir /app/migrations`，最后 `sudo docker compose up -d --no-build --force-recreate backend worker frontend`。
+5. 只有前端变化时只执行 `sudo docker compose build frontend && sudo docker compose up -d --no-build --force-recreate frontend`；只改服务器 AI 配置时修改远端 `.env` 后重建 `backend`、`worker`，不需要重新导入数据。
+6. 更新后检查 `sudo docker compose ps`、`curl -fsS http://127.0.0.1:9090/health/live`、前端 `/api` 反代和 443 域名访问。禁止执行 `docker compose down -v`，禁止删除 `ai_shuati_postgres_data` 或 `ai_shuati_uploads`。
+
 ## 硬性约束(违反等于返工)
 
 1. **术语红线:产品里只有"刷题/答题/提交本批练习",绝对不允许出现"交卷""做卷子"这类措辞。** 这是用户明确的措辞要求,适用于所有 UI 文案、注释、文档、API 字段名设计。`试卷`一词只允许在"题目来源是书籍/真题"的语义下出现。

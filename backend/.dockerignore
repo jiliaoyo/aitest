@@ -1,0 +1,6 @@
+.env
+._*
+data/
+bin/
+questions/
+*_test.go
