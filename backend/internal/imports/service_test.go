@@ -23,8 +23,23 @@ func TestValidateDraft(t *testing.T) {
 	}
 }
 
-func TestCleanTextRejectsEmpty(t *testing.T) {
-	if _, err := cleanText(" \n\t"); err == nil {
-		t.Fatal("empty extracted text accepted")
+func TestBuildAIDraftCarriesFields(t *testing.T) {
+	raw := jsonItem{RawExcerpt: "原文", Type: "single_choice", Stem: "题干",
+		LevelCode: "n5", SubjectCode: "grammar", KnowledgePointNames: []string{"助词"}}
+	draft := buildAIDraft(raw, "level-id", "subject-id", []string{"kp-id"}, []string{"知识点未唯一匹配，已跳过: X"})
+	if draft.LevelID != "level-id" || draft.SubjectID != "subject-id" {
+		t.Fatalf("codes not resolved into draft: %+v", draft)
+	}
+	if len(draft.KnowledgePointIDs) != 1 || draft.KnowledgePointIDs[0] != "kp-id" {
+		t.Fatalf("knowledge points not carried: %+v", draft.KnowledgePointIDs)
+	}
+	if len(draft.Anomalies) != 1 {
+		t.Fatalf("extra anomalies not carried: %+v", draft.Anomalies)
+	}
+}
+
+func TestTruncateRunes(t *testing.T) {
+	if got := truncateRunes("  あいうえお  ", 3); got != "あいう" {
+		t.Fatalf("unexpected truncation: %q", got)
 	}
 }

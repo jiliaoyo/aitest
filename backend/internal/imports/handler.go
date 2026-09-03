@@ -22,7 +22,6 @@ func (h *Handler) RegisterRoutes(adminMux *http.ServeMux) {
 	adminMux.HandleFunc("POST /api/v1/admin/import-jobs", h.createJob)
 	adminMux.HandleFunc("GET /api/v1/admin/import-jobs", h.listJobs)
 	adminMux.HandleFunc("GET /api/v1/admin/import-jobs/{id}", h.getJob)
-	adminMux.HandleFunc("POST /api/v1/admin/import-jobs/{id}/retry", h.retryJob)
 	adminMux.HandleFunc("GET /api/v1/admin/import-items/{id}", h.getItem)
 	adminMux.HandleFunc("PATCH /api/v1/admin/import-items/{id}", h.updateItem)
 	adminMux.HandleFunc("POST /api/v1/admin/import-items/{id}/approve", h.approveItem)
@@ -70,15 +69,6 @@ func (h *Handler) getJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"job": job, "items": items, "nextCursor": nextCursor})
-}
-
-func (h *Handler) retryJob(w http.ResponseWriter, r *http.Request) {
-	job, err := h.service.Retry(r.Context(), r.PathValue("id"))
-	if err != nil {
-		httpapi.WriteError(w, r, err)
-		return
-	}
-	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"job": job})
 }
 
 func (h *Handler) getItem(w http.ResponseWriter, r *http.Request) {

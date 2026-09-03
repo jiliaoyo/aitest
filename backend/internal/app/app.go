@@ -90,15 +90,12 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger)
-	importService := imports.NewService(pool, contentService, aiClient, cfg.UploadDir, cfg.UploadMaxBytes, logger)
+	importService := imports.NewService(pool, contentService, cfg.UploadDir, cfg.UploadMaxBytes, logger)
 
 	// worker：生产环境独立进程；开发环境可通过 RUN_WORKER=true 内嵌运行
 	if cfg.RunWorker {
 		handlers := map[string]jobs.Handler{}
 		for k, v := range aiService.Handlers() {
-			handlers[k] = v
-		}
-		for k, v := range importService.Handlers() {
 			handlers[k] = v
 		}
 		for k, v := range learningHandler.Handlers() {

@@ -8,6 +8,8 @@ backend/bin/
 
 backend/data/
 
+ocr-service/data/
+
 pdf/
 __pycache__/
 *.pyc

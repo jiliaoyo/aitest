@@ -71,17 +71,17 @@ onMounted(load)
     <div class="page-header">
       <div>
         <h1 style="font-size: 24px; margin: 0">导入任务</h1>
-        <p class="muted" style="margin: 4px 0 0">上传后先提取文字，再由 AI 生成待审核草稿；不会自动发布题目。</p>
+        <p class="muted" style="margin: 4px 0 0">上传本地 OCR 服务导出的结构化 JSON，逐题审核后发布上架；不会自动发布题目。</p>
       </div>
     </div>
 
     <form class="card" style="margin-bottom: 18px" @submit.prevent="createJob">
       <div class="field">
         <label for="import-file">选择题库文件</label>
-        <input id="import-file" type="file" accept=".txt,.md,.csv,.docx,.pdf" @change="chooseFile" />
-        <p class="muted" style="font-size: 13px">支持 TXT、Markdown、CSV、DOCX 和可提取文字的 PDF，单文件最大 10 MB。</p>
+        <input id="import-file" type="file" accept=".json" @change="chooseFile" />
+        <p class="muted" style="font-size: 13px">仅支持本地 OCR 服务导出的结构化 JSON，上传后直接生成待审核草稿，单文件最大 10 MB。</p>
       </div>
-      <button class="primary" type="submit" :disabled="uploading">{{ uploading ? '上传中…' : '上传并开始整理' }}</button>
+      <button class="primary" type="submit" :disabled="uploading">{{ uploading ? '上传中…' : '上传并生成草稿' }}</button>
       <p v-if="message" class="tag" data-tone="success" role="status" style="margin: 10px 0 0">{{ message }}</p>
     </form>
 

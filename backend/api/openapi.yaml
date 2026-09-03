@@ -627,7 +627,11 @@ paths:
   /admin/import-jobs:
     post:
       tags: [admin]
-      summary: 上传题库文件并创建异步导入任务
+      summary: 上传结构化 JSON 并创建导入任务
+      description: >-
+        仅接受本地 OCR 服务导出的结构化 JSON（{"items": [...]}，分类用 levelCode/subjectCode/
+        knowledgePointNames 码值与名称表示，服务端解析为内部 ID）。同步校验后直接生成待审核草稿，
+        任务立即进入 review_ready；不做文件格式识别，也不调用 AI，因此没有异步阶段和失败重试。
       requestBody:
         required: true
         content:
@@ -639,7 +643,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: TXT、Markdown、CSV、DOCX 或可提取文字的 PDF，默认最大 10 MB
+                  description: 结构化 JSON 文件，默认最大 10 MB
       responses:
         '201': { description: 已创建, content: { application/json: { schema: { type: object, properties: { job: { $ref: '#/components/schemas/ImportJob' } } } } } }
         '400': { $ref: '#/components/responses/ValidationError' }
@@ -680,14 +684,6 @@ paths:
                   items: { type: array, items: { $ref: '#/components/schemas/ImportItem' } }
                   nextCursor: { type: string }
         '404': { $ref: '#/components/responses/NotFound' }
-  /admin/import-jobs/{id}/retry:
-    post:
-      tags: [admin]
-      summary: 从安全阶段重试失败的导入任务
-      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
-      responses:
-        '200': { description: OK, content: { application/json: { schema: { type: object, properties: { job: { $ref: '#/components/schemas/ImportJob' } } } } } }
-        '409': { description: import_not_failed }
   /admin/import-items/{id}:
     get:
       tags: [admin]

@@ -4,7 +4,6 @@ go 1.24.1
 
 require (
 	github.com/jackc/pgx/v5 v5.7.5
-	github.com/ledongthuc/pdf v0.0.0-20260902151811-0378b83ae5e4
 	golang.org/x/crypto v0.39.0
 	golang.org/x/text v0.26.0
 )

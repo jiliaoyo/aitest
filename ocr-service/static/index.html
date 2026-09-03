@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本地 OCR 导入服务</title>
+<style>
+  :root { --border: #d8d5cc; --muted: #6b6960; --accent: #185fa5; --ok: #0f6e56; --warn: #ba7517; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.6 -apple-system, "PingFang SC", sans-serif; color: #2c2c2a; background: #f7f6f2; }
+  header { padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: center; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 500; }
+  button { padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer; font-size: 13px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { padding: 16px; max-width: 1400px; margin: 0 auto; }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .job-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eeece4; }
+  .layout { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 14px; align-items: start; }
+  .pages { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 8px; max-height: 80vh; overflow-y: auto; }
+  .pages button { display: block; width: 100%; margin: 2px 0; text-align: left; padding: 5px 8px; border: none; border-radius: 6px; }
+  .pages button.active { background: #e6f1fb; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #cfccc2; }
+  .dot.recognized { background: #378add; } .dot.approved { background: #1d9e75; }
+  img.page { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  textarea { width: 100%; min-height: 60vh; font: 13px/1.7 ui-monospace, monospace; padding: 10px; border: 1px solid var(--border); border-radius: 8px; resize: vertical; }
+  textarea.items { min-height: 70vh; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; background: #f1efe8; }
+  .tag.ok { background: #e1f5ee; color: var(--ok); } .tag.warn { background: #faeeda; color: var(--warn); }
+  input[type=text] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; width: 110px; }
+  .error { color: #a32d2d; font-size: 13px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1>本地 OCR 导入服务</h1>
+  <span class="muted">PDF → OCR → 审核 → 结构化 → 导出 JSON</span>
+</header>
+<main id="app"></main>
+<script>
+const app = document.getElementById('app');
+let job = null, currentPage = 1, pollTimer = null, editingItems = false;
+
+async function api(path, options = {}) {
+  const resp = await fetch('/api' + path, options);
+  if (!resp.ok) throw new Error((await resp.json().catch(() => ({}))).detail || resp.statusText);
+  return resp.json();
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+function maybePoll() {
+  stopPoll();
+  if (job && (job.ocr.running || job.structure.running)) {
+    pollTimer = setInterval(async () => { job = await api('/jobs/' + job.id); renderJob(); }, 3000);
+  }
+}
+
+async function showJobs() {
+  stopPoll(); job = null;
+  const jobs = await api('/jobs');
+  app.innerHTML = `
+    <div class="card">
+      <form id="create">
+        <b>新建识别任务</b><br><br>
+        <input type="file" id="pdf" accept=".pdf" required>
+        级别代码 <input type="text" id="level" value="n5">
+        科目代码 <input type="text" id="subject" value="grammar">
+        <button class="primary" type="submit">上传并抽页</button>
+        <span class="muted">级别/科目代码对应后端 exam_levels / subjects 的 code</span>
+      </form>
+    </div>
+    <div class="card"><b>任务列表</b>
+      ${jobs.length ? '' : '<p class="muted">还没有任务。</p>'}
+      ${jobs.map(j => `<div class="job-row">
+        <span><a href="#" data-job="${j.id}"><b>${esc(j.fileName)}</b></a>
+          <span class="muted">　${j.pageCount} 页 · 已确认 ${j.approved.length} 页 · 草稿 ${j.itemCount} 题 · ${esc(j.levelCode)}/${esc(j.subjectCode)}</span></span>
+        <span class="muted">${esc(j.createdAt)}</span>
+      </div>`).join('')}
+    </div>`;
+  document.getElementById('create').onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData();
+    fd.append('file', document.getElementById('pdf').files[0]);
+    fd.append('level_code', document.getElementById('level').value.trim());
+    fd.append('subject_code', document.getElementById('subject').value.trim());
+    const j = await api('/jobs', { method: 'POST', body: fd });
+    await openJob(j.id);
+  };
+  app.querySelectorAll('[data-job]').forEach(a => a.onclick = e => { e.preventDefault(); openJob(a.dataset.job); });
+}
+
+async function openJob(id) {
+  job = await api('/jobs/' + id);
+  currentPage = 1; editingItems = false;
+  renderJob(); maybePoll();
+}
+
+function renderJob() {
+  const j = job;
+  const dot = p => `<span class="dot ${p.approved ? 'approved' : p.recognized ? 'recognized' : ''}"></span>`;
+  app.innerHTML = `
+    <div class="toolbar">
+      <button id="back">← 任务列表</button>
+      <b>${esc(j.fileName)}</b>
+      <span class="muted">${esc(j.levelCode)}/${esc(j.subjectCode)}</span>
+      <span style="flex:1"></span>
+      ${j.ocr.running
+        ? `<span class="tag warn">OCR 识别中 第 ${j.ocr.current} 页</span><button id="stopOcr">停止</button>`
+        : `<button class="primary" id="startOcr">识别未识别页</button>`}
+      ${j.structure.running
+        ? `<span class="tag warn">正在生成结构化草稿…</span>`
+        : `<button id="structure">生成结构化草稿（已确认 ${j.approved.length} 页）</button>`}
+      <button id="toggleItems">${editingItems ? '返回页面审核' : `题目草稿（${j.itemCount}）`}</button>
+      ${j.itemCount ? `<a href="/api/jobs/${j.id}/export"><button class="primary">导出 JSON</button></a>` : ''}
+    </div>
+    ${j.ocr.error ? `<p class="error">${esc(j.ocr.error)}</p>` : ''}
+    ${j.structure.error ? `<p class="error">结构化失败：${esc(j.structure.error)}</p>` : ''}
+    ${j.structure.finishedAt ? `<p class="muted">草稿生成于 ${esc(j.structure.finishedAt)}，可在「题目草稿」中整体编辑后导出。</p>` : ''}
+    <div id="body"></div>`;
+  document.getElementById('back').onclick = showJobs;
+  const start = document.getElementById('startOcr');
+  if (start) start.onclick = async () => { job = await api(`/jobs/${j.id}/ocr`, { method: 'POST' }); renderJob(); maybePoll(); };
+  const stop = document.getElementById('stopOcr');
+  if (stop) stop.onclick = async () => { job = await api(`/jobs/${j.id}/ocr/stop`, { method: 'POST' }); renderJob(); };
+  document.getElementById('structure').onclick = async () => {
+    if (!confirm('用已确认页面的文本调用文本模型生成题目草稿？')) return;
+    job = await api(`/jobs/${j.id}/structure`, { method: 'POST' }); renderJob(); maybePoll();
+  };
+  document.getElementById('toggleItems').onclick = () => { editingItems = !editingItems; renderJob(); };
+  editingItems ? renderItems() : renderPages();
+}
+
+function renderPages() {
+  const j = job;
+  document.getElementById('body').innerHTML = `
+    <div class="layout">
+      <div class="pages">${j.pages.map(p =>
+        `<button data-p="${p.page}" class="${p.page === currentPage ? 'active' : ''}">
+          <span class="dot ${p.approved ? 'approved' : p.recognized ? 'recognized' : ''}"></span>第 ${p.page} 页</button>`).join('')}
+      </div>
+      <div><img class="page" src="/api/jobs/${j.id}/pages/${currentPage}/image?ts=${Date.now()}"></div>
+      <div>
+        <div class="toolbar">
+          <button class="primary" id="saveApprove">保存并确认本页</button>
+          <button id="save">仅保存</button>
+          <button id="reocr">重新识别本页</button>
+          <span id="pageState"></span>
+        </div>
+        <textarea id="text" spellcheck="false"></textarea>
+      </div>
+    </div>`;
+  document.querySelectorAll('.pages button').forEach(b => b.onclick = () => { currentPage = +b.dataset.p; renderPages(); loadPage(); });
+  document.getElementById('save').onclick = () => savePage(false);
+  document.getElementById('saveApprove').onclick = () => savePage(true);
+  document.getElementById('reocr').onclick = async () => {
+    if (!confirm('重新识别本页会覆盖当前文本，继续？')) return;
+    const r = await api(`/jobs/${job.id}/pages/${currentPage}/reocr`, { method: 'POST' });
+    document.getElementById('text').value = r.text;
+    job = await api('/jobs/' + job.id); renderPages(); loadPage();
+  };
+  loadPage();
+}
+
+async function loadPage() {
+  const p = await api(`/jobs/${job.id}/pages/${currentPage}`);
+  document.getElementById('text').value = p.text;
+  document.getElementById('pageState').innerHTML = p.approved ? '<span class="tag ok">已确认</span>' : '';
+}
+
+async function savePage(approve) {
+  await api(`/jobs/${job.id}/pages/${currentPage}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: document.getElementById('text').value, approved: approve }),
+  });
+  job = await api('/jobs/' + job.id);
+  renderJob();
+}
+
+async function renderItems() {
+  const { items } = await api(`/jobs/${job.id}/items`);
+  document.getElementById('body').innerHTML = `
+    <div class="card">
+      <div class="toolbar">
+        <b>题目草稿 JSON（${items.length} 题）</b>
+        <button class="primary" id="saveItems">保存修改</button>
+        <span class="muted">字段与后端导入格式一致；保存时会过滤多余字段。确认无误后点顶部「导出 JSON」，再到管理页上传。</span>
+      </div>
+      <textarea class="items" id="itemsText" spellcheck="false">${esc(JSON.stringify(items, null, 1))}</textarea>
+      <p class="error" id="itemsError"></p>
+    </div>`;
+  document.getElementById('saveItems').onclick = async () => {
+    const err = document.getElementById('itemsError');
+    try {
+      const parsed = JSON.parse(document.getElementById('itemsText').value);
+      await api(`/jobs/${job.id}/items`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: parsed }),
+      });
+      job = await api('/jobs/' + job.id); renderJob(); editingItems = true; renderItems();
+    } catch (e) { err.textContent = '保存失败：' + e.message; }
+  };
+}
+
+showJobs().catch(e => app.innerHTML = `<p class="error">${esc(e.message)}</p>`);
+</script>
+</body>
+</html>

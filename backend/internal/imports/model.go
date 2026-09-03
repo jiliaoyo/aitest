@@ -6,13 +6,11 @@ import (
 	"github.com/aishuati/backend/internal/content"
 )
 
+// 导入任务只接受结构化 JSON：上传即同步生成待审核草稿（review_ready），
+// 没有异步阶段，也不存在 failed 状态。
 const (
-	StatusUploaded    = "uploaded"
-	StatusExtracting  = "extracting"
-	StatusStructuring = "structuring"
 	StatusReviewReady = "review_ready"
 	StatusPublished   = "published"
-	StatusFailed      = "failed"
 
 	ReviewPending   = "pending"
 	ReviewApproved  = "approved"

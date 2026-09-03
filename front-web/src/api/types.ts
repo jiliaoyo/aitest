@@ -362,7 +362,7 @@ export interface ImportJobDTO {
   fileName: string
   mimeType: string
   sizeBytes: number
-  status: 'uploaded' | 'extracting' | 'structuring' | 'review_ready' | 'published' | 'failed'
+  status: 'review_ready' | 'published'
   stageError: string
   extractedText?: string
   itemCount: number

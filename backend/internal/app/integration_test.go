@@ -673,30 +673,6 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 	})
 
-	t.Run("导入任务重试不重复发布", func(t *testing.T) {
-		var jobID, itemID string
-		if err := pool.QueryRow(context.Background(),
-			`INSERT INTO import_jobs (created_by, file_name, status) VALUES ($1, 'retry.txt', 'failed') RETURNING id::text`, data.adminID).Scan(&jobID); err != nil {
-			t.Fatal(err)
-		}
-		if err := pool.QueryRow(context.Background(),
-			`INSERT INTO import_items (import_job_id, position, raw_excerpt, review_status, published_question_id)
-			 VALUES ($1, 1, '已有发布题目', 'published', $2) RETURNING id::text`, jobID, data.keyQuestionID).Scan(&itemID); err != nil {
-			t.Fatal(err)
-		}
-		path := "/api/v1/admin/import-jobs/" + jobID + "/retry"
-		assertStatus(t, jsonRequest(t, data.admin, server.URL, http.MethodPost, path, nil, ""), http.StatusOK)
-		resp := jsonRequest(t, data.admin, server.URL, http.MethodPost, path, nil, "")
-		if resp.StatusCode != http.StatusConflict {
-			t.Fatalf("second import retry should conflict, got %d", resp.StatusCode)
-		}
-		if countRows(t, pool, `SELECT count(*) FROM import_items WHERE import_job_id = $1`, jobID) != 1 ||
-			countRows(t, pool, `SELECT count(*) FROM import_items WHERE id = $1 AND published_question_id = $2`, itemID, data.keyQuestionID) != 1 ||
-			countRows(t, pool, `SELECT count(*) FROM jobs WHERE payload->>'jobId' = $1`, jobID) != 1 {
-			t.Fatal("import retry duplicated an item, published question, or job")
-		}
-	})
-
 	t.Run("重置密码与令牌消费原子完成并撤销旧会话", func(t *testing.T) {
 		resetClient := newIntegrationClient(t)
 		var reset struct {

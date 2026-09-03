@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
 import type { ImportItemDTO, ImportJobDTO } from '@/api/types'
@@ -18,17 +18,6 @@ const loadingMore = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
-const retrying = ref(false)
-let timer: ReturnType<typeof setTimeout> | null = null
-
-function shouldPoll(): boolean {
-  return job.value?.status === 'uploaded' || job.value?.status === 'extracting' || job.value?.status === 'structuring'
-}
-
-function schedule(): void {
-  if (timer) clearTimeout(timer)
-  if (shouldPoll()) timer = setTimeout(() => void load(false), 3000)
-}
 
 async function load(initial = true, append = false): Promise<void> {
   if (initial) state.value = 'loading'
@@ -44,7 +33,6 @@ async function load(initial = true, append = false): Promise<void> {
       nextCursor.value = res.nextCursor ?? ''
     }
     state.value = 'ready'
-    schedule()
   } catch (err) {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
@@ -58,20 +46,7 @@ function loadMore(): void {
   void load(false, true)
 }
 
-async function retry(): Promise<void> {
-  retrying.value = true
-  try {
-    await request(`/admin/import-jobs/${jobID}/retry`, { method: 'POST' })
-    await load()
-  } catch (err) {
-    errorMessage.value = err instanceof ApiError ? err.message : '重试失败'
-  } finally {
-    retrying.value = false
-  }
-}
-
 onMounted(() => void load())
-onBeforeUnmount(() => { if (timer) clearTimeout(timer) })
 </script>
 
 <template>
@@ -89,12 +64,6 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer) })
       <p v-if="job.stageError" class="error-summary" role="alert">{{ job.stageError }}</p>
       <div class="card" style="margin-bottom: 18px">
         <p style="margin: 0 0 8px"><strong>处理状态：</strong><StatusBadge :value="job.status" /> <span class="muted">{{ job.itemCount }} 个导入项 · 更新于 {{ formatDateTime(job.updatedAt) }}</span></p>
-        <button v-if="job.status === 'failed'" class="primary" :disabled="retrying" @click="retry">{{ retrying ? '重试中…' : '从安全阶段重试' }}</button>
-      </div>
-
-      <div v-if="job.extractedText" class="card" style="margin-bottom: 18px">
-        <h2 style="font-size: 18px">提取的原文</h2>
-        <pre class="import-source" lang="ja">{{ job.extractedText }}</pre>
       </div>
 
       <div v-if="items.length" class="card" style="overflow-x: auto">
@@ -116,7 +85,6 @@ onBeforeUnmount(() => { if (timer) clearTimeout(timer) })
         </p>
       </div>
       <p v-else-if="job.status === 'review_ready'" class="muted">没有生成可审核的题目。</p>
-      <p v-if="job.status === 'uploaded' || job.status === 'extracting' || job.status === 'structuring'" class="muted" role="status">任务处理中，页面每 3 秒刷新。</p>
       <button class="ghost" style="margin-top: 14px" @click="router.push('/admin/imports')">返回任务列表</button>
     </template>
   </AppShell>
