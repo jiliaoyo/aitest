@@ -48,6 +48,12 @@ export const gradingStatusText = {
     pending: 'AI 判定中',
     failed: '分析失败',
 };
+export const aiAnalysisStatusText = {
+    not_requested: '未生成',
+    pending: '生成中',
+    completed: '已完成',
+    failed: '生成失败',
+};
 export const authorityText = {
     official: '官方答案',
     human_verified: '已审核答案',

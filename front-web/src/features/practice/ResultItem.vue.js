@@ -46,6 +46,13 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)(
 });
 (__VLS_ctx.item.position);
 (__VLS_ctx.questionTypeText[__VLS_ctx.item.type] ?? __VLS_ctx.item.type);
+if (__VLS_ctx.item.sourceSectionName) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+        ...{ class: "muted" },
+        ...{ style: {} },
+    });
+    (__VLS_ctx.item.sourceSectionName);
+}
 __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
     ...{ style: {} },
 });
@@ -151,6 +158,7 @@ const __VLS_1 = __VLS_0({
 }, ...__VLS_functionalComponentArgsRest(__VLS_0));
 /** @type {__VLS_StyleScopedClasses['card']} */ ;
 /** @type {__VLS_StyleScopedClasses['mono']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['tag']} */ ;
 /** @type {__VLS_StyleScopedClasses['tag']} */ ;

@@ -28,13 +28,20 @@ func NewService(pool *pgxpool.Pool, contentStore *content.Store) *Service {
 type CreateRequest struct {
 	LevelID           string   `json:"levelId"`
 	SubjectID         string   `json:"subjectId"`
-	Mode              string   `json:"mode"` // comprehensive | knowledge | wrong_items
+	Mode              string   `json:"mode"`           // comprehensive | knowledge | wrong_items
+	SelectionOrder    string   `json:"selectionOrder"` // source_order | random
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
+	SourceID          string   `json:"sourceId"`
 	SourceSectionID   string   `json:"sourceSectionId"`
 	Count             int      `json:"count"`
 }
 
 var validCounts = map[int]bool{10: true, 20: true, 30: true}
+
+const (
+	SelectionOrderSource = "source_order"
+	SelectionOrderRandom = "random"
+)
 
 // Availability 返回当前筛选下可用于练习的题目数量。
 func (s *Service) Availability(ctx context.Context, userID string, req CreateRequest) (int, error) {
@@ -45,6 +52,13 @@ func (s *Service) Availability(ctx context.Context, userID string, req CreateReq
 	return s.contentStore.CountPublishedVersions(ctx, f)
 }
 
+func (s *Service) PracticeSources(ctx context.Context, levelID, subjectID string) ([]content.PracticeSource, error) {
+	if levelID == "" {
+		return nil, httpapi.ValidationError(map[string]string{"levelId": "请选择级别"})
+	}
+	return s.contentStore.ListPracticeSources(ctx, levelID, subjectID)
+}
+
 func (s *Service) selectionFilter(ctx context.Context, userID string, req CreateRequest) (content.SelectionFilter, error) {
 	if !validCounts[req.Count] {
 		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"count": "题量只能是 10、20 或 30"})
@@ -52,11 +66,19 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 	if req.Mode == "" {
 		req.Mode = "comprehensive"
 	}
+	if req.SelectionOrder == "" {
+		req.SelectionOrder = SelectionOrderSource
+	}
+	if req.SelectionOrder != SelectionOrderSource && req.SelectionOrder != SelectionOrderRandom {
+		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"selectionOrder": "出题顺序不合法"})
+	}
 	f := content.SelectionFilter{
 		UserID:          userID,
 		LevelID:         req.LevelID,
 		SubjectID:       req.SubjectID,
+		SourceID:        req.SourceID,
 		SourceSectionID: req.SourceSectionID,
+		SelectionOrder:  req.SelectionOrder,
 		Limit:           req.Count,
 		ExcludeRecent:   req.Mode == "comprehensive" || req.Mode == "knowledge",
 	}
@@ -98,6 +120,10 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 	if err != nil {
 		return PreSubmitSession{}, err
 	}
+	scopeMode := req.Mode
+	if scopeMode == "" {
+		scopeMode = "comprehensive"
+	}
 	var sessionID string
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		selected, err := s.contentStore.With(tx).SelectPublishedVersions(ctx, tx, f)
@@ -109,8 +135,10 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 				"当前范围的可用题目不足"), map[string]any{"available": len(selected)})
 		}
 		scope, _ := json.Marshal(map[string]any{
-			"mode":              req.Mode,
+			"mode":              scopeMode,
+			"selectionOrder":    f.SelectionOrder,
 			"subjectId":         req.SubjectID,
+			"sourceId":          req.SourceID,
 			"sourceSectionId":   req.SourceSectionID,
 			"knowledgePointIds": req.KnowledgePointIDs,
 		})
@@ -320,11 +348,6 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 				}); err != nil {
 					return err
 				}
-				if err := jobs.EnqueueTx(ctx, tx, "grade_practice_item_ai", map[string]string{
-					"sessionId": sessionID, "itemId": row.ItemID,
-				}); err != nil {
-					return err
-				}
 				aiJobs++
 				continue
 			}
@@ -339,12 +362,6 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 				if authority != nil {
 					explanationSource = authority
 				}
-			} else if authority != nil {
-				if err := jobs.EnqueueTx(ctx, tx, "explain_practice_item_ai", map[string]string{
-					"sessionId": sessionID, "itemId": row.ItemID,
-				}); err != nil {
-					return err
-				}
 			}
 			if err := st.InsertGrading(ctx, tx, GradingInsert{
 				SessionID: sessionID, ItemID: row.ItemID,
@@ -355,6 +372,9 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 			}); err != nil {
 				return err
 			}
+		}
+		if err := jobs.EnqueueTx(ctx, tx, "analyze_practice_session_ai", map[string]string{"sessionId": sessionID}); err != nil {
+			return err
 		}
 
 		if aiJobs == 0 {
@@ -377,8 +397,8 @@ type itemTypeInfo struct {
 
 func (s *Store) loadItemTypes(ctx context.Context, sessionID string) (map[string]itemTypeInfo, error) {
 	rows, err := store.CollectRows[struct {
-		ID     string
-		Type   string
+		ID      string
+		Type    string
 		Options *string
 	}](ctx, s.db,
 		`SELECT pi.id::text, v.type, v.options::text
@@ -404,6 +424,15 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 	if meta.Status == "active" {
 		return ResultSession{}, httpapi.E(http.StatusConflict, "practice_not_submitted", "练习尚未提交")
 	}
+	if meta.Status == "completed" {
+		pending, err := s.store.HasPendingAIJobs(ctx, sessionID)
+		if err != nil {
+			return ResultSession{}, err
+		}
+		if pending {
+			meta.Status = "grading"
+		}
+	}
 	rows, err := s.store.ResultRows(ctx, sessionID)
 	if err != nil {
 		return ResultSession{}, err
@@ -422,6 +451,9 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 				ID: r.ID, Position: r.Position, Type: r.Type, Stem: r.Stem,
 				Options: []PreSubmitOption{}, KnowledgePoints: []ResultKnowledgePoint{},
 				GradingStatus: r.Status,
+			}
+			if r.SourceSectionName != nil {
+				item.SourceSectionName = *r.SourceSectionName
 			}
 			src := r.Source
 			item.GradingSource = &src
@@ -469,7 +501,8 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 		ID: meta.ID, Status: meta.Status, CreatedAt: meta.CreatedAt, SubmittedAt: meta.SubmittedAt,
 		Summary: ResultSummary{Confirmed: &ConfirmedSummary{Correct: sum.ConfirmedCorrect, Total: sum.ConfirmedTotal},
 			AI: &AISummary{Correct: sum.AiCorrect, Completed: sum.AiCompleted, Pending: sum.AiPending, Failed: sum.AiFailed}},
-		Items: make([]ResultItem, 0, len(order)),
+		AIAnalysis: AIAnalysis{Status: meta.AISummaryStatus, Text: meta.AISummary},
+		Items:      make([]ResultItem, 0, len(order)),
 	}
 	if sum.ConfirmedTotal > 0 {
 		acc := float64(sum.ConfirmedCorrect) / float64(sum.ConfirmedTotal)

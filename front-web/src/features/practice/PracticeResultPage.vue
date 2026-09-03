@@ -6,7 +6,7 @@ import type { ResultSession } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { formatDateTime, formatPercent } from '@/app/format'
+import { aiAnalysisStatusText, formatDateTime, formatPercent } from '@/app/format'
 import ResultItem from './ResultItem.vue'
 
 const route = useRoute()
@@ -113,6 +113,22 @@ const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.valu
           <p class="muted mono">AI 待定 {{ summary?.ai.pending ?? 0 }} · 失败 {{ summary?.ai.failed ?? 0 }}</p>
         </div>
       </div>
+
+      <section class="card" aria-labelledby="ai-analysis-title">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+          <h2 id="ai-analysis-title" style="font-size: 20px; margin: 0">本批 AI 总结</h2>
+          <span class="tag" :data-tone="result.aiAnalysis.status === 'failed' ? 'danger' : result.aiAnalysis.status === 'completed' ? 'success' : 'accent'">
+            {{ aiAnalysisStatusText[result.aiAnalysis.status] ?? result.aiAnalysis.status }}
+          </span>
+        </div>
+        <p v-if="result.aiAnalysis.status === 'pending'" class="muted" style="margin: 12px 0 0">
+          正在根据整批作答情况整理表现、薄弱点和下一步建议…
+        </p>
+        <p v-else-if="result.aiAnalysis.status === 'not_requested'" class="muted" style="margin: 12px 0 0">
+          该批次没有生成 AI 总结。
+        </p>
+        <p v-else style="margin: 12px 0 0; white-space: pre-wrap">{{ result.aiAnalysis.text }}</p>
+      </section>
 
       <section aria-label="逐题解析" style="display: flex; flex-direction: column; gap: 18px">
         <ResultItem v-for="item in result.items" :key="item.id" :item="item" />

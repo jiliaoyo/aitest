@@ -14,7 +14,7 @@
 - 刷题闭环：可用题量查询 → 创建批次（综合/知识点/错题重练，优先最近未做过的题）→ 自动保存（单飞 + 本地草稿恢复）→ 标记待检查 → 携带全部最终答案 + `Idempotency-Key` 幂等提交 → 确定性判分（单选/多选/填空归一化/未答规则）→ 分层结果页（已确认正确率 vs AI 判定 vs 待分析）→ 历史/错题本。
 - 学习档案：`user_knowledge_stats` 由原始判分全量重算（可重建）；仪表盘推荐使用可解释规则（近 30 天已确认作答 ≥5 题 → 正确率升序 → 连错降序）；知识点列表/详情 + 专项练习。
 - 异步任务：PostgreSQL 任务表 + worker（`FOR UPDATE SKIP LOCKED`、租约、指数退避、失败保留错误摘要）；AI 无答案题判定 / AI 解析 / 统计重算三类处理器。
-- AI：OpenAI 兼容 HTTP 客户端、版本化 prompt（`go:embed`）、严格 JSON 解码、`ai_runs` 审计；**AI 不可用时确定性判分完全不受影响**（失败题标 failed，批次进入 analysis_failed）。
+- AI：OpenAI 兼容 HTTP 客户端、版本化 prompt（`go:embed`）、严格 JSON 解码、`ai_runs` 审计；每批练习用一次请求生成整批总结、逐题解析和必要的 AI 判分；**AI 不可用时确定性判分完全不受影响**。
 - 管理端：内容概览、题目 CRUD（编辑产生新版本、发布切换 `published_version_id`、下架保留历史快照）、知识点/来源管理、举报处理、`audit_logs` 审计。
 - 安全：角色中间件 + SQL 内带 user_id 条件（越权一律 404）、非 GET 校验 Origin、请求体大小限制 + 严格 JSON 解码、结构化访问日志与 request_id。
 
@@ -57,10 +57,24 @@ npm run build  # vue-tsc 严格类型检查 + 产物构建
 
 独立 worker（生产形态）：`make worker`；API 与 worker 共用领域代码，仅进程分离。
 
+## PDF 题库重建
+
+```bash
+python3 scripts/rebuild_question_bank.py
+# 重建已有书籍题库前执行；只删除两本书及其依赖，保留自建题和自建练习
+psql "$PG_URL" -f scripts/data/reset_book_question_bank.sql
+psql "$PG_URL" -f backend/questions/blue_questions.sql
+psql "$PG_URL" -f backend/questions/redblue_questions.sql
+```
+
+脚本读取 `scripts/data/` 中的 OCR 快照，按来源章节细分分类，并在发现题号、选项、答案或 OCR 噪声异常时拒绝生成 SQL。
+
+创建练习默认按 PDF 的来源顺序出题；选择“随机”时才使用随机顺序。
+
 ## 关键设计边界（与规范一一对应）
 
 1. **提交前不泄漏**：答题前 DTO 由独立结构体构造（`practice.PreSubmitSession`），并有单元测试断言序列化结果不含任何答案相关字段。
-2. **幂等提交**：交卷事务内 `SELECT ... FOR UPDATE` 锁批次 → 校验幂等键与请求体哈希 → 覆盖最终答案 → 确定性判分 → AI 任务入队（同事务）。
+2. **幂等提交**：提交本批练习事务内 `SELECT ... FOR UPDATE` 锁批次 → 校验幂等键与请求体哈希 → 覆盖最终答案 → 确定性判分 → AI 任务入队（同事务）。
 3. **历史可复现**：`practice_items` 引用不可变 `question_version_id`；编辑创建新版本，发布切换 `published_version_id`，旧批次仍读旧版本。
 4. **答案隔离**：`answer_keys.authority` 仅 `official` / `human_verified`；AI 结果只写 `grading_results`，永不回写答案表。
 5. **统计可重算**：正式正确率只聚合确定性 + 权威答案；AI 判定单独计数，不混入。

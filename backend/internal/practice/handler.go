@@ -22,6 +22,7 @@ func NewHandler(service *Service, logger *slog.Logger) *Handler {
 // RegisterRoutes 挂载学习端练习路由（mux 外层已带登录鉴权）。
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/practice/availability", h.availability)
+	mux.HandleFunc("GET /api/v1/practice/sources", h.sources)
 	mux.HandleFunc("POST /api/v1/practice-sessions", h.create)
 	mux.HandleFunc("GET /api/v1/practice-sessions", h.list)
 	mux.HandleFunc("GET /api/v1/practice-sessions/{id}", h.get)
@@ -30,14 +31,25 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/practice-sessions/{id}/result", h.result)
 }
 
+func (h *Handler) sources(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	sources, err := h.service.PracticeSources(r.Context(), q.Get("levelId"), q.Get("subjectId"))
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"sources": sources})
+}
+
 func (h *Handler) availability(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := CreateRequest{
-		LevelID:           q.Get("levelId"),
-		SubjectID:         q.Get("subjectId"),
-		Mode:              q.Get("mode"),
-		SourceSectionID:   q.Get("sourceSectionId"),
-		Count:             10,
+		LevelID:        q.Get("levelId"),
+		SubjectID:      q.Get("subjectId"),
+		Mode:           q.Get("mode"),
+		SelectionOrder: q.Get("selectionOrder"),
+		SourceID:       q.Get("sourceId"),
+		Count:          10,
 	}
 	req.KnowledgePointIDs = parseIDList(q.Get("knowledgePointIds"))
 	n, err := h.service.Availability(r.Context(), ctxkeys.UserID(r.Context()), req)

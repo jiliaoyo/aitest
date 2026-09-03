@@ -7,3 +7,7 @@ coverage/
 backend/bin/
 
 backend/data/
+
+pdf/
+__pycache__/
+*.pyc

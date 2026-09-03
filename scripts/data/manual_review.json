@@ -1,0 +1,184 @@
+[
+  {
+    "book": "blue",
+    "key": ["n5", 2, 2, 1, 9],
+    "page": "book019",
+    "status": "source_verified",
+    "note": "PDF 原页第 1、3 项均为「遊んで」，不是识别错误；保留原版重复选项。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 6, 2, 3, 26],
+    "page": "book051",
+    "status": "source_verified",
+    "note": "PDF 原页的第 1、2 项均为「ゆっくり過ごしました」，不是 OCR 误合并；保留原版重复选项。"
+  },
+  {
+    "book": "blue",
+    "key": ["n4", 3, 2, 3, 22],
+    "page": "book110",
+    "status": "source_verified",
+    "note": "PDF 原页的第 1、2 项与第 3、4 项分别为同文选项；答案页对应第 3 项，保留原版文字。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 38],
+    "page": "pdf182",
+    "status": "source_verified",
+    "note": "PDF 原页第 1、3 项均为「うみぎし」，保留原版重复选项。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 188],
+    "page": "pdf232",
+    "status": "source_verified",
+    "note": "PDF 原页第 3、4 项均为「けんぶつ」，保留原版重复选项。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 39],
+    "page": "pdf182",
+    "status": "source_verified",
+    "note": "修正原图中的「だいぶ」「だいたい」「ぜんぜん」选项。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 155],
+    "page": "pdf220",
+    "status": "source_verified",
+    "note": "原图第 1 项为「ばかり」，不是 OCR 的「はがり」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 164],
+    "page": "pdf224",
+    "status": "source_verified",
+    "note": "原图第 2 项为「うんでんしゅう」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 238],
+    "page": "pdf248",
+    "status": "source_verified",
+    "note": "原图第 3 项为「じょうず」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 239],
+    "page": "pdf248",
+    "status": "source_verified",
+    "note": "原图第 4 项为「で かもしれません」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 334],
+    "page": "pdf276",
+    "status": "source_verified",
+    "note": "原图第 1、2 项顺序为「かんごふう」「かんごふ」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 337],
+    "page": "pdf276",
+    "status": "source_verified",
+    "note": "题干人名为「鈴木くん」，修正 OCR 的「鈐木」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "mock1", 414],
+    "page": "pdf294",
+    "status": "source_verified",
+    "note": "第 2 项原图为「きのう としょかんで しりょうを しらせていました」。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 4, 1, 2, 16],
+    "page": "book033",
+    "status": "source_verified",
+    "note": "原图题干为「あそこで（ ）か叫んでいます」，修正 OCR 的「かんしんします」。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 2, 1, 2, 0],
+    "page": "book018",
+    "status": "source_verified",
+    "note": "原图包含立つ、行く、飛ぶ、生かす、知る、切る、食べる、寝る、来る、する、運動する 11 行变形表；另有独立的問題1活用表。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 2, 1, 1, 0],
+    "page": "book018",
+    "status": "source_verified",
+    "note": "原图問題1是「作る」的敬体/简体、肯定/否定四格活用表，不能与問題2合并。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 6, 2, 3, 26],
+    "page": "book051",
+    "status": "source_verified",
+    "note": "答案页第26题为第1项「ゆっくり過ごしました」。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 7, 2, 3, 23],
+    "page": "book057",
+    "status": "source_verified",
+    "note": "答案页第23题为第3项「でも」。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 9, 1, 1, 8],
+    "page": "book071",
+    "status": "source_verified",
+    "note": "答案页第8至12题依次为 1、3、2、4、4。"
+  },
+  {
+    "book": "blue",
+    "key": ["n4", 3, 2, 1, 7],
+    "page": "book110",
+    "status": "source_verified",
+    "note": "答案页第7至10题依次为 3、2、1、2。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 1, 1, 1, 0],
+    "page": "book009",
+    "status": "source_verified",
+    "note": "原图题干为「例の文を適当な形に変えて、次の表の中に書いてください。」；OCR 漏掉了「の」。"
+  },
+  {
+    "book": "blue",
+    "key": ["n5", 9, 1, 2, 30],
+    "page": "book073",
+    "status": "source_verified",
+    "note": "原图为「仕事が終わった（ ）で、一緒にレストランへ行きましょう。」；OCR 将空格后的「で」拼成了「、で」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n5", "basic", 18],
+    "page": "pdf014",
+    "status": "source_verified",
+    "note": "原图为「明日 アメリカ（ ）行きます。」；OCR 修正层误把正确答案「へ」保留在空格后，造成重复助词。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "mock1", 387],
+    "page": "pdf289",
+    "status": "source_verified",
+    "note": "原图第1项为「けんぶつ」；OCR 将浊音「ぶ」识别为清音「ぷ」。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "basic", 336],
+    "page": "pdf275",
+    "status": "source_verified",
+    "note": "原图题干为「11がつに はいって（ ）さむくなりました。」；OCR 漏掉了十位数字 1。"
+  },
+  {
+    "book": "redblue",
+    "key": ["n4", "mock2", 495],
+    "page": "pdf316",
+    "status": "source_verified",
+    "note": "原图排列为「立派な・カメラマン・みたい・に」，星号位是第3项「みたい」。"
+  }
+]

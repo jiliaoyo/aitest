@@ -45,8 +45,9 @@ function inputText(event: Event): void {
 
 <template>
   <article class="card" lang="ja">
-    <header style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px">
+    <header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 12px; margin-bottom: 12px">
       <p class="mono muted" style="margin: 0">第 {{ item.position }} 题 · {{ questionTypeText[item.type] ?? item.type }}</p>
+      <p v-if="item.sourceSectionName" class="muted" style="margin: 0; font-size: 13px">{{ item.sourceSectionName }}</p>
       <label class="muted" style="display: flex; align-items: center; gap: 6px; font-size: 13px">
         <input
           type="checkbox"
@@ -64,7 +65,7 @@ function inputText(event: Event): void {
       @toggle="emit('toggle-material')"
     />
 
-    <p class="stem" style="font-size: 17px; margin: 14px 0 18px" lang="ja">{{ item.stem }}</p>
+    <p class="stem" style="font-size: 17px; margin: 14px 0 18px; white-space: pre-wrap" lang="ja">{{ item.stem }}</p>
 
     <fieldset style="border: 0; padding: 0; margin: 0">
       <legend class="visually-hidden-ish" style="position: absolute; width: 1px; height: 1px; overflow: hidden">

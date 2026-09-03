@@ -48,14 +48,16 @@ type ItemSeed struct {
 // ---------- 查询 ----------
 
 type SessionMeta struct {
-	ID          string
-	UserID      string
-	Status      string
-	SubmitKey   *string
-	SubmitHash  *string
-	CreatedAt   string
-	SubmittedAt *string
-	CompletedAt *string
+	ID              string
+	UserID          string
+	Status          string
+	SubmitKey       *string
+	SubmitHash      *string
+	CreatedAt       string
+	SubmittedAt     *string
+	CompletedAt     *string
+	AISummary       string
+	AISummaryStatus string
 }
 
 // SessionMetaForUser 按 (id, user_id) 查询；不匹配一律当作不存在，防止越权探测。
@@ -63,10 +65,11 @@ func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string
 	var m SessionMeta
 	err := s.db.QueryRow(ctx,
 		`SELECT id::text, user_id::text, status, submit_key, submit_hash,
-		        created_at::text, submitted_at::text, completed_at::text
+		        created_at::text, submitted_at::text, completed_at::text,
+		        ai_summary, ai_summary_status
 		 FROM practice_sessions WHERE id = $1 AND user_id = $2`,
 		sessionID, userID,
-	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt)
+	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SessionMeta{}, httpapi.ErrNotFound
 	}
@@ -74,26 +77,28 @@ func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string
 }
 
 type preItemRow struct {
-	ID           string
-	Position     int
-	Type         string
-	Stem         string
-	Options      *string
-	MaterialID   *string
-	MaterialTItle *string
-	MaterialContent *string
-	SavedAnswer  *string
-	Marked       *bool
-	SavedAt      *string
+	ID                string
+	Position          int
+	Type              string
+	Stem              string
+	SourceSectionName *string
+	Options           *string
+	MaterialID        *string
+	MaterialTItle     *string
+	MaterialContent   *string
+	SavedAnswer       *string
+	Marked            *bool
+	SavedAt           *string
 }
 
 func (s *Store) PreSubmitItems(ctx context.Context, sessionID string) ([]PreSubmitItem, int, error) {
 	rows, err := store.CollectRows[preItemRow](ctx, s.db,
-		`SELECT pi.id::text, pi.position, v.type, v.stem, v.options::text,
+		`SELECT pi.id::text, pi.position, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.title, mv.content,
 		        ua.value::text, ua.marked_for_review, ua.saved_at::text
 		 FROM practice_items pi
 		 JOIN question_versions v ON v.id = pi.question_version_id
+		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
 		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		 LEFT JOIN user_answers ua ON ua.item_id = pi.id
 		 WHERE pi.session_id = $1
@@ -110,6 +115,9 @@ func (s *Store) PreSubmitItems(ctx context.Context, sessionID string) ([]PreSubm
 			Type:     r.Type,
 			Stem:     r.Stem,
 			Options:  []PreSubmitOption{},
+		}
+		if r.SourceSectionName != nil {
+			item.SourceSectionName = *r.SourceSectionName
 		}
 		if r.Options != nil && *r.Options != "null" {
 			var opts []PreSubmitOption
@@ -169,13 +177,13 @@ func (s *Store) UpsertAnswer(ctx context.Context, tx pgx.Tx, sessionID, itemID, 
 // ---------- 提交与判分 ----------
 
 type gradeItemRow struct {
-	ItemID      string
-	Position    int
-	Type        string
-	OptionsText *string
-	KeyValue    *string
+	ItemID       string
+	Position     int
+	Type         string
+	OptionsText  *string
+	KeyValue     *string
 	KeyAuthority *string
-	Explanation *string
+	Explanation  *string
 }
 
 // GradeSourceItems 加载批次内全部题目及标准答案（仅提交事务内使用）。
@@ -228,7 +236,8 @@ func (s *Store) SubmitFinalAnswers(ctx context.Context, tx pgx.Tx, sessionID, us
 func (s *Store) MarkSubmitted(ctx context.Context, tx pgx.Tx, sessionID, submitKey, submitHash string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE practice_sessions
-		 SET status = 'grading', submit_key = $2, submit_hash = $3, submitted_at = now(), updated_at = now()
+		 SET status = 'grading', ai_summary_status = 'pending', ai_summary = '',
+		     submit_key = $2, submit_hash = $3, submitted_at = now(), updated_at = now()
 		 WHERE id = $1`, sessionID, submitKey, submitHash)
 	return err
 }
@@ -262,34 +271,36 @@ func (s *Store) CompleteIfDone(ctx context.Context, tx pgx.Tx, sessionID string)
 // ---------- 结果与历史 ----------
 
 type resultItemRow struct {
-	ID           string
-	Position     int
-	Type         string
-	Stem         string
-	OptionsText  *string
-	MaterialID   *string
-	MaterialTitle *string
-	MaterialContent *string
-	KPID         *string
-	KPName       *string
-	Source       string
-	Status       string
-	Authority    *string
-	CorrectValue *string
-	UserValue    *string
-	Explanation  *string
+	ID                string
+	Position          int
+	Type              string
+	Stem              string
+	SourceSectionName *string
+	OptionsText       *string
+	MaterialID        *string
+	MaterialTitle     *string
+	MaterialContent   *string
+	KPID              *string
+	KPName            *string
+	Source            string
+	Status            string
+	Authority         *string
+	CorrectValue      *string
+	UserValue         *string
+	Explanation       *string
 	ExplanationSource *string
 }
 
 func (s *Store) ResultRows(ctx context.Context, sessionID string) ([]resultItemRow, error) {
 	return store.CollectRows[resultItemRow](ctx, s.db,
-		`SELECT pi.id::text, pi.position, v.type, v.stem, v.options::text,
+		`SELECT pi.id::text, pi.position, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.title, mv.content,
 		        kp.id::text, kp.name,
 		        gr.source, gr.status, gr.answer_authority,
 		        gr.correct_value::text, gr.user_value::text, gr.explanation, gr.explanation_source
 		 FROM practice_items pi
 		 JOIN question_versions v ON v.id = pi.question_version_id
+		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
 		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		 LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
 		 LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
@@ -320,6 +331,23 @@ func (s *Store) Summary(ctx context.Context, sessionID string) (summaryRow, erro
 		 FROM grading_results WHERE session_id = $1`, sessionID,
 	).Scan(&r.ConfirmedTotal, &r.ConfirmedCorrect, &r.AiCompleted, &r.AiCorrect, &r.AiPending, &r.AiFailed)
 	return r, err
+}
+
+func (s *Store) HasPendingAIJobs(ctx context.Context, sessionID string) (bool, error) {
+	return store.Exists(ctx, s.db,
+		`SELECT true FROM jobs
+		 WHERE status IN ('queued', 'running')
+		   AND kind IN ('grade_practice_item_ai', 'explain_practice_item_ai', 'analyze_practice_session_ai')
+		   AND payload->>'sessionId' = $1
+		 LIMIT 1`, sessionID)
+}
+
+func (s *Store) SetAISummary(ctx context.Context, sessionID, status, summary string) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE practice_sessions
+		 SET ai_summary_status = $2, ai_summary = $3, updated_at = now()
+		 WHERE id = $1`, sessionID, status, summary)
+	return err
 }
 
 type sessionListRow struct {

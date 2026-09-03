@@ -36,6 +36,12 @@ export interface Exam {
   subjects: Subject[]
 }
 
+export interface PracticeSource {
+  id: string
+  name: string
+  questionCount: number
+}
+
 // ---- knowledge ----
 
 export interface KPStats {
@@ -90,6 +96,7 @@ export interface PreSubmitItem {
   type: QuestionType
   material: MaterialDTO | null
   stem: string
+  sourceSectionName?: string
   options: OptionDTO[]
   savedAnswer: AnswerValue
   markedForReview: boolean
@@ -122,6 +129,7 @@ export interface ResultItem {
   type: QuestionType
   material: MaterialDTO | null
   stem: string
+  sourceSectionName?: string
   options: OptionDTO[]
   knowledgePoints: KPRef[]
   userAnswer: AnswerValue
@@ -137,12 +145,18 @@ export interface ResultSummary {
   ai: { correct: number; completed: number; pending: number; failed: number }
 }
 
+export interface AIAnalysis {
+  status: 'not_requested' | 'pending' | 'completed' | 'failed'
+  text: string
+}
+
 export interface ResultSession {
   id: string
   status: SessionStatus
   createdAt: string
   submittedAt: string | null
   summary: ResultSummary
+  aiAnalysis: AIAnalysis
   items: ResultItem[]
 }
 

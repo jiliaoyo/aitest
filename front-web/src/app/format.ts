@@ -56,6 +56,13 @@ export const gradingStatusText: Record<string, string> = {
   failed: '分析失败',
 }
 
+export const aiAnalysisStatusText: Record<string, string> = {
+  not_requested: '未生成',
+  pending: '生成中',
+  completed: '已完成',
+  failed: '生成失败',
+}
+
 export const authorityText: Record<string, string> = {
   official: '官方答案',
   human_verified: '已审核答案',

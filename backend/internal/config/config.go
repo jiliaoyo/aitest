@@ -1,39 +1,45 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 // Config 汇总启动配置；在进程启动时一次性读取并校验。
 type Config struct {
-	AppEnv        string // dev | prod
-	HTTPAddr      string
-	PublicOrigin  string
-	DatabaseURL   string
-	SessionTTL    time.Duration
-	UploadDir     string
-	UploadMaxBytes int64
-	RunWorker     bool
-	WorkerID      string
+	AppEnv            string // dev | prod
+	HTTPAddr          string
+	PublicOrigin      string
+	DatabaseURL       string
+	SessionTTL        time.Duration
+	UploadDir         string
+	UploadMaxBytes    int64
+	RunWorker         bool
+	WorkerID          string
 	WorkerConcurrency int
 
-	AIBaseURL  string
-	AIAPIKey   string
-	AIModel    string
-	AITimeout  time.Duration
+	AIBaseURL string
+	AIAPIKey  string
+	AIModel   string
+	AITimeout time.Duration
 }
 
 func Load() (Config, error) {
+	if err := loadDotEnv(); err != nil {
+		return Config{}, err
+	}
+	appEnv := getenv("APP_ENV", "dev")
 	c := Config{
-		AppEnv:       getenv("APP_ENV", "dev"),
+		AppEnv:       appEnv,
 		HTTPAddr:     getenv("HTTP_ADDR", ":8080"),
 		PublicOrigin: getenv("PUBLIC_ORIGIN", "http://localhost:5173"),
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		DatabaseURL:  getenv("DATABASE_URL", "postgres://postgres@localhost:5432/ai_shuati_dev?sslmode=disable"),
 		UploadDir:    getenv("UPLOAD_DIR", "./data/uploads"),
-		RunWorker:    getenv("RUN_WORKER", "false") == "true",
+		RunWorker:    getenv("RUN_WORKER", strconv.FormatBool(appEnv == "dev")) == "true",
 		WorkerID:     getenv("WORKER_ID", "worker-1"),
 		AIBaseURL:    os.Getenv("AI_BASE_URL"),
 		AIAPIKey:     os.Getenv("AI_API_KEY"),
@@ -85,4 +91,46 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func loadDotEnv() error {
+	path := ".env"
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		path = "backend/.env"
+	}
+	file, err := os.Open(path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("读取 %s 失败: %w", path, err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		line = strings.TrimPrefix(line, "export ")
+		key, value, ok := strings.Cut(line, "=")
+		if !ok || strings.TrimSpace(key) == "" {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if len(value) >= 2 && ((value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"')) {
+			value = value[1 : len(value)-1]
+		}
+		if _, exists := os.LookupEnv(key); !exists {
+			if err := os.Setenv(key, value); err != nil {
+				return fmt.Errorf("设置 %s 失败: %w", key, err)
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("读取 %s 失败: %w", path, err)
+	}
+	return nil
 }

@@ -68,15 +68,16 @@ type PreSubmitOption struct {
 }
 
 type PreSubmitItem struct {
-	ID              string            `json:"id"`
-	Position        int               `json:"position"`
-	Type            string            `json:"type"`
-	Material        *PreSubmitMaterial `json:"material"`
-	Stem            string            `json:"stem"`
-	Options         []PreSubmitOption `json:"options"`
-	SavedAnswer     json.RawMessage   `json:"savedAnswer"`
-	MarkedForReview bool              `json:"markedForReview"`
-	SavedAt         *string           `json:"savedAt"`
+	ID                string             `json:"id"`
+	Position          int                `json:"position"`
+	Type              string             `json:"type"`
+	Material          *PreSubmitMaterial `json:"material"`
+	Stem              string             `json:"stem"`
+	SourceSectionName string             `json:"sourceSectionName,omitempty"`
+	Options           []PreSubmitOption  `json:"options"`
+	SavedAnswer       json.RawMessage    `json:"savedAnswer"`
+	MarkedForReview   bool               `json:"markedForReview"`
+	SavedAt           *string            `json:"savedAt"`
 }
 
 type PreSubmitSession struct {
@@ -102,19 +103,20 @@ type Explanation struct {
 }
 
 type ResultItem struct {
-	ID              string              `json:"id"`
-	Position        int                 `json:"position"`
-	Type            string              `json:"type"`
-	Material        *ResultMaterial     `json:"material"`
-	Stem            string              `json:"stem"`
-	Options         []PreSubmitOption   `json:"options"`
-	KnowledgePoints []ResultKnowledgePoint `json:"knowledgePoints"`
-	UserAnswer      json.RawMessage     `json:"userAnswer"`
-	GradingStatus   string              `json:"gradingStatus"`
-	GradingSource   *string             `json:"gradingSource"`
-	AnswerAuthority *string             `json:"answerAuthority"`
-	CorrectAnswer   json.RawMessage     `json:"correctAnswer"`
-	Explanation     *Explanation        `json:"explanation"`
+	ID                string                 `json:"id"`
+	Position          int                    `json:"position"`
+	Type              string                 `json:"type"`
+	Material          *ResultMaterial        `json:"material"`
+	Stem              string                 `json:"stem"`
+	SourceSectionName string                 `json:"sourceSectionName,omitempty"`
+	Options           []PreSubmitOption      `json:"options"`
+	KnowledgePoints   []ResultKnowledgePoint `json:"knowledgePoints"`
+	UserAnswer        json.RawMessage        `json:"userAnswer"`
+	GradingStatus     string                 `json:"gradingStatus"`
+	GradingSource     *string                `json:"gradingSource"`
+	AnswerAuthority   *string                `json:"answerAuthority"`
+	CorrectAnswer     json.RawMessage        `json:"correctAnswer"`
+	Explanation       *Explanation           `json:"explanation"`
 }
 
 type ConfirmedSummary struct {
@@ -136,12 +138,18 @@ type ResultSummary struct {
 }
 
 type ResultSession struct {
-	ID         string        `json:"id"`
-	Status     string        `json:"status"`
-	CreatedAt  string        `json:"createdAt"`
-	SubmittedAt *string      `json:"submittedAt"`
-	Summary    ResultSummary `json:"summary"`
-	Items      []ResultItem  `json:"items"`
+	ID          string        `json:"id"`
+	Status      string        `json:"status"`
+	CreatedAt   string        `json:"createdAt"`
+	SubmittedAt *string       `json:"submittedAt"`
+	Summary     ResultSummary `json:"summary"`
+	AIAnalysis  AIAnalysis    `json:"aiAnalysis"`
+	Items       []ResultItem  `json:"items"`
+}
+
+type AIAnalysis struct {
+	Status string `json:"status"`
+	Text   string `json:"text"`
 }
 
 // ---------- 练习历史 ----------

@@ -116,7 +116,7 @@ function clearSubmitKey(): void {
 }
 
 async function openConfirm(): Promise<void> {
-  // 停止新的 debounce 并尽力冲刷未保存修改；交卷请求会携带全部最终答案
+  // 停止新的 debounce 并尽力冲刷未保存修改；提交请求会携带全部最终答案
   await autosave.flushPending(session.value?.items ?? [])
   submitError.value = ''
   confirmOpen.value = true

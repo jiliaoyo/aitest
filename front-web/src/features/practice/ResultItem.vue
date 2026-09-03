@@ -43,6 +43,7 @@ const reportItemID = computed(() => props.item.id)
   <article class="card" lang="ja">
     <header style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between">
       <p class="mono muted" style="margin: 0">第 {{ item.position }} 题 · {{ questionTypeText[item.type] ?? item.type }}</p>
+      <p v-if="item.sourceSectionName" class="muted" style="margin: 0; font-size: 13px">{{ item.sourceSectionName }}</p>
       <div style="display: flex; gap: 6px; flex-wrap: wrap">
         <span class="tag" :data-tone="statusTone">{{ gradingStatusText[item.gradingStatus] ?? item.gradingStatus }}</span>
         <span v-if="isAI" class="tag" data-tone="accent">AI 判定（可能有误）</span>
@@ -55,7 +56,7 @@ const reportItemID = computed(() => props.item.id)
       <p class="material-text" style="margin: 0; white-space: pre-wrap" lang="ja">{{ item.material.content }}</p>
     </section>
 
-    <p style="font-size: 16px; margin: 14px 0 8px" lang="ja">{{ item.stem }}</p>
+    <p style="font-size: 16px; margin: 14px 0 8px; white-space: pre-wrap" lang="ja">{{ item.stem }}</p>
 
     <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px">
       <dt class="muted">你的答案</dt>

@@ -116,7 +116,7 @@ async function retrain(): Promise<void> {
         <section v-if="item.material" class="card" style="background: var(--fg-soft); padding: 14px; margin-top: 10px">
           <p class="material-text" style="margin: 0; white-space: pre-wrap">{{ item.material.content }}</p>
         </section>
-        <p style="font-size: 16px; margin: 12px 0 8px">{{ item.stem }}</p>
+        <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap">{{ item.stem }}</p>
         <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }} · 标准答案：{{ correctText(item) }}</p>
         <div v-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">

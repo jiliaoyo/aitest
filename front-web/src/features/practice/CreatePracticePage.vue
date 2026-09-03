@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { Exam, KnowledgePointItem } from '@/api/types'
+import type { Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { sessionUser } from '@/app/session'
@@ -15,7 +15,9 @@ const loadError = ref('')
 
 const levelId = ref('')
 const subjectId = ref('')
+const sourceId = ref('')
 const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items'>('comprehensive')
+const selectionOrder = ref<'source_order' | 'random'>('source_order')
 const knowledgePointIds = ref<string[]>([])
 const count = ref(20)
 
@@ -27,6 +29,9 @@ const createError = ref('')
 
 const kps = ref<KnowledgePointItem[]>([])
 const kpsLoading = ref(false)
+const sources = ref<PracticeSource[]>([])
+const sourcesLoading = ref(false)
+const sourcesError = ref('')
 
 onMounted(async () => {
   try {
@@ -43,12 +48,33 @@ onMounted(async () => {
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
 
-watch([levelId, subjectId, mode, knowledgePointIds], async () => {
+watch([levelId, subjectId, mode, selectionOrder, sourceId, knowledgePointIds], async () => {
   await refreshAvailability()
   if (mode.value === 'knowledge') {
     await loadKnowledgePoints()
   }
 }, { deep: true })
+
+watch([levelId, subjectId], async () => {
+  if (!levelId.value) return
+  sourcesLoading.value = true
+  sourcesError.value = ''
+  try {
+    const params = new URLSearchParams({ levelId: levelId.value })
+    if (subjectId.value) params.set('subjectId', subjectId.value)
+    const res = await request<{ sources: PracticeSource[] }>(`/practice/sources?${params}`)
+    sources.value = res.sources
+    if (!sources.value.some((source) => source.id === sourceId.value)) {
+      sourceId.value = ''
+    }
+  } catch (err) {
+    sources.value = []
+    sourceId.value = ''
+    sourcesError.value = err instanceof ApiError ? err.message : '数据来源加载失败'
+  } finally {
+    sourcesLoading.value = false
+  }
+}, { immediate: true })
 
 let availabilityTimer: ReturnType<typeof setTimeout> | null = null
 function refreshAvailability(): void {
@@ -61,9 +87,11 @@ function refreshAvailability(): void {
       const params = new URLSearchParams({
         levelId: levelId.value,
         mode: mode.value,
+        selectionOrder: selectionOrder.value,
         count: '10',
       })
       if (subjectId.value) params.set('subjectId', subjectId.value)
+      if (sourceId.value) params.set('sourceId', sourceId.value)
       if (mode.value === 'knowledge' && knowledgePointIds.value.length) {
         params.set('knowledgePointIds', knowledgePointIds.value.join(','))
       }
@@ -110,7 +138,9 @@ async function create(): Promise<void> {
       body: {
         levelId: levelId.value,
         subjectId: subjectId.value,
+        sourceId: sourceId.value,
         mode: mode.value,
+        selectionOrder: selectionOrder.value,
         knowledgePointIds: knowledgePointIds.value,
         count: count.value,
       },
@@ -154,6 +184,19 @@ async function create(): Promise<void> {
           </select>
         </div>
 
+        <div class="field">
+          <label for="source">数据来源（可选）</label>
+          <select id="source" v-model="sourceId" :disabled="sourcesLoading">
+            <option value="">全部题目</option>
+            <option v-for="source in sources" :key="source.id" :value="source.id">
+              {{ source.name }}（{{ source.questionCount }}题）
+            </option>
+          </select>
+          <p v-if="sourcesLoading" class="muted">加载数据来源…</p>
+          <p v-else-if="sourcesError" class="error">{{ sourcesError }}</p>
+          <p v-else-if="sources.length === 0" class="muted">当前级别暂无可用数据来源。</p>
+        </div>
+
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">练习范围</legend>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
@@ -168,6 +211,20 @@ async function create(): Promise<void> {
             <label class="option-row" style="margin-bottom: 0">
               <input v-model="mode" type="radio" name="mode" value="wrong_items" />
               <span>错题重练</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
+          <legend style="font-weight: 600; margin-bottom: 6px">出题顺序</legend>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label class="option-row" style="margin-bottom: 0">
+              <input v-model="selectionOrder" type="radio" name="selectionOrder" value="source_order" />
+              <span>按 PDF 章节顺序</span>
+            </label>
+            <label class="option-row" style="margin-bottom: 0">
+              <input v-model="selectionOrder" type="radio" name="selectionOrder" value="random" />
+              <span>随机</span>
             </label>
           </div>
         </fieldset>

@@ -8,8 +8,8 @@ const (
 	StatusPublished = "published"
 	StatusRetired   = "retired"
 
-	AuthorityOfficial       = "official"
-	AuthorityHumanVerified  = "human_verified"
+	AuthorityOfficial      = "official"
+	AuthorityHumanVerified = "human_verified"
 )
 
 type Source struct {
@@ -31,6 +31,12 @@ type SourceSection struct {
 	SortOrder int    `json:"-"`
 }
 
+type PracticeSource struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	QuestionCount int    `json:"questionCount"`
+}
+
 type Option struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
@@ -45,50 +51,50 @@ type AnswerKey struct {
 
 // QuestionVersion 是题目某一不可变版本的完整内容（仅管理端可携带 AnswerKey）。
 type QuestionVersion struct {
-	ID               string          `json:"id"`
-	QuestionID       string          `json:"questionId"`
-	VersionNo        int             `json:"versionNo"`
-	Type             string          `json:"type"`
-	Stem             string          `json:"stem"`
-	MaterialVersionID *string       `json:"-"`
-	MaterialTitle    string          `json:"materialTitle,omitempty"`
-	MaterialContent  string          `json:"materialContent,omitempty"`
-	Options          json.RawMessage `json:"options"`
-	LevelID          string          `json:"levelId"`
-	SubjectID        string          `json:"subjectId"`
-	SourceSectionID  *string         `json:"sourceSectionId"`
-	Difficulty       int             `json:"difficulty"`
-	KnowledgePointIDs []string       `json:"knowledgePointIds"`
-	AnswerKey        *AnswerKey      `json:"answerKey,omitempty"`
-	CreatedAt        string          `json:"createdAt"`
+	ID                string          `json:"id"`
+	QuestionID        string          `json:"questionId"`
+	VersionNo         int             `json:"versionNo"`
+	Type              string          `json:"type"`
+	Stem              string          `json:"stem"`
+	MaterialVersionID *string         `json:"-"`
+	MaterialTitle     string          `json:"materialTitle,omitempty"`
+	MaterialContent   string          `json:"materialContent,omitempty"`
+	Options           json.RawMessage `json:"options"`
+	LevelID           string          `json:"levelId"`
+	SubjectID         string          `json:"subjectId"`
+	SourceSectionID   *string         `json:"sourceSectionId"`
+	Difficulty        int             `json:"difficulty"`
+	KnowledgePointIDs []string        `json:"knowledgePointIds"`
+	AnswerKey         *AnswerKey      `json:"answerKey,omitempty"`
+	CreatedAt         string          `json:"createdAt"`
 }
 
 // QuestionAdmin 是管理端题目列表/详情聚合。
 type QuestionAdmin struct {
-	ID                 string          `json:"id"`
-	Status             string          `json:"status"`
-	HasAnswer          bool            `json:"hasAnswer"`
-	PublishedVersionID *string         `json:"publishedVersionId"`
+	ID                 string           `json:"id"`
+	Status             string           `json:"status"`
+	HasAnswer          bool             `json:"hasAnswer"`
+	PublishedVersionID *string          `json:"publishedVersionId"`
 	CurrentVersion     *QuestionVersion `json:"currentVersion"`
-	PublishedAt        *string         `json:"publishedAt"`
-	RetiredAt          *string         `json:"retiredAt"`
-	UpdatedAt          string          `json:"updatedAt"`
+	PublishedAt        *string          `json:"publishedAt"`
+	RetiredAt          *string          `json:"retiredAt"`
+	UpdatedAt          string           `json:"updatedAt"`
 }
 
 // QuestionInput 是管理端创建/编辑题目的请求载荷；编辑总是产生新版本。
 type QuestionInput struct {
-	Type              string         `json:"type"`
-	Stem              string         `json:"stem"`
-	Options           []Option       `json:"options"`
-	MaterialID        *string        `json:"materialId"`
-	MaterialTitle     string         `json:"materialTitle"`
-	MaterialContent   string         `json:"materialContent"`
-	LevelID           string         `json:"levelId"`
-	SubjectID         string         `json:"subjectId"`
-	SourceSectionID   *string        `json:"sourceSectionId"`
-	Difficulty        int            `json:"difficulty"`
-	KnowledgePointIDs []string       `json:"knowledgePointIds"`
-	Answer            *AnswerInput   `json:"answer"`
+	Type              string       `json:"type"`
+	Stem              string       `json:"stem"`
+	Options           []Option     `json:"options"`
+	MaterialID        *string      `json:"materialId"`
+	MaterialTitle     string       `json:"materialTitle"`
+	MaterialContent   string       `json:"materialContent"`
+	LevelID           string       `json:"levelId"`
+	SubjectID         string       `json:"subjectId"`
+	SourceSectionID   *string      `json:"sourceSectionId"`
+	Difficulty        int          `json:"difficulty"`
+	KnowledgePointIDs []string     `json:"knowledgePointIds"`
+	Answer            *AnswerInput `json:"answer"`
 }
 
 type AnswerInput struct {

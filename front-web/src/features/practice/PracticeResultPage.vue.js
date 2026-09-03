@@ -4,7 +4,7 @@ import { request, ApiError } from '@/api/client';
 import AppShell from '@/components/AppShell.vue';
 import AppStatus from '@/components/AppStatus.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
-import { formatDateTime, formatPercent } from '@/app/format';
+import { aiAnalysisStatusText, formatDateTime, formatPercent } from '@/app/format';
 import ResultItem from './ResultItem.vue';
 const route = useRoute();
 const sessionID = computed(() => route.params.sessionId);
@@ -222,6 +222,40 @@ else if (__VLS_ctx.result) {
     (__VLS_ctx.summary?.ai.pending ?? 0);
     (__VLS_ctx.summary?.ai.failed ?? 0);
     __VLS_asFunctionalElement(__VLS_intrinsicElements.section, __VLS_intrinsicElements.section)({
+        ...{ class: "card" },
+        'aria-labelledby': "ai-analysis-title",
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)({
+        id: "ai-analysis-title",
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+        ...{ class: "tag" },
+        'data-tone': (__VLS_ctx.result.aiAnalysis.status === 'failed' ? 'danger' : __VLS_ctx.result.aiAnalysis.status === 'completed' ? 'success' : 'accent'),
+    });
+    (__VLS_ctx.aiAnalysisStatusText[__VLS_ctx.result.aiAnalysis.status] ?? __VLS_ctx.result.aiAnalysis.status);
+    if (__VLS_ctx.result.aiAnalysis.status === 'pending') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "muted" },
+            ...{ style: {} },
+        });
+    }
+    else if (__VLS_ctx.result.aiAnalysis.status === 'not_requested') {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "muted" },
+            ...{ style: {} },
+        });
+    }
+    else {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ style: {} },
+        });
+        (__VLS_ctx.result.aiAnalysis.text);
+    }
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.section, __VLS_intrinsicElements.section)({
         'aria-label': "逐题解析",
         ...{ style: {} },
     });
@@ -259,6 +293,10 @@ var __VLS_2;
 /** @type {__VLS_StyleScopedClasses['label']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
 /** @type {__VLS_StyleScopedClasses['mono']} */ ;
+/** @type {__VLS_StyleScopedClasses['card']} */ ;
+/** @type {__VLS_StyleScopedClasses['tag']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
 var __VLS_dollars;
 const __VLS_self = (await import('vue')).defineComponent({
     setup() {
@@ -266,6 +304,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             AppShell: AppShell,
             AppStatus: AppStatus,
             StatusBadge: StatusBadge,
+            aiAnalysisStatusText: aiAnalysisStatusText,
             formatDateTime: formatDateTime,
             formatPercent: formatPercent,
             ResultItem: ResultItem,

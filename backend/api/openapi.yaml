@@ -198,7 +198,9 @@ paths:
       parameters:
         - { name: levelId, in: query, required: true, schema: { type: string } }
         - { name: subjectId, in: query, schema: { type: string } }
+        - { name: sourceId, in: query, schema: { type: string }, description: 指定题目数据来源 }
         - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items] } }
+        - { name: selectionOrder, in: query, schema: { type: string, enum: [source_order, random], default: source_order } }
         - { name: knowledgePointIds, in: query, schema: { type: string }, description: 逗号分隔 }
         - { name: count, in: query, schema: { type: integer } }
       responses:
@@ -209,6 +211,24 @@ paths:
               schema:
                 type: object
                 properties: { available: { type: integer } }
+  /practice/sources:
+    get:
+      tags: [practice]
+      summary: 当前级别可用的题目数据来源
+      parameters:
+        - { name: levelId, in: query, required: true, schema: { type: string } }
+        - { name: subjectId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sources:
+                    type: array
+                    items: { $ref: '#/components/schemas/PracticeSource' }
   /practice-sessions:
     post:
       tags: [practice]
@@ -557,6 +577,7 @@ components:
                 type: object
                 properties: { id: { type: string }, title: { type: string }, content: { type: string } }
               stem: { type: string }
+              sourceSectionName: { type: string }
               options:
                 nullable: true
                 type: array
@@ -591,6 +612,11 @@ components:
                 completed: { type: integer }
                 pending: { type: integer }
                 failed: { type: integer }
+        aiAnalysis:
+          type: object
+          properties:
+            status: { type: string, enum: [not_requested, pending, completed, failed] }
+            text: { type: string }
         items:
           type: array
           items:
@@ -601,6 +627,7 @@ components:
               type: { type: string }
               material: { type: object, nullable: true }
               stem: { type: string }
+              sourceSectionName: { type: string }
               options: { type: array, items: { type: object } }
               knowledgePoints:
                 type: array
@@ -633,8 +660,16 @@ components:
         levelId: { type: string }
         subjectId: { type: string }
         mode: { type: string, enum: [comprehensive, knowledge, wrong_items], default: comprehensive }
+        selectionOrder: { type: string, enum: [source_order, random], default: source_order }
+        sourceId: { type: string, description: 指定题目数据来源；不传表示全部题目 }
         knowledgePointIds: { type: array, items: { type: string } }
         count: { type: integer, enum: [10, 20, 30] }
+    PracticeSource:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        questionCount: { type: integer }
     KnowledgePointItem:
       type: object
       properties:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/store"
@@ -32,15 +33,17 @@ func (s *Store) CountPublishedVersions(ctx context.Context, f SelectionFilter) (
 	err := s.db.QueryRow(ctx,
 		`SELECT count(*) FROM questions q
 		 JOIN question_versions v ON v.id = q.published_version_id
+		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
 		 WHERE q.retired_at IS NULL
 		   AND v.level_id::text = $1
 		   AND ($2 = '' OR v.subject_id::text = $2)
 		   AND ($3 = '' OR v.source_section_id::text = $3)
-		   AND ($4::uuid[] = '{}' OR q.id = ANY($4::uuid[]))
-		   AND ($5::uuid[] = '{}' OR EXISTS (
+		   AND ($4 = '' OR ss.source_id::text = $4)
+		   AND ($5::uuid[] = '{}' OR q.id = ANY($5::uuid[]))
+		   AND ($6::uuid[] = '{}' OR EXISTS (
 		     SELECT 1 FROM question_version_knowledge_points qvkp
-		     WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($5::uuid[])))`,
-		f.LevelID, f.SubjectID, f.SourceSectionID, qIDs, kpAny).Scan(&n)
+		     WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($6::uuid[])))`,
+		f.LevelID, f.SubjectID, f.SourceSectionID, f.SourceID, qIDs, kpAny).Scan(&n)
 	return n, err
 }
 
@@ -84,6 +87,31 @@ func (s *Store) ListSources(ctx context.Context) ([]Source, error) {
 		if i, ok := idx[sec.SourceID]; ok {
 			out[i].Sections = append(out[i].Sections, sec)
 		}
+	}
+	return out, nil
+}
+
+func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID string) ([]PracticeSource, error) {
+	rows, err := store.CollectRows[struct {
+		ID            string
+		Name          string
+		QuestionCount int
+	}](ctx, s.db,
+		`SELECT src.id::text, src.name, count(q.id)::int
+		 FROM source_sections ss
+		 JOIN sources src ON src.id = ss.source_id
+		 JOIN question_versions v ON v.source_section_id = ss.id
+		   AND v.level_id::text = $1
+		   AND ($2 = '' OR v.subject_id::text = $2)
+		 JOIN questions q ON q.published_version_id = v.id AND q.retired_at IS NULL
+		 GROUP BY src.id, src.name, src.created_at, src.kind
+		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id`, levelID, subjectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PracticeSource, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, PracticeSource{ID: r.ID, Name: r.Name, QuestionCount: r.QuestionCount})
 	}
 	return out, nil
 }
@@ -390,7 +418,7 @@ func (s *Store) ListQuestionsAdmin(ctx context.Context, f ListFilter) ([]Questio
 		conds = append(conds, "NOT q.has_answer")
 	}
 	if f.Cursor != "" {
-		add("(q.updated_at, q.id) < (?::timestamptz, ?::uuid)", f.CursorAt, f.CursorID)
+		add("(q.updated_at, q.id) < (?::timestamptz, ?::uuid)", f.CursorAt(), f.CursorID())
 	}
 	args = append(args, f.Limit)
 	limit := "$" + store.Itoa(len(args))
@@ -484,12 +512,12 @@ func joinAnd(conds []string) string {
 // ---------- 概览统计 ----------
 
 type Overview struct {
-	Draft            int `json:"draft"`
-	InReview         int `json:"inReview"`
-	Published        int `json:"published"`
-	Retired          int `json:"retired"`
+	Draft             int `json:"draft"`
+	InReview          int `json:"inReview"`
+	Published         int `json:"published"`
+	Retired           int `json:"retired"`
 	PublishedNoAnswer int `json:"publishedNoAnswer"`
-	OpenIssues       int `json:"openIssues"`
+	OpenIssues        int `json:"openIssues"`
 }
 
 func (s *Store) Overview(ctx context.Context) (Overview, error) {
@@ -513,13 +541,19 @@ type SelectedQuestion struct {
 	QuestionID        string
 	VersionID         string
 	MaterialVersionID *string
+	SourceKind        *string
+	SourceCreatedAt   *string
+	SourceOrder       *int
+	SectionSortOrder  *int
 }
 
 type SelectionFilter struct {
 	UserID            string
 	LevelID           string
 	SubjectID         string
+	SourceID          string
 	SourceSectionID   string
+	SelectionOrder    string
 	KnowledgePointIDs []string
 	QuestionIDs       []string // 限定候选题目（错题重练）
 	Limit             int
@@ -535,20 +569,32 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 	if qIDs == nil {
 		qIDs = []string{}
 	}
-	const base = `SELECT q.id::text, v.id::text, v.material_version_id::text
+	const base = `SELECT q.id::text, v.id::text, v.material_version_id::text,
+	       src.kind, src.created_at::text, v.source_order, ss.sort_order
 	  FROM questions q
 	  JOIN question_versions v ON v.id = q.published_version_id
+	  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+	  LEFT JOIN sources src ON src.id = ss.source_id
 	  WHERE q.retired_at IS NULL
 	    AND v.level_id::text = $1
 	    AND ($2 = '' OR v.subject_id::text = $2)
 	    AND ($3 = '' OR v.source_section_id::text = $3)
-	    AND ($4::uuid[] = '{}' OR q.id = ANY($4::uuid[]))
-	    AND ($5::uuid[] = '{}' OR EXISTS (
+	    AND ($4 = '' OR ss.source_id::text = $4)
+	    AND ($5::uuid[] = '{}' OR q.id = ANY($5::uuid[]))
+	    AND ($6::uuid[] = '{}' OR EXISTS (
 	      SELECT 1 FROM question_version_knowledge_points qvkp
-	      WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($5::uuid[])))
+	      WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($6::uuid[])))
 	    %s
-	  ORDER BY random()
-	  LIMIT $6`
+	  ORDER BY `
+
+	orderBy := `CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END,
+	             src.created_at NULLS LAST,
+	             v.source_order NULLS LAST,
+	             ss.sort_order NULLS LAST,
+	             q.id`
+	if f.SelectionOrder == "random" {
+		orderBy = "random()"
+	}
 
 	exclude := ""
 	if f.ExcludeRecent {
@@ -557,16 +603,17 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 	      WHERE pi.question_id = q.id
 	        AND pi.session_id IN (
 	          SELECT id FROM practice_sessions
-	          WHERE user_id = $7 AND submitted_at IS NOT NULL
+		      WHERE user_id = $8 AND submitted_at IS NOT NULL
 	          ORDER BY created_at DESC LIMIT 3))`
 	}
 
 	run := func(excludeClause string) ([]SelectedQuestion, error) {
-		args := []any{f.LevelID, f.SubjectID, f.SourceSectionID, qIDs, kpAny, f.Limit}
-		if f.ExcludeRecent {
+		args := []any{f.LevelID, f.SubjectID, f.SourceSectionID, f.SourceID, qIDs, kpAny, f.Limit}
+		if excludeClause != "" {
 			args = append(args, f.UserID)
 		}
-		return store.CollectRows[SelectedQuestion](ctx, tx, replaceClause(base, "%s", excludeClause), args...)
+		query := replaceClause(base, "%s", excludeClause) + orderBy + " LIMIT $7"
+		return store.CollectRows[SelectedQuestion](ctx, tx, query, args...)
 	}
 
 	rows, err := run(exclude)
@@ -592,8 +639,72 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 				seen[m.QuestionID] = true
 			}
 		}
+		if f.SelectionOrder != "random" {
+			sort.SliceStable(rows, func(i, j int) bool { return sourceOrderLess(rows[i], rows[j]) })
+		}
 	}
 	return rows, nil
+}
+
+func sourceOrderLess(a, b SelectedQuestion) bool {
+	if rankA, rankB := sourceKindRank(a.SourceKind), sourceKindRank(b.SourceKind); rankA != rankB {
+		return rankA < rankB
+	}
+	if cmp := compareNullableString(a.SourceCreatedAt, b.SourceCreatedAt); cmp != 0 {
+		return cmp < 0
+	}
+	if cmp := compareNullableInt(a.SourceOrder, b.SourceOrder); cmp != 0 {
+		return cmp < 0
+	}
+	if cmp := compareNullableInt(a.SectionSortOrder, b.SectionSortOrder); cmp != 0 {
+		return cmp < 0
+	}
+	return a.QuestionID < b.QuestionID
+}
+
+func sourceKindRank(kind *string) int {
+	if kind != nil && *kind == "book" {
+		return 0
+	}
+	return 1
+}
+
+func compareNullableString(a, b *string) int {
+	if a == nil && b == nil {
+		return 0
+	}
+	if a == nil {
+		return 1
+	}
+	if b == nil {
+		return -1
+	}
+	if *a < *b {
+		return -1
+	}
+	if *a > *b {
+		return 1
+	}
+	return 0
+}
+
+func compareNullableInt(a, b *int) int {
+	if a == nil && b == nil {
+		return 0
+	}
+	if a == nil {
+		return 1
+	}
+	if b == nil {
+		return -1
+	}
+	if *a < *b {
+		return -1
+	}
+	if *a > *b {
+		return 1
+	}
+	return 0
 }
 
 func replaceClause(s, old, new string) string {

@@ -10,7 +10,9 @@ const loadState = ref('loading');
 const loadError = ref('');
 const levelId = ref('');
 const subjectId = ref('');
+const sourceId = ref('');
 const mode = ref('comprehensive');
+const selectionOrder = ref('source_order');
 const knowledgePointIds = ref([]);
 const count = ref(20);
 const availability = ref(null);
@@ -20,6 +22,9 @@ const creating = ref(false);
 const createError = ref('');
 const kps = ref([]);
 const kpsLoading = ref(false);
+const sources = ref([]);
+const sourcesLoading = ref(false);
+const sourcesError = ref('');
 onMounted(async () => {
     try {
         const res = await request('/catalog');
@@ -34,12 +39,36 @@ onMounted(async () => {
 });
 const levels = computed(() => exams.value.flatMap((e) => e.levels));
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects));
-watch([levelId, subjectId, mode, knowledgePointIds], async () => {
+watch([levelId, subjectId, mode, selectionOrder, sourceId, knowledgePointIds], async () => {
     await refreshAvailability();
     if (mode.value === 'knowledge') {
         await loadKnowledgePoints();
     }
 }, { deep: true });
+watch([levelId, subjectId], async () => {
+    if (!levelId.value)
+        return;
+    sourcesLoading.value = true;
+    sourcesError.value = '';
+    try {
+        const params = new URLSearchParams({ levelId: levelId.value });
+        if (subjectId.value)
+            params.set('subjectId', subjectId.value);
+        const res = await request(`/practice/sources?${params}`);
+        sources.value = res.sources;
+        if (!sources.value.some((source) => source.id === sourceId.value)) {
+            sourceId.value = '';
+        }
+    }
+    catch (err) {
+        sources.value = [];
+        sourceId.value = '';
+        sourcesError.value = err instanceof ApiError ? err.message : '数据来源加载失败';
+    }
+    finally {
+        sourcesLoading.value = false;
+    }
+}, { immediate: true });
 let availabilityTimer = null;
 function refreshAvailability() {
     if (!levelId.value)
@@ -53,10 +82,13 @@ function refreshAvailability() {
             const params = new URLSearchParams({
                 levelId: levelId.value,
                 mode: mode.value,
+                selectionOrder: selectionOrder.value,
                 count: '10',
             });
             if (subjectId.value)
                 params.set('subjectId', subjectId.value);
+            if (sourceId.value)
+                params.set('sourceId', sourceId.value);
             if (mode.value === 'knowledge' && knowledgePointIds.value.length) {
                 params.set('knowledgePointIds', knowledgePointIds.value.join(','));
             }
@@ -102,7 +134,9 @@ async function create() {
             body: {
                 levelId: levelId.value,
                 subjectId: subjectId.value,
+                sourceId: sourceId.value,
                 mode: mode.value,
+                selectionOrder: selectionOrder.value,
                 knowledgePointIds: knowledgePointIds.value,
                 count: count.value,
             },
@@ -220,6 +254,44 @@ else {
         });
         (s.name);
     }
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "field" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+        for: "source",
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.select, __VLS_intrinsicElements.select)({
+        id: "source",
+        value: (__VLS_ctx.sourceId),
+        disabled: (__VLS_ctx.sourcesLoading),
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+        value: "",
+    });
+    for (const [source] of __VLS_getVForSourceType((__VLS_ctx.sources))) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.option, __VLS_intrinsicElements.option)({
+            key: (source.id),
+            value: (source.id),
+        });
+        (source.name);
+        (source.questionCount);
+    }
+    if (__VLS_ctx.sourcesLoading) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "muted" },
+        });
+    }
+    else if (__VLS_ctx.sourcesError) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "error" },
+        });
+        (__VLS_ctx.sourcesError);
+    }
+    else if (__VLS_ctx.sources.length === 0) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({
+            ...{ class: "muted" },
+        });
+    }
     __VLS_asFunctionalElement(__VLS_intrinsicElements.fieldset, __VLS_intrinsicElements.fieldset)({
         ...{ class: "field" },
         ...{ style: {} },
@@ -262,6 +334,38 @@ else {
         value: "wrong_items",
     });
     (__VLS_ctx.mode);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.fieldset, __VLS_intrinsicElements.fieldset)({
+        ...{ class: "field" },
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.legend, __VLS_intrinsicElements.legend)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+        ...{ class: "option-row" },
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+        type: "radio",
+        name: "selectionOrder",
+        value: "source_order",
+    });
+    (__VLS_ctx.selectionOrder);
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.label, __VLS_intrinsicElements.label)({
+        ...{ class: "option-row" },
+        ...{ style: {} },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
+        type: "radio",
+        name: "selectionOrder",
+        value: "random",
+    });
+    (__VLS_ctx.selectionOrder);
     __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
     if (__VLS_ctx.mode === 'knowledge') {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
@@ -371,7 +475,14 @@ var __VLS_2;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['error']} */ ;
+/** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['option-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['option-row']} */ ;
+/** @type {__VLS_StyleScopedClasses['field']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['option-row']} */ ;
 /** @type {__VLS_StyleScopedClasses['field']} */ ;
@@ -397,7 +508,9 @@ const __VLS_self = (await import('vue')).defineComponent({
             loadError: loadError,
             levelId: levelId,
             subjectId: subjectId,
+            sourceId: sourceId,
             mode: mode,
+            selectionOrder: selectionOrder,
             knowledgePointIds: knowledgePointIds,
             count: count,
             availability: availability,
@@ -407,6 +520,9 @@ const __VLS_self = (await import('vue')).defineComponent({
             createError: createError,
             kps: kps,
             kpsLoading: kpsLoading,
+            sources: sources,
+            sourcesLoading: sourcesLoading,
+            sourcesError: sourcesError,
             levels: levels,
             subjects: subjects,
             insufficient: insufficient,
