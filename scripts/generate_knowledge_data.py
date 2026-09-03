@@ -199,7 +199,7 @@ def main() -> None:
                 "method": classified["method"],
                 "confidence": classified["confidence"],
                 **suggestion_fields,
-                "reviewStatus": "not_required",
+                "reviewStatus": "pending" if suggestion_fields else "not_required",
                 **({"reviewReason": classified["reviewReason"]} if classified.get("reviewReason") else {}),
                 "basis": classified["basis"],
             }

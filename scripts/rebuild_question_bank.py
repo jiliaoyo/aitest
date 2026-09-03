@@ -1465,13 +1465,17 @@ def validate(blue: list[dict], red: list[dict]) -> None:
             if (book, key) not in mapping_keys:
                 errors.append(f"missing knowledge mapping {book} {key}")
             mapping_item = mapping_by_key.get((book, key))
-            if mapping_item is None or mapping_item.get("reviewStatus") != "not_required":
+            if mapping_item is None or mapping_item.get("reviewStatus") not in {"not_required", "pending"}:
                 errors.append(f"formal mapping is not confirmed {book} {key}")
             elif not mapping_item.get("knowledgePointIds"):
                 errors.append(f"formal mapping has no root {book} {key}")
             else:
                 formal_ids = set(mapping_item["knowledgePointIds"])
                 suggested_ids = set(mapping_item.get("suggestedKnowledgePointIds", []))
+                if mapping_item.get("reviewStatus") == "pending" and (not suggested_ids or not mapping_item.get("reviewReason")):
+                    errors.append(f"pending mapping has no review suggestion {book} {key}")
+                if mapping_item.get("reviewStatus") == "not_required" and suggested_ids:
+                    errors.append(f"suggestion mapping status is not pending {book} {key}")
                 if formal_ids & suggested_ids or (suggested_ids and mapping_item.get("suggestedReviewStatus") != "pending"):
                     errors.append(f"pending suggestion entered formal mapping {book} {key}")
                 for point_id in mapping_item["knowledgePointIds"] + list(suggested_ids):
