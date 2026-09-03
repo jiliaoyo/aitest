@@ -27,6 +27,7 @@
 cd backend
 createdb ai_shuati_dev            # 如已存在可跳过
 make migrate                      # 应用迁移（兼容 goose 格式）
+# 先在本地环境设置 SEED_ADMIN_PASSWORD、SEED_LEARNER_PASSWORD，再运行：
 make seed                         # 演示数据 + 两个账号
 make dev                          # 启动 API :8080（内嵌 worker，RUN_WORKER=true）
 
@@ -40,8 +41,8 @@ npm run dev                       # http://localhost:5173（/api 代理到 :8080
 
 | 角色 | 邮箱 | 密码 |
 | --- | --- | --- |
-| 学习者 | learner@example.com | [local seed password] |
-| 管理员 | admin@example.com | [local seed password] |
+| 学习者 | learner@example.com | 由 `SEED_LEARNER_PASSWORD` 设置 |
+| 管理员 | admin@example.com | 由 `SEED_ADMIN_PASSWORD` 设置 |
 
 ## 常用命令
 

@@ -53,12 +53,12 @@ npm run build      # vue-tsc 严格检查 + 构建
 npm run test       # vitest
 ```
 
-演示账号:`admin@example.com / [local seed password]`(管理员)、`learner@example.com / [local seed password]`。
+演示账号使用 `admin@example.com` 和 `learner@example.com`；密码通过 `SEED_ADMIN_PASSWORD`、`SEED_LEARNER_PASSWORD` 注入，不写入仓库。
 
 ## Docker 部署约定
 
 - 根目录 `compose.yaml` 定义 `postgres`、`backend`、`worker`、`frontend` 四个服务；后端镜像默认启动 API，`/app/worker` 用于独立 worker，`/app/migrate` 用于迁移，`/app/seed` 用于演示数据初始化。
-- 生产部署目录为 `<deployment-directory>`。后端映射宿主机 `9090 -> 8080`，前端 Nginx 映射宿主机 `9091 -> 80`；公网只通过现有入口 Nginx 的 `443` 虚拟主机按域名反代到 `127.0.0.1:9091`。宿主机 `80` 保留给现有服务，不要由本项目绑定。
+- 生产部署目录、宿主机端口和公网入口由部署环境配置，不写入仓库；公网入口应反向代理到前端服务，避免让本项目直接占用宿主机保留端口。
 - PostgreSQL 持久卷固定为 `ai_shuati_postgres_data`，上传文件卷固定为 `ai_shuati_uploads`。更新服务禁止使用 `docker compose down -v`；涉及数据同步前先做 `pg_dump` 备份。
 - 首次初始化顺序：启动 `postgres` → `/app/migrate` → 挂载 `scripts/data/knowledge_points_n4n5.json` 执行 `/app/seed` → 导入 `backend/questions/blue_questions.sql` 和 `backend/questions/redblue_questions.sql` → 启动 `backend`、`worker`、`frontend`。题库 SQL 可幂等重跑，但不要执行题库重置脚本覆盖线上运行数据。
 - 后端 `.env` 只放服务器环境变量和密钥，不提交、不打印；AI 服务必须同时配置 `AI_BASE_URL`、`AI_API_KEY`、`AI_MODEL`。前端 `nginx.conf` 使用 Docker DNS 动态解析 `backend`，避免后端容器重建后反代缓存旧 IP。
@@ -67,11 +67,10 @@ npm run test       # vitest
 ### 线上更新流程
 
 1. 本地先运行 `cd backend && go build ./...`、`cd front-web && npm run build`。
-2. 将代码同步到 `<deployment-directory>`，排除所有 `.env`、`node_modules/`、`dist/`、`pdf/`、`.venv*/`；不要使用会删除远端文件的 `rsync --delete`。
-3. 更新前备份数据库：`backup=backups/pre-update-$(date +%Y%m%d%H%M%S).dump && sudo docker compose exec -T postgres pg_dump -U ai_shuati -d ai_shuati --format=custom > "$backup" && chmod 600 "$backup"`。
-4. 后端或迁移有变化时执行 `sudo docker compose build backend worker`，再执行 `sudo docker compose run --rm backend /app/migrate -dir /app/migrations`，最后 `sudo docker compose up -d --no-build --force-recreate backend worker frontend`。
-5. 只有前端变化时只执行 `sudo docker compose build frontend && sudo docker compose up -d --no-build --force-recreate frontend`；只改服务器 AI 配置时修改远端 `.env` 后重建 `backend`、`worker`，不需要重新导入数据。
-6. 更新后检查 `sudo docker compose ps`、`curl -fsS http://127.0.0.1:9090/health/live`、前端 `/api` 反代和 443 域名访问。禁止执行 `docker compose down -v`，禁止删除 `ai_shuati_postgres_data` 或 `ai_shuati_uploads`。
+2. 通过受控发布流程同步代码，排除所有 `.env`、`node_modules/`、`dist/`、`pdf/`、`.venv*/`；不要使用会删除远端文件的同步参数。
+3. 更新前备份数据库；后端或迁移有变化时先构建镜像、执行迁移，再重启后端和 worker。
+4. 只有前端变化时只构建并重启 frontend；只改服务器 AI 配置时更新部署环境变量并重启后端和 worker，不要重新导入数据。
+5. 更新后检查容器健康状态、后端存活探针、前端 `/api` 反代和公网入口。禁止删除生产数据库或上传文件卷。
 
 ## 硬性约束(违反等于返工)
 

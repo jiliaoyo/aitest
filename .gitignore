@@ -1,6 +1,8 @@
 .DS_Store
 .idea/
 .env
+.env.*
+!.env.example
 node_modules/
 dist/
 coverage/
@@ -11,6 +13,9 @@ backend/data/
 ocr-service/data/
 
 pdf/
+tmp/
+questions_json/
+.workbuddy/
 __pycache__/
 *.pyc
 /data/

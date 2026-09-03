@@ -36,6 +36,11 @@ func main() {
 	if !errors.Is(err, pgx.ErrNoRows) {
 		fail(err)
 	}
+	adminPassword := os.Getenv("SEED_ADMIN_PASSWORD")
+	learnerPassword := os.Getenv("SEED_LEARNER_PASSWORD")
+	if adminPassword == "" || learnerPassword == "" {
+		fail(errors.New("缺少 SEED_ADMIN_PASSWORD 或 SEED_LEARNER_PASSWORD"))
+	}
 
 	err = store.WithTx(ctx, pool, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx,
@@ -68,9 +73,15 @@ func main() {
 			subjectIDs[s.code] = id
 		}
 
-		// 账号
-		adminHash, _ := bcrypt.GenerateFromPassword([]byte("[local seed password]"), bcrypt.DefaultCost)
-		learnerHash, _ := bcrypt.GenerateFromPassword([]byte("[local seed password]"), bcrypt.DefaultCost)
+		// 账号密码由运行环境注入，避免固定演示密码被误用于公开部署。
+		adminHash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("生成管理员密码哈希: %w", err)
+		}
+		learnerHash, err := bcrypt.GenerateFromPassword([]byte(learnerPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("生成学习者密码哈希: %w", err)
+		}
 		if _, err := tx.Exec(ctx,
 			`INSERT INTO users (email, email_normalized, password_hash, role, default_level_id)
 			 VALUES ('admin@example.com', 'admin@example.com', $1, 'admin', $2)`,
@@ -291,7 +302,7 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	fmt.Println("seed 完成：admin@example.com / [local seed password]，learner@example.com / [local seed password]")
+	fmt.Println("seed 完成：admin@example.com、learner@example.com（密码为 SEED_* 中设置的值）")
 }
 
 func fail(err error) {
