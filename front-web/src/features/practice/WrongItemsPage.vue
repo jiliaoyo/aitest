@@ -16,6 +16,8 @@ const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
 const creating = ref(false)
+const deletingItemID = ref('')
+const deleteError = ref('')
 
 async function load(): Promise<void> {
   state.value = 'loading'
@@ -84,6 +86,21 @@ async function retrain(): Promise<void> {
     creating.value = false
   }
 }
+
+async function removeWrongItem(item: WrongItem): Promise<void> {
+  if (deletingItemID.value) return
+  if (!window.confirm('确定从错题本移除这道题吗？原始答题记录和成绩会保留。')) return
+  deletingItemID.value = item.itemId
+  deleteError.value = ''
+  try {
+    await request(`/wrong-items/${item.itemId}`, { method: 'DELETE' })
+    items.value = items.value.filter((current) => current.itemId !== item.itemId)
+  } catch (err) {
+    deleteError.value = err instanceof ApiError ? err.message : '删除失败，请重试'
+  } finally {
+    deletingItemID.value = ''
+  }
+}
 </script>
 
 <template>
@@ -102,6 +119,7 @@ async function retrain(): Promise<void> {
         <option v-for="k in kps" :key="k.id" :value="k.id">{{ k.name }}</option>
       </select>
     </div>
+    <p v-if="deleteError" class="error-summary" role="alert">{{ deleteError }}</p>
 
     <AppStatus v-if="state === 'loading'" state="loading" />
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load" />
@@ -123,6 +141,11 @@ async function retrain(): Promise<void> {
             {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
           </p>
           <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
+        </div>
+        <div style="display: flex; justify-content: flex-end; margin-top: 14px">
+          <button class="danger" type="button" :disabled="deletingItemID === item.itemId" @click="removeWrongItem(item)">
+            {{ deletingItemID === item.itemId ? '删除中…' : '从错题本移除' }}
+          </button>
         </div>
       </article>
     </div>

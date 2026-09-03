@@ -67,7 +67,7 @@ func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string
 		`SELECT id::text, user_id::text, status, submit_key, submit_hash,
 		        created_at::text, submitted_at::text, completed_at::text,
 		        ai_summary, ai_summary_status
-		 FROM practice_sessions WHERE id = $1 AND user_id = $2`,
+		 FROM practice_sessions WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 		sessionID, userID,
 	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -394,7 +394,7 @@ type sessionListRow struct {
 
 func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string, limit int) ([]SessionListItem, string, error) {
 	args := []any{userID}
-	conds := []string{"ps.user_id = $1"}
+	conds := []string{"ps.user_id = $1", "ps.deleted_at IS NULL"}
 	if status != "" {
 		args = append(args, status)
 		conds = append(conds, "ps.status = $"+store.Itoa(len(args)))
@@ -439,7 +439,7 @@ func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) 
 		   FROM grading_results gr
 		   JOIN practice_items pi ON pi.id = gr.item_id
 		   JOIN practice_sessions ps ON ps.id = pi.session_id
-		   WHERE ps.user_id = $1 AND (
+			   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL AND (
 		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect','unanswered'))
 		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))
 		   ORDER BY pi.question_id, gr.updated_at DESC

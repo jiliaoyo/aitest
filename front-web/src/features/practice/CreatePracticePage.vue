@@ -14,6 +14,7 @@ const loadState = ref<'loading' | 'ready' | 'error'>('loading')
 const loadError = ref('')
 
 const levelId = ref('')
+const aiLevelId = ref('')
 const subjectId = ref('')
 const sourceId = ref('')
 const sourceSectionId = ref('')
@@ -56,6 +57,7 @@ onMounted(async () => {
     const res = await request<{ exams: Exam[] }>('/catalog')
     exams.value = res.exams
     levelId.value = sessionUser()?.defaultLevelId ?? res.exams[0]?.levels[0]?.id ?? ''
+    aiLevelId.value = levelId.value
     loadState.value = 'ready'
   } catch (err) {
     loadError.value = err instanceof ApiError ? err.message : '加载失败'
@@ -65,7 +67,7 @@ onMounted(async () => {
 
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
-const selectedLevelName = computed(() => levels.value.find((level) => level.id === levelId.value)?.name ?? '当前级别')
+const selectedLevelName = computed(() => levels.value.find((level) => level.id === aiLevelId.value)?.name ?? '指定级别')
 
 watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId, knowledgePointIds], async () => {
   await refreshAvailability()
@@ -181,12 +183,13 @@ async function create(): Promise<void> {
 }
 
 async function generateAIPractice(): Promise<void> {
-  if (!levelId.value || generatingAI.value) return
+  const targetLevelId = aiGenerationMode.value === 'level' ? aiLevelId.value : levelId.value
+  if (!targetLevelId || generatingAI.value) return
   generatingAI.value = true
   generateAIError.value = ''
   try {
     const body: AIGeneratePracticeRequest = {
-      levelId: levelId.value,
+      levelId: targetLevelId,
       subjectId: subjectId.value,
       knowledgePointIds: aiGenerationMode.value === 'memory' ? knowledgePointIds.value : [],
       count: count.value as 10 | 20 | 30,
@@ -335,7 +338,7 @@ async function generateAIPractice(): Promise<void> {
         <p class="muted">
           AI 会
           <template v-if="aiGenerationMode === 'memory'">参考你的全局做题记忆和薄弱知识点</template>
-          <template v-else>根据当前 {{ selectedLevelName }} 级别</template>
+          <template v-else>根据指定的 {{ selectedLevelName }} 级别</template>
           生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。
         </p>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
@@ -347,6 +350,12 @@ async function generateAIPractice(): Promise<void> {
             </label>
           </div>
         </fieldset>
+        <div v-if="aiGenerationMode === 'level'" class="field" style="max-width: 280px">
+          <label for="ai-level">生成级别</label>
+          <select id="ai-level" v-model="aiLevelId" :disabled="generatingAI">
+            <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.name }}</option>
+          </select>
+        </div>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">题型</legend>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">

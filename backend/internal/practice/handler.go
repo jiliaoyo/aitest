@@ -26,6 +26,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/practice-sessions", h.create)
 	mux.HandleFunc("GET /api/v1/practice-sessions", h.list)
 	mux.HandleFunc("GET /api/v1/practice-sessions/{id}", h.get)
+	mux.HandleFunc("DELETE /api/v1/practice-sessions/{id}", h.delete)
 	mux.HandleFunc("PUT /api/v1/practice-sessions/{id}/answers/{itemId}", h.saveAnswer)
 	mux.HandleFunc("POST /api/v1/practice-sessions/{id}/submit", h.submit)
 	mux.HandleFunc("GET /api/v1/practice-sessions/{id}/result", h.result)
@@ -94,6 +95,14 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, session)
+}
+
+func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeleteSession(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("id")); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) saveAnswer(w http.ResponseWriter, r *http.Request) {

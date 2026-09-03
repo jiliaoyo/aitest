@@ -572,3 +572,22 @@ func (s *Service) ListSessions(ctx context.Context, userID, status, cursor strin
 	}
 	return s.store.ListSessions(ctx, userID, status, cursor, limit)
 }
+
+func (s *Service) DeleteSession(ctx context.Context, userID, sessionID string) error {
+	var status string
+	err := s.pool.QueryRow(ctx,
+		`SELECT status FROM practice_sessions WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`, sessionID, userID).Scan(&status)
+	if err == pgx.ErrNoRows {
+		return httpapi.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if status == "active" || status == "generating" {
+		return httpapi.E(http.StatusConflict, "practice_in_progress", "进行中的练习不能删除")
+	}
+	_, err = s.pool.Exec(ctx,
+		`UPDATE practice_sessions SET deleted_at = now(), updated_at = now()
+		 WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`, sessionID, userID)
+	return err
+}

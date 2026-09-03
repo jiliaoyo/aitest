@@ -279,7 +279,7 @@ func (s *Store) ActiveSession(ctx context.Context, userID string) (*ActiveSessio
 		         WHERE pi.session_id = ps.id AND ua.value IS NOT NULL) AS answered,
 		        (SELECT count(*) FROM practice_items pi WHERE pi.session_id = ps.id) AS total
 		 FROM practice_sessions ps
-		 WHERE ps.user_id = $1 AND ps.status IN ('active', 'generating')
+			 WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND ps.status IN ('active', 'generating')
 		 ORDER BY ps.created_at DESC LIMIT 1`, userID,
 	).Scan(&a.ID, &a.Status, &a.AnsweredCount, &a.TotalCount)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -304,8 +304,8 @@ func (s *Store) RecentSessions(ctx context.Context, userID string, limit int) ([
 		`SELECT ps.id::text, ps.status,
 		        (SELECT count(*) FROM practice_items pi WHERE pi.session_id = ps.id),
 		        ps.created_at::text, ps.submitted_at::text
-		 FROM practice_sessions ps
-		 WHERE ps.user_id = $1 AND ps.status <> 'active'
+			 FROM practice_sessions ps
+			 WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND ps.status <> 'active'
 		 ORDER BY ps.created_at DESC LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err
@@ -484,13 +484,28 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID string,
 		   LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		   LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
 		   LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
-		   WHERE ps.user_id = $1
+			   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL
 		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
 		     AND (
 		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
 		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))`+where+`
 		   ORDER BY pi.question_id, gr.updated_at DESC
 		 ) w ORDER BY w.graded_at DESC LIMIT `+limitPh, args...)
+}
+
+func (s *Store) DeleteWrongItem(ctx context.Context, userID, itemID string) error {
+	commandTag, err := s.db.Exec(ctx,
+		`UPDATE practice_items pi SET deleted_at = now()
+		 FROM practice_sessions ps
+		 WHERE pi.id = $1 AND pi.session_id = ps.id AND ps.user_id = $2
+		   AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL`, itemID, userID)
+	if err != nil {
+		return err
+	}
+	if commandTag.RowsAffected() == 0 {
+		return httpapi.ErrNotFound
+	}
+	return nil
 }
 
 // ---------- 举报 ----------

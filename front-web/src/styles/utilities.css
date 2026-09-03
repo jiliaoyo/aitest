@@ -228,7 +228,7 @@
 
 .option-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -243,7 +243,9 @@
 }
 
 .option-row input {
-  margin-top: 4px;
+  flex: 0 0 auto;
+  margin: 0;
+  transform: translateY(1px);
 }
 
 .dialog-backdrop {

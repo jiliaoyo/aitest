@@ -17,6 +17,8 @@ const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
 const statusFilter = ref((route.query.status as string | undefined) ?? '')
+const deleteError = ref('')
+const deletingID = ref('')
 
 const statusOptions = [
   { value: '', label: '全部' },
@@ -54,6 +56,21 @@ watch(statusFilter, () => {
 function linkFor(s: SessionListItem): string {
   return ['active', 'generating', 'generation_failed'].includes(s.status) ? `/practice/${s.id}` : `/practice/${s.id}/result`
 }
+
+async function deleteSession(session: SessionListItem): Promise<void> {
+  if (deletingID.value || ['active', 'generating'].includes(session.status)) return
+  if (!window.confirm('确定隐藏这条练习历史吗？原始答题记录和成绩会保留。')) return
+  deletingID.value = session.id
+  deleteError.value = ''
+  try {
+    await request(`/practice-sessions/${session.id}`, { method: 'DELETE' })
+    sessions.value = sessions.value.filter((item) => item.id !== session.id)
+  } catch (err) {
+    deleteError.value = err instanceof ApiError ? err.message : '删除失败，请重试'
+  } finally {
+    deletingID.value = ''
+  }
+}
 </script>
 
 <template>
@@ -67,6 +84,7 @@ function linkFor(s: SessionListItem): string {
         </select>
       </label>
     </div>
+    <p v-if="deleteError" class="error-summary" role="alert">{{ deleteError }}</p>
 
     <AppStatus v-if="state === 'loading'" state="loading" />
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load()" />
@@ -91,7 +109,18 @@ function linkFor(s: SessionListItem): string {
             <td class="mono">{{ formatDateTime(s.createdAt) }}</td>
             <td class="mono">{{ formatDateTime(s.submittedAt) }}</td>
             <td>
-                  <RouterLink :to="linkFor(s)">{{ ['active', 'generating'].includes(s.status) ? '继续练习' : s.status === 'generation_failed' ? '查看生成状态' : '查看结果' }}</RouterLink>
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+                <RouterLink :to="linkFor(s)">{{ ['active', 'generating'].includes(s.status) ? '继续练习' : s.status === 'generation_failed' ? '查看生成状态' : '查看结果' }}</RouterLink>
+                <button
+                  v-if="!['active', 'generating'].includes(s.status)"
+                  class="danger"
+                  type="button"
+                  :disabled="deletingID === s.id"
+                  @click="deleteSession(s)"
+                >
+                  {{ deletingID === s.id ? '删除中…' : '删除' }}
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>

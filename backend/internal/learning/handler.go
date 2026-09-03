@@ -49,6 +49,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, adminMux *http.ServeMux) {
 		mux.HandleFunc("GET /api/v1/learning-memory", h.memory)
 		mux.HandleFunc("DELETE /api/v1/learning-memory", h.deleteMemory)
 		mux.HandleFunc("GET /api/v1/wrong-items", h.wrongItems)
+		mux.HandleFunc("DELETE /api/v1/wrong-items/{id}", h.deleteWrongItem)
 		mux.HandleFunc("POST /api/v1/issue-reports", h.createIssueReport)
 	}
 	if adminMux != nil {
@@ -209,6 +210,14 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 		out = append(out, items[id])
 	}
 	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"wrongItems": out})
+}
+
+func (h *Handler) deleteWrongItem(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.DeleteWrongItem(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("id")); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) createIssueReport(w http.ResponseWriter, r *http.Request) {

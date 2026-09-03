@@ -191,6 +191,15 @@ paths:
                   wrongItems:
                     type: array
                     items: { $ref: '#/components/schemas/WrongItem' }
+  /wrong-items/{id}:
+    delete:
+      tags: [learning]
+      summary: 从错题本移除单题（软删除）
+      description: 仅从当前账号的错题本和错题重练入口隐藏；原始作答与成绩保留。
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: 已移除 }
+        '404': { $ref: '#/components/responses/NotFound' }
   /issue-reports:
     post:
       tags: [learning]
@@ -313,6 +322,15 @@ paths:
       responses:
         '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PreSubmitSession' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [practice]
+      summary: 软删除练习历史
+      description: 仅从当前账号的历史、仪表盘和错题本视图隐藏；原始作答、成绩和题目版本保留。
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: 已隐藏 }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: practice_in_progress }
   /practice-sessions/{id}/answers/{itemId}:
     put:
       tags: [practice]
