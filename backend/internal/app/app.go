@@ -20,6 +20,7 @@ import (
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/practice"
 	"github.com/aishuati/backend/internal/store"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func Run(ctx context.Context) error {
@@ -36,6 +37,34 @@ func Run(ctx context.Context) error {
 	}
 	defer pool.Close()
 
+	finalHandler := newHTTPHandler(ctx, cfg, pool, logger)
+
+	srv := &http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           finalHandler,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("server_started", "addr", cfg.HTTPAddr, "app_env", cfg.AppEnv)
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		logger.Info("server_stopping")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	case err := <-errCh:
+		if err == http.ErrServerClosed {
+			return nil
+		}
+		return fmt.Errorf("HTTP 服务退出: %w", err)
+	}
+}
+
+func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
 	// 各领域模块
 	authStore := auth.NewStore(pool)
 	authService := auth.NewService(authStore, logger, cfg.SessionTTL)
@@ -137,30 +166,7 @@ func Run(ctx context.Context) error {
 	finalHandler = httpapi.AccessLog(logger, finalHandler)
 	finalHandler = httpapi.RequestIDMiddleware(finalHandler)
 	finalHandler = httpapi.Recover(logger, finalHandler)
-
-	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
-		Handler:           finalHandler,
-		ReadHeaderTimeout: 10 * time.Second,
-	}
-	errCh := make(chan error, 1)
-	go func() {
-		logger.Info("server_started", "addr", cfg.HTTPAddr, "app_env", cfg.AppEnv)
-		errCh <- srv.ListenAndServe()
-	}()
-
-	select {
-	case <-ctx.Done():
-		logger.Info("server_stopping")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		return srv.Shutdown(shutdownCtx)
-	case err := <-errCh:
-		if err == http.ErrServerClosed {
-			return nil
-		}
-		return fmt.Errorf("HTTP 服务退出: %w", err)
-	}
+	return finalHandler
 }
 
 func isAdminPath(p string) bool {

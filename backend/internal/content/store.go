@@ -376,13 +376,14 @@ func (s *Store) currentVersion(ctx context.Context, questionID string) (Question
 	if answerAuthority != "" {
 		v.AnswerKey = &AnswerKey{Value: json.RawMessage(answerValue), Authority: answerAuthority, Explanation: answerExplanation}
 	}
-	kps, err := store.CollectRows[string](ctx, s.db,
+	kpRows, err := store.CollectRows[struct{ ID string }](ctx, s.db,
 		`SELECT knowledge_point_id::text FROM question_version_knowledge_points WHERE question_version_id = $1 ORDER BY knowledge_point_id`, v.ID)
 	if err != nil {
 		return v, err
 	}
-	if kps == nil {
-		kps = []string{}
+	kps := make([]string, 0, len(kpRows))
+	for _, row := range kpRows {
+		kps = append(kps, row.ID)
 	}
 	v.KnowledgePointIDs = kps
 	return v, nil

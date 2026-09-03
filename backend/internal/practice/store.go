@@ -399,7 +399,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string,
 
 // WrongQuestionIDs 返回用户最近一次作答为错误的题目 ID（按最近错误时间倒序）。
 func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) ([]string, error) {
-	return store.CollectRows[string](ctx, s.db,
+	rows, err := store.CollectRows[struct{ ID string }](ctx, s.db,
 		`SELECT qid FROM (
 		   SELECT DISTINCT ON (pi.question_id) pi.question_id::text AS qid, gr.updated_at
 		   FROM grading_results gr
@@ -412,6 +412,14 @@ func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) 
 		 ) w
 		 ORDER BY w.updated_at DESC
 		 LIMIT $2`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	return ids, nil
 }
 
 func joinConds(conds []string) string {
