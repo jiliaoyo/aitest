@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -42,8 +43,26 @@ type questionRow struct {
 }
 
 type reviewFile struct {
-	Version int              `json:"version"`
-	Items   []map[string]any `json:"items"`
+	Version int          `json:"version"`
+	Items   []reviewItem `json:"items"`
+}
+
+type reviewItem struct {
+	Source                     string            `json:"source"`
+	QuestionID                 string            `json:"questionId,omitempty"`
+	Key                        []json.RawMessage `json:"key,omitempty"`
+	Level                      string            `json:"level"`
+	Subject                    string            `json:"subject"`
+	Stem                       string            `json:"stem,omitempty"`
+	KnowledgePointIDs          []string          `json:"knowledgePointIds"`
+	Method                     string            `json:"method"`
+	Confidence                 float64           `json:"confidence"`
+	SuggestedKnowledgePointIDs []string          `json:"suggestedKnowledgePointIds,omitempty"`
+	SuggestedConfidence        *float64          `json:"suggestedConfidence,omitempty"`
+	SuggestedReviewStatus      string            `json:"suggestedReviewStatus,omitempty"`
+	ReviewStatus               string            `json:"reviewStatus"`
+	ReviewReason               string            `json:"reviewReason,omitempty"`
+	Basis                      string            `json:"basis,omitempty"`
 }
 
 func main() {
@@ -117,7 +136,12 @@ func readReviews(path string) reviewFile {
 		file.Version = 1
 	}
 	if file.Items == nil {
-		file.Items = []map[string]any{}
+		file.Items = []reviewItem{}
+	}
+	for i := range file.Items {
+		if file.Items[i].ReviewStatus == "" {
+			file.Items[i].ReviewStatus = "pending"
+		}
 	}
 	return file
 }
@@ -314,29 +338,33 @@ func pointScope(ctx context.Context, tx pgx.Tx, points map[string]knowledgePoint
 }
 
 func fallbackIDs(points map[string]knowledgePoint, level, subject string) []string {
-	leaf := map[string]string{"grammar": "structure", "vocabulary": "meaning", "reading": "short"}[subject]
 	root, rootOK := points[fmt.Sprintf("%s-%s", level, subject)]
-	child, childOK := points[fmt.Sprintf("%s-%s-%s", level, subject, leaf)]
-	if !rootOK || !childOK {
+	if !rootOK {
 		return nil
 	}
-	return []string{root.ID, child.ID}
+	return []string{root.ID}
 }
 
 func addReview(file *reviewFile, q questionRow, ids []string) {
 	for _, item := range file.Items {
-		if item["source"] == "database_fallback" && item["level"] == q.Level && item["subject"] == q.Subject && item["stem"] == q.Stem {
+		if item.Source == "database_fallback" && item.Level == q.Level && item.Subject == q.Subject && item.Stem == q.Stem {
 			return
 		}
 	}
-	file.Items = append(file.Items, map[string]any{
-		"source": "database_fallback", "level": q.Level, "subject": q.Subject,
-		"stem": q.Stem, "knowledgePointIds": ids, "confidence": 0.5,
-		"method": "scope_fallback", "reviewReason": "非书籍映射，按级别和科目兜底，需人工确认",
+	confidence := 0.5
+	file.Items = append(file.Items, reviewItem{
+		Source: "database_fallback", QuestionID: q.ID, Level: q.Level, Subject: q.Subject,
+		Stem: q.Stem, KnowledgePointIDs: ids, Confidence: confidence,
+		Method: "scope_fallback", ReviewStatus: "pending",
+		ReviewReason: "非书籍映射，按级别和科目兜底，需人工确认",
 	})
 	sort.Slice(file.Items, func(i, j int) bool {
-		return fmt.Sprint(file.Items[i]["questionId"]) < fmt.Sprint(file.Items[j]["questionId"])
+		return reviewSortKey(file.Items[i]) < reviewSortKey(file.Items[j])
 	})
+}
+
+func reviewSortKey(item reviewItem) string {
+	return item.QuestionID + "\x00" + item.Source + "\x00" + item.Stem
 }
 
 func writeReviews(path string, file reviewFile) error {
@@ -345,6 +373,13 @@ func writeReviews(path string, file reviewFile) error {
 		return fmt.Errorf("序列化复核记录失败: %w", err)
 	}
 	data = append(data, '\n')
+	old, readErr := os.ReadFile(path)
+	if readErr == nil && bytes.Equal(old, data) {
+		return nil
+	}
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return fmt.Errorf("读取现有复核记录失败: %w", readErr)
+	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("写入复核记录失败: %w", err)
 	}

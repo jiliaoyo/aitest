@@ -303,6 +303,19 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		if err := learningStore.RebuildUserStats(context.Background(), pool, learnerBID); err != nil {
 			t.Fatal(err)
 		}
+		var retiredID string
+		if err := pool.QueryRow(context.Background(), `INSERT INTO knowledge_points
+			(exam_id, level_id, subject_id, name, status)
+			SELECT l.exam_id, l.id, s.id, '历史退休知识点', 'retired'
+			FROM exam_levels l JOIN subjects s ON s.exam_id = l.exam_id
+			WHERE l.id = $1 AND s.id = $2 RETURNING id::text`, data.levelID, data.subjectID).Scan(&retiredID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(context.Background(), `INSERT INTO user_knowledge_stats
+			(user_id, knowledge_point_id, confirmed_answered, recent_answered, updated_at)
+			VALUES ($1, $2, 5, 5, now())`, learnerBID, retiredID); err != nil {
+			t.Fatal(err)
+		}
 		var dashboard struct {
 			Recommendations []struct {
 				KnowledgePointID *string  `json:"knowledgePointId"`
@@ -321,6 +334,27 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		if !foundRecommendation {
 			t.Fatalf("low-accuracy knowledge point was not recommended: %+v", dashboard.Recommendations)
 		}
+		for _, rec := range dashboard.Recommendations {
+			if rec.KnowledgePointID != nil && *rec.KnowledgePointID == retiredID {
+				t.Fatal("dashboard must not recommend a retired knowledge point")
+			}
+		}
+		var points struct {
+			KnowledgePoints []struct {
+				ID string `json:"id"`
+			} `json:"knowledgePoints"`
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet, "/api/v1/knowledge-points", nil, ""), &points)
+		for _, point := range points.KnowledgePoints {
+			if point.ID == retiredID {
+				t.Fatal("knowledge point list must not expose retired knowledge point")
+			}
+		}
+		assertStatus(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/knowledge-points/"+retiredID, nil, ""), http.StatusNotFound)
+		assertStatus(t, jsonRequest(t, data.learnerB, server.URL, http.MethodPost, "/api/v1/practice-sessions", map[string]any{
+			"levelId": data.levelID, "mode": "knowledge", "knowledgePointIds": []string{retiredID}, "count": 10,
+		}, ""), http.StatusNotFound)
 
 		special := jsonRequest(t, data.learnerB, server.URL, http.MethodPost, "/api/v1/practice-sessions", map[string]any{
 			"levelId": data.levelID, "mode": "knowledge", "knowledgePointIds": []string{data.knowledgePoint1}, "count": 10,

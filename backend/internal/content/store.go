@@ -20,6 +20,9 @@ func (s *Store) With(db store.DBTx) *Store { return &Store{db: db} }
 
 // CountPublishedVersions 统计满足筛选的已发布题目数量，用于练习可用量。
 func (s *Store) CountPublishedVersions(ctx context.Context, f SelectionFilter) (int, error) {
+	if err := validatePublishedKnowledgePoints(ctx, s.db, f.KnowledgePointIDs); err != nil {
+		return 0, err
+	}
 	f.Limit = 0
 	kpAny := f.KnowledgePointIDs
 	if kpAny == nil {
@@ -591,6 +594,9 @@ type SelectionFilter struct {
 }
 
 func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f SelectionFilter) ([]SelectedQuestion, error) {
+	if err := validatePublishedKnowledgePoints(ctx, tx, f.KnowledgePointIDs); err != nil {
+		return nil, err
+	}
 	kpAny := f.KnowledgePointIDs
 	if kpAny == nil {
 		kpAny = []string{}
@@ -674,6 +680,25 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 		}
 	}
 	return rows, nil
+}
+
+func validatePublishedKnowledgePoints(ctx context.Context, db store.DBTx, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	unique := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		unique[id] = struct{}{}
+	}
+	var count int
+	if err := db.QueryRow(ctx,
+		`SELECT count(*) FROM knowledge_points WHERE id = ANY($1::uuid[]) AND status = 'published'`, ids).Scan(&count); err != nil {
+		return err
+	}
+	if count != len(unique) {
+		return httpapi.ErrNotFound
+	}
+	return nil
 }
 
 func sourceOrderLess(a, b SelectedQuestion) bool {

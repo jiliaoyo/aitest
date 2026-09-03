@@ -113,7 +113,7 @@ func (s *Store) KnowledgePointDetailForUser(ctx context.Context, userID, id stri
 		 JOIN exam_levels l ON l.id = kp.level_id
 		 JOIN subjects s ON s.id = kp.subject_id
 		 LEFT JOIN user_knowledge_stats st ON st.knowledge_point_id = kp.id AND st.user_id = $1
-		 WHERE kp.id = $2`, userID, id,
+		 WHERE kp.id = $2 AND kp.status = 'published'`, userID, id,
 	).Scan(&row.ID, &row.Name, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.SubjectName,
 		&row.ParentID, &row.QuestionCount,
 		&row.ConfirmedAnswered, &row.ConfirmedCorrect, &row.RecentAnswered, &row.RecentCorrect,
@@ -202,8 +202,8 @@ func (s *Store) WeakKnowledgePoints(ctx context.Context, userID string, limit in
 		`SELECT kp.id::text, kp.name, st.recent_answered, st.recent_correct,
 		        st.consecutive_wrong, st.last_practiced_at::text
 		 FROM user_knowledge_stats st
-		 JOIN knowledge_points kp ON kp.id = st.knowledge_point_id
-		 WHERE st.user_id = $1 AND st.recent_answered >= 5
+			JOIN knowledge_points kp ON kp.id = st.knowledge_point_id
+			WHERE st.user_id = $1 AND st.recent_answered >= 5 AND kp.status = 'published'
 		 ORDER BY (st.recent_correct::float / greatest(st.recent_answered, 1)) ASC,
 		          st.consecutive_wrong DESC, st.last_practiced_at ASC NULLS LAST
 		 LIMIT $2`, userID, limit)
