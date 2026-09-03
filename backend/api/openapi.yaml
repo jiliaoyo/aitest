@@ -199,6 +199,7 @@ paths:
         - { name: levelId, in: query, required: true, schema: { type: string } }
         - { name: subjectId, in: query, schema: { type: string } }
         - { name: sourceId, in: query, schema: { type: string }, description: 指定题目数据来源 }
+        - { name: sourceSectionId, in: query, schema: { type: string }, description: 指定来源章节 }
         - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items] } }
         - { name: selectionOrder, in: query, schema: { type: string, enum: [source_order, random], default: source_order } }
         - { name: knowledgePointIds, in: query, schema: { type: string }, description: 逗号分隔 }
@@ -757,6 +758,7 @@ components:
         mode: { type: string, enum: [comprehensive, knowledge, wrong_items], default: comprehensive }
         selectionOrder: { type: string, enum: [source_order, random], default: source_order }
         sourceId: { type: string, description: 指定题目数据来源；不传表示全部题目 }
+        sourceSectionId: { type: string, description: 指定来源章节 }
         knowledgePointIds: { type: array, items: { type: string } }
         count: { type: integer, enum: [10, 20, 30] }
     PracticeSource:
@@ -765,6 +767,14 @@ components:
         id: { type: string }
         name: { type: string }
         questionCount: { type: integer }
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              questionCount: { type: integer }
     KnowledgePointItem:
       type: object
       properties:
