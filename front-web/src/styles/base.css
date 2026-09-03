@@ -168,6 +168,7 @@ button.ghost {
 .ai-text {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  text-indent: 2em;
 }
 
 table.data {
