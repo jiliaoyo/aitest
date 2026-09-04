@@ -90,3 +90,20 @@ func TestDifficultyMatches(t *testing.T) {
 		}
 	}
 }
+
+func TestValidGeneratedCategory(t *testing.T) {
+	for _, test := range []struct {
+		category string
+		want     bool
+	}{
+		{"mixed", true},
+		{"grammar_case_particle", true},
+		{"vocabulary_counter", true},
+		{"reading_author", true},
+		{"grammar_unknown", false},
+	} {
+		if got := validGeneratedCategory(test.category); got != test.want {
+			t.Fatalf("validGeneratedCategory(%q) = %v, want %v", test.category, got, test.want)
+		}
+	}
+}

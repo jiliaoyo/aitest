@@ -36,6 +36,7 @@ describe('AI 个性化练习', () => {
     await wrapper.get('input[name="ai-generation-mode"][value="level"]').setValue(true)
     await wrapper.get('#ai-level').setValue('n1')
     await wrapper.get('#ai-subject').setValue('grammar')
+    await wrapper.get('#ai-category').setValue('grammar_case_particle')
     await wrapper.get('input[name="ai-question-type"][value="fill_blank"]').setValue(true)
     await wrapper.get('#ai-furigana').setValue(true)
     await wrapper.get('#ai-difficulty').setValue('hard')
@@ -45,7 +46,7 @@ describe('AI 个性化练习', () => {
     expect(requestMock).toHaveBeenCalledWith('/ai-practice-sessions', expect.objectContaining({
       method: 'POST',
       body: expect.objectContaining({
-        levelId: 'n1', subjectId: 'grammar', count: 20, difficulty: 'hard', generationMode: 'level', questionType: 'fill_blank', showFurigana: true, knowledgePointIds: [],
+        levelId: 'n1', subjectId: 'grammar', category: 'grammar_case_particle', count: 20, difficulty: 'hard', generationMode: 'level', questionType: 'fill_blank', showFurigana: true, knowledgePointIds: [],
       }),
     }))
     expect(router.currentRoute.value.fullPath).toBe('/practice/ai-session')

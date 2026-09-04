@@ -20,9 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v5"
+const questionGenerationPromptVersion = "practice_question_generation.v6"
 
-//go:embed prompts/practice_question_generation.v5.md
+//go:embed prompts/practice_question_generation.v6.md
 var questionGenerationPrompt string
 
 const (
@@ -33,7 +33,22 @@ const (
 	generationModeMemory       = "memory"
 	generationModeLevel        = "level"
 	generatedQuestionTypeMixed = "mixed"
+	generatedCategoryMixed     = "mixed"
 )
+
+var generatedCategories = map[string]struct{}{
+	generatedCategoryMixed:  {},
+	"grammar_case_particle": {}, "grammar_conjunctive_particle": {}, "grammar_adverbial_particle": {}, "grammar_final_particle": {},
+	"grammar_auxiliary": {}, "grammar_verb": {}, "grammar_adjective": {}, "grammar_adverb": {}, "grammar_conjunction": {},
+	"grammar_adnominal": {}, "grammar_sentence_pattern": {}, "grammar_tense_aspect": {}, "grammar_condition": {},
+	"grammar_voice": {}, "grammar_benefactive": {}, "grammar_honorific": {}, "grammar_negation": {},
+	"vocabulary_kanji": {}, "vocabulary_noun": {}, "vocabulary_verb": {}, "vocabulary_adjective": {}, "vocabulary_adverb": {},
+	"vocabulary_conjunction": {}, "vocabulary_pronoun": {}, "vocabulary_counter": {}, "vocabulary_time_number": {},
+	"vocabulary_synonym": {}, "vocabulary_polysemy": {}, "vocabulary_collocation": {}, "vocabulary_compound": {},
+	"vocabulary_affix": {}, "vocabulary_onoma": {}, "vocabulary_katakana": {}, "vocabulary_honorific": {}, "vocabulary_usage": {},
+	"reading_information": {}, "reading_main_idea": {}, "reading_reference": {}, "reading_paraphrase": {}, "reading_logic": {},
+	"reading_inference": {}, "reading_author": {}, "reading_vocabulary": {}, "reading_structure": {}, "reading_chart_notice": {}, "reading_style": {},
+}
 
 type AIGenerateRequest struct {
 	LevelID           string   `json:"levelId"`
@@ -44,6 +59,7 @@ type AIGenerateRequest struct {
 	GenerationMode    string   `json:"generationMode"`
 	QuestionType      string   `json:"questionType"`
 	ShowFurigana      bool     `json:"showFurigana"`
+	Category          string   `json:"category"`
 }
 
 type AIGeneratedSession struct {
@@ -98,6 +114,12 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 	if !validGeneratedQuestionType(req.QuestionType) {
 		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"questionType": "题型不合法"})
 	}
+	if req.Category == "" {
+		req.Category = generatedCategoryMixed
+	}
+	if !validGeneratedCategory(req.Category) {
+		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"category": "出题分类不合法"})
+	}
 	if len(req.KnowledgePointIDs) > 10 {
 		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"knowledgePointIds": "一次最多选择 10 个知识点"})
 	}
@@ -120,6 +142,7 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 		"generationMode":    req.GenerationMode,
 		"questionType":      req.QuestionType,
 		"showFurigana":      req.ShowFurigana,
+		"category":          req.Category,
 	})
 	var out AIGeneratedSession
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -151,6 +174,11 @@ func validGenerationMode(mode string) bool {
 
 func validGeneratedQuestionType(questionType string) bool {
 	return questionType == generatedQuestionTypeMixed || content.ValidType(questionType)
+}
+
+func validGeneratedCategory(category string) bool {
+	_, ok := generatedCategories[category]
+	return ok
 }
 
 func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateRequest) error {
@@ -221,6 +249,7 @@ type questionGenerationInput struct {
 	GenerationMode string                      `json:"generationMode"`
 	QuestionType   string                      `json:"questionType"`
 	ShowFurigana   bool                        `json:"showFurigana"`
+	Category       string                      `json:"category"`
 	RandomSeed     string                      `json:"randomSeed"`
 	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
 }
@@ -282,6 +311,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		GenerationMode    string   `json:"generationMode"`
 		QuestionType      string   `json:"questionType"`
 		ShowFurigana      bool     `json:"showFurigana"`
+		Category          string   `json:"category"`
 		Script            string   `json:"script"`
 	}
 	if err := strictDecode([]byte(row.Scope), &scope); err != nil {
@@ -312,6 +342,13 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if !validGeneratedQuestionType(questionType) {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 题型不合法"))
 	}
+	category := scope.Category
+	if category == "" {
+		category = generatedCategoryMixed
+	}
+	if !validGeneratedCategory(category) {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 出题分类不合法"))
+	}
 	memory, err := learning.NewStore(s.pool).GenerationMemoryForAI(ctx, row.UserID, row.LevelID, subjectID, scope.KnowledgePointIDs, generationMode)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取 AI 出题记忆失败: %w", err))
@@ -325,7 +362,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	}
 	inputJSON, _ := json.Marshal(questionGenerationInput{
 		Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
-		GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana,
+		GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 		RandomSeed: seed, LearningMemory: memory,
 	})
 	out, err := s.client.RunPromptWithTemperature(ctx, "practice_question_generation", questionGenerationPromptVersion,

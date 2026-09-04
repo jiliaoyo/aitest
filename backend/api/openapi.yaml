@@ -905,6 +905,11 @@ components:
         generationMode: { type: string, enum: [memory, level], default: memory, description: memory 根据账号记忆，level 根据当前级别 }
         questionType: { type: string, enum: [mixed, single_choice, multiple_choice, fill_blank, short_answer], default: mixed, description: mixed 为混合题型，也可指定单独题型 }
         showFurigana: { type: boolean, default: false, description: 是否在汉字旁用括号标注假名，如 日本語（にほんご） }
+        category:
+          type: string
+          default: mixed
+          enum: [mixed, grammar_case_particle, grammar_conjunctive_particle, grammar_adverbial_particle, grammar_final_particle, grammar_auxiliary, grammar_verb, grammar_adjective, grammar_adverb, grammar_conjunction, grammar_adnominal, grammar_sentence_pattern, grammar_tense_aspect, grammar_condition, grammar_voice, grammar_benefactive, grammar_honorific, grammar_negation, vocabulary_kanji, vocabulary_noun, vocabulary_verb, vocabulary_adjective, vocabulary_adverb, vocabulary_conjunction, vocabulary_pronoun, vocabulary_counter, vocabulary_time_number, vocabulary_synonym, vocabulary_polysemy, vocabulary_collocation, vocabulary_compound, vocabulary_affix, vocabulary_onoma, vocabulary_katakana, vocabulary_honorific, vocabulary_usage, reading_information, reading_main_idea, reading_reference, reading_paraphrase, reading_logic, reading_inference, reading_author, reading_vocabulary, reading_structure, reading_chart_notice, reading_style]
+          description: 按语法、文字词汇或阅读的细分类约束 AI 出题方向；mixed 表示不限定细分类
     PracticeSource:
       type: object
       properties:

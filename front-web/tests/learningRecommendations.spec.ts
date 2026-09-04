@@ -127,6 +127,7 @@ describe('学习推荐闭环', () => {
 
     await wrapper.get('#ai-question-type').setValue('short_answer')
     await wrapper.get('#ai-difficulty').setValue('hard')
+    await wrapper.get('#ai-category').setValue('grammar_verb')
     await wrapper.get('#ai-furigana').setValue(true)
     await wrapper.findAll('button').find((button) => button.text().includes('生成 AI 题目'))!.trigger('click')
     await flushPromises()
@@ -134,7 +135,7 @@ describe('学习推荐闭环', () => {
     expect(requestMock).toHaveBeenCalledWith('/ai-practice-sessions', expect.objectContaining({
       method: 'POST',
       body: expect.objectContaining({
-        levelId: 'level-1', subjectId: 'subject-1', knowledgePointIds: ['kp-1'], count: 20, difficulty: 'hard', questionType: 'short_answer', showFurigana: true,
+        levelId: 'level-1', subjectId: 'subject-1', knowledgePointIds: ['kp-1'], count: 20, difficulty: 'hard', questionType: 'short_answer', showFurigana: true, category: 'grammar_verb',
       }),
     }))
     expect(router.currentRoute.value.fullPath).toBe('/practice/ai-session')

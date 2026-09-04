@@ -2,10 +2,11 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationDifficulty, AIGenerationMode, AIGenerationQuestionType, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
+import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationCategory, AIGenerationDifficulty, AIGenerationMode, AIGenerationQuestionType, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { sessionUser } from '@/app/session'
+import { aiCategoryGroupsForSubject } from '@/app/aiGeneration'
 
 const router = useRouter()
 
@@ -35,6 +36,7 @@ const aiGenerationMode = ref<AIGenerationMode>('memory')
 const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
 const aiSubjectId = ref('')
 const aiShowFurigana = ref(false)
+const aiCategory = ref<AIGenerationCategory>('mixed')
 
 const aiGenerationModeOptions: { value: AIGenerationMode; label: string }[] = [
   { value: 'memory', label: '根据我的记忆' },
@@ -71,6 +73,8 @@ onMounted(async () => {
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
 const selectedLevelName = computed(() => levels.value.find((level) => level.id === aiLevelId.value)?.name ?? '指定级别')
+const selectedAISubjectCode = computed(() => subjects.value.find((subject) => subject.id === aiSubjectId.value)?.code ?? '')
+const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(selectedAISubjectCode.value))
 
 watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], async () => {
   await refreshAvailability()
@@ -80,6 +84,12 @@ watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], asy
 }, { deep: true })
 
 watch(knowledgePointIds, () => void refreshAvailability(), { deep: true })
+
+watch(aiSubjectId, () => {
+  if (!aiCategoryGroups.value.some((group) => group.options.some((option) => option.value === aiCategory.value))) {
+    aiCategory.value = 'mixed'
+  }
+})
 
 watch([levelId, subjectId], async () => {
   if (!levelId.value) return
@@ -209,6 +219,7 @@ async function generateAIPractice(): Promise<void> {
       generationMode: aiGenerationMode.value,
       questionType: aiQuestionType.value,
       showFurigana: aiShowFurigana.value,
+      category: aiCategory.value,
     }
     const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
       method: 'POST',
@@ -377,6 +388,14 @@ async function generateAIPractice(): Promise<void> {
           <select id="ai-subject" v-model="aiSubjectId" :disabled="generatingAI">
             <option value="">混合科目</option>
             <option v-for="subject in subjects" :key="subject.id" :value="subject.id">{{ subject.name }}</option>
+          </select>
+        </div>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-category">出题分类</label>
+          <select id="ai-category" v-model="aiCategory" :disabled="generatingAI">
+            <optgroup v-for="group in aiCategoryGroups" :key="group.label" :label="group.label">
+              <option v-for="option in group.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </optgroup>
           </select>
         </div>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">

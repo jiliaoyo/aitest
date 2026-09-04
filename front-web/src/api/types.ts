@@ -121,6 +121,54 @@ export interface PreSubmitSession {
 export type AIGenerationDifficulty = 'easy' | 'normal' | 'hard' | 'mixed'
 export type AIGenerationMode = 'memory' | 'level'
 export type AIGenerationQuestionType = 'mixed' | QuestionType
+export type AIGenerationCategory =
+  | 'mixed'
+  | 'grammar_case_particle'
+  | 'grammar_conjunctive_particle'
+  | 'grammar_adverbial_particle'
+  | 'grammar_final_particle'
+  | 'grammar_auxiliary'
+  | 'grammar_verb'
+  | 'grammar_adjective'
+  | 'grammar_adverb'
+  | 'grammar_conjunction'
+  | 'grammar_adnominal'
+  | 'grammar_sentence_pattern'
+  | 'grammar_tense_aspect'
+  | 'grammar_condition'
+  | 'grammar_voice'
+  | 'grammar_benefactive'
+  | 'grammar_honorific'
+  | 'grammar_negation'
+  | 'vocabulary_kanji'
+  | 'vocabulary_noun'
+  | 'vocabulary_verb'
+  | 'vocabulary_adjective'
+  | 'vocabulary_adverb'
+  | 'vocabulary_conjunction'
+  | 'vocabulary_pronoun'
+  | 'vocabulary_counter'
+  | 'vocabulary_time_number'
+  | 'vocabulary_synonym'
+  | 'vocabulary_polysemy'
+  | 'vocabulary_collocation'
+  | 'vocabulary_compound'
+  | 'vocabulary_affix'
+  | 'vocabulary_onoma'
+  | 'vocabulary_katakana'
+  | 'vocabulary_honorific'
+  | 'vocabulary_usage'
+  | 'reading_information'
+  | 'reading_main_idea'
+  | 'reading_reference'
+  | 'reading_paraphrase'
+  | 'reading_logic'
+  | 'reading_inference'
+  | 'reading_author'
+  | 'reading_vocabulary'
+  | 'reading_structure'
+  | 'reading_chart_notice'
+  | 'reading_style'
 
 export interface AIGeneratePracticeRequest {
   levelId?: string
@@ -131,6 +179,7 @@ export interface AIGeneratePracticeRequest {
   generationMode?: AIGenerationMode
   questionType?: AIGenerationQuestionType
   showFurigana?: boolean
+  category?: AIGenerationCategory
 }
 
 export interface AIGeneratedSession {

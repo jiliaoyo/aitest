@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { AIGeneratedSession, AIGenerationDifficulty, AIGenerationQuestionType, KnowledgePointDetail } from '@/api/types'
+import type { AIGeneratedSession, AIGenerationCategory, AIGenerationDifficulty, AIGenerationQuestionType, KnowledgePointDetail } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { formatPercent, formatDateTime } from '@/app/format'
+import { aiCategoryGroupsForSubject, aiSubjectCode } from '@/app/aiGeneration'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,7 @@ const generateAIError = ref('')
 const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
 const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
 const aiShowFurigana = ref(false)
+const aiCategory = ref<AIGenerationCategory>('mixed')
 
 const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[] = [
   { value: 'mixed', label: '混合题型' },
@@ -28,6 +30,14 @@ const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[
   { value: 'fill_blank', label: '填空题' },
   { value: 'short_answer', label: '简答题' },
 ]
+
+const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(aiSubjectCode(detail.value?.subjectName ?? '')))
+
+watch(aiCategoryGroups, () => {
+  if (!aiCategoryGroups.value.some((group) => group.options.some((option) => option.value === aiCategory.value))) {
+    aiCategory.value = 'mixed'
+  }
+})
 async function load(): Promise<void> {
   state.value = 'loading'
   try {
@@ -89,6 +99,7 @@ async function generateAIPractice(): Promise<void> {
         difficulty: aiDifficulty.value,
         questionType: aiQuestionType.value,
         showFurigana: aiShowFurigana.value,
+        category: aiCategory.value,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -136,6 +147,14 @@ async function generateAIPractice(): Promise<void> {
             <option value="easy">简单</option>
             <option value="normal">一般</option>
             <option value="hard">困难</option>
+          </select>
+        </div>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-category">出题分类</label>
+          <select id="ai-category" v-model="aiCategory" :disabled="generatingAI">
+            <optgroup v-for="group in aiCategoryGroups" :key="group.label" :label="group.label">
+              <option v-for="option in group.options" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </optgroup>
           </select>
         </div>
         <label class="option-row" style="margin-bottom: 14px">
