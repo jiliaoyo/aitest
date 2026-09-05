@@ -149,3 +149,14 @@ func TestValidGeneratedCategory(t *testing.T) {
 		}
 	}
 }
+
+func TestCapGeneratedQuestionsDropsOnlyExtraQuestions(t *testing.T) {
+	questions := []generatedQuestion{{Stem: "一"}, {Stem: "二"}, {Stem: "三"}}
+	trimmed := capGeneratedQuestions(questions, 2)
+	if len(trimmed) != 2 || trimmed[0].Stem != "一" || trimmed[1].Stem != "二" {
+		t.Fatalf("unexpected capped questions: %+v", trimmed)
+	}
+	if same := capGeneratedQuestions(questions[:2], 2); len(same) != 2 {
+		t.Fatalf("valid-sized response should be kept: %+v", same)
+	}
+}

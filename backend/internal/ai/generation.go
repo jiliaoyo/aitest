@@ -22,6 +22,9 @@ import (
 )
 
 const questionGenerationPromptVersion = "practice_question_generation.v10"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v10.retry"
+
+const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
 //go:embed prompts/practice_question_generation.v10.md
 var questionGenerationPrompt string
@@ -252,6 +255,7 @@ type questionGenerationInput struct {
 	ShowFurigana   bool                        `json:"showFurigana"`
 	Category       string                      `json:"category"`
 	RandomSeed     string                      `json:"randomSeed"`
+	RetryFeedback  string                      `json:"retryFeedback,omitempty"`
 	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
 }
 
@@ -358,35 +362,63 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if len(memory.KnowledgePoints) == 0 {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("没有可用于 AI 出题的已审核知识点"))
 	}
-	seed, err := randomSeed()
-	if err != nil {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
-	}
-	inputJSON, _ := json.Marshal(questionGenerationInput{
-		Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
-		GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
-		RandomSeed: seed, LearningMemory: memory,
-	})
-	out, err := s.client.RunPromptWithTemperature(ctx, row.UserID, "practice_question_generation", questionGenerationPromptVersion,
-		req.SessionID, questionGenerationPrompt, string(inputJSON), 0.8)
-	if err != nil {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
-	}
 	var response generatedQuestionResponse
-	if err := strictDecode(out, &response); err != nil {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("AI 出题输出不合法: %w", err))
+	promptVersion := questionGenerationPromptVersion
+	var validationErr error
+	for localAttempt := 0; localAttempt < 2; localAttempt++ {
+		seed, err := randomSeed()
+		if err != nil {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+		}
+		systemPrompt := questionGenerationPrompt
+		feedback := ""
+		temperature := 0.6
+		if validationErr != nil {
+			promptVersion = questionGenerationRetryPromptVersion
+			feedback = shortError(validationErr)
+			systemPrompt += "\n\n" + questionGenerationRetryInstructions + "\n服务端校验错误：" + feedback
+			temperature = 0.2
+		}
+		inputJSON, _ := json.Marshal(questionGenerationInput{
+			Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
+			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
+			RandomSeed: seed, RetryFeedback: feedback, LearningMemory: memory,
+		})
+		out, err := s.client.RunPromptWithTemperature(ctx, row.UserID, "practice_question_generation", promptVersion,
+			req.SessionID, systemPrompt, string(inputJSON), temperature)
+		if err != nil {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+		}
+		if err := strictDecode(out, &response); err != nil {
+			validationErr = fmt.Errorf("AI 出题输出不合法: %w", err)
+			continue
+		}
+		response.Questions = capGeneratedQuestions(response.Questions, row.RequestedCount)
+		if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
+			validationErr = err
+			continue
+		}
+		validationErr = nil
+		break
 	}
-	if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+	if validationErr != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, validationErr)
 	}
 	if err := shuffleGeneratedChoiceOptions(response.Questions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("打乱 AI 选项失败: %w", err))
 	}
-	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, generationMode, memory.KnowledgePoints, response.Questions); err != nil {
+	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, generationMode, promptVersion, memory.KnowledgePoints, response.Questions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("保存 AI 题目失败: %w", err))
 	}
 	s.logger.Info("ai_generated_practice_done", "session_id", req.SessionID, "count", len(response.Questions))
 	return nil
+}
+
+func capGeneratedQuestions(questions []generatedQuestion, expected int) []generatedQuestion {
+	if len(questions) > expected {
+		return questions[:expected]
+	}
+	return questions
 }
 
 func randomSeed() (string, error) {
@@ -535,7 +567,7 @@ func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error
 	return nil
 }
 
-func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
+func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode, promptVersion string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		pointSubjects := make(map[string]string, len(points))
 		allowedSubjects := make(map[string]bool, len(points))
@@ -604,7 +636,7 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 			}
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO ai_generated_question_answers (question_version_id, value, explanation, prompt_version, model)
-				 VALUES ($1, $2, $3, $4, $5)`, versionID, question.CorrectAnswer, strings.TrimSpace(question.Explanation), questionGenerationPromptVersion, s.client.cfg.Model); err != nil {
+				 VALUES ($1, $2, $3, $4, $5)`, versionID, question.CorrectAnswer, strings.TrimSpace(question.Explanation), promptVersion, s.client.cfg.Model); err != nil {
 				return err
 			}
 			if _, err := tx.Exec(ctx,
