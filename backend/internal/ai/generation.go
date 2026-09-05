@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 
@@ -378,6 +379,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
+	if err := shuffleGeneratedChoiceOptions(response.Questions); err != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("打乱 AI 选项失败: %w", err))
+	}
 	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, memory.KnowledgePoints, response.Questions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("保存 AI 题目失败: %w", err))
 	}
@@ -467,6 +471,68 @@ func difficultyMatches(mode string, difficulty int) bool {
 	default:
 		return false
 	}
+}
+
+func shuffleGeneratedChoiceOptions(questions []generatedQuestion) error {
+	for i := range questions {
+		if !content.IsChoiceType(questions[i].Type) {
+			continue
+		}
+		order := make([]int, len(questions[i].Options))
+		for j := range order {
+			order[j] = j
+		}
+		for j := len(order) - 1; j > 0; j-- {
+			randomIndex, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(j+1)))
+			if err != nil {
+				return err
+			}
+			k := int(randomIndex.Int64())
+			order[j], order[k] = order[k], order[j]
+		}
+		if err := remapGeneratedChoiceOptions(&questions[i], order); err != nil {
+			return fmt.Errorf("第 %d 题: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error {
+	if len(order) != len(question.Options) {
+		return errors.New("选项随机顺序长度不一致")
+	}
+	shuffled := make([]generatedOption, len(order))
+	remap := make(map[string]string, len(order))
+	seen := make(map[int]bool, len(order))
+	for target, source := range order {
+		if source < 0 || source >= len(question.Options) || seen[source] {
+			return errors.New("选项随机顺序不合法")
+		}
+		seen[source] = true
+		shuffled[target] = question.Options[target]
+		shuffled[target].Text = question.Options[source].Text
+		remap[question.Options[source].ID] = question.Options[target].ID
+	}
+	var answer struct {
+		OptionIDs []string `json:"optionIds"`
+	}
+	if err := json.Unmarshal(question.CorrectAnswer, &answer); err != nil {
+		return fmt.Errorf("正确答案格式不合法: %w", err)
+	}
+	for i, id := range answer.OptionIDs {
+		mapped, ok := remap[id]
+		if !ok {
+			return fmt.Errorf("正确答案引用了未知选项 %q", id)
+		}
+		answer.OptionIDs[i] = mapped
+	}
+	updatedAnswer, err := json.Marshal(answer)
+	if err != nil {
+		return fmt.Errorf("重写正确答案失败: %w", err)
+	}
+	question.Options = shuffled
+	question.CorrectAnswer = updatedAnswer
+	return nil
 }
 
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {

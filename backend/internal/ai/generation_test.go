@@ -87,6 +87,33 @@ func TestValidateGeneratedQuestionsAcceptsTextQuestionTypes(t *testing.T) {
 	}
 }
 
+func TestRemapGeneratedChoiceOptionsUpdatesAnswer(t *testing.T) {
+	question := generatedQuestion{
+		Type: "multiple_choice",
+		Options: []generatedOption{
+			{ID: "a", Label: "A", Text: "甲"}, {ID: "b", Label: "B", Text: "乙"},
+			{ID: "c", Label: "C", Text: "丙"}, {ID: "d", Label: "D", Text: "丁"},
+		},
+		CorrectAnswer: json.RawMessage(`{"optionIds":["a","c"]}`),
+	}
+
+	if err := remapGeneratedChoiceOptions(&question, []int{2, 0, 3, 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := question.Options[0].Text, "丙"; got != want {
+		t.Fatalf("first option text = %q, want %q", got, want)
+	}
+	var answer struct {
+		OptionIDs []string `json:"optionIds"`
+	}
+	if err := json.Unmarshal(question.CorrectAnswer, &answer); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := answer.OptionIDs, []string{"b", "a"}; len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("remapped answer = %v, want %v", got, want)
+	}
+}
+
 func TestDifficultyMatches(t *testing.T) {
 	for _, test := range []struct {
 		mode       string
