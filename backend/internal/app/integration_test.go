@@ -397,6 +397,11 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		if aiAnswered != 1 || aiCorrect != 1 {
 			t.Fatalf("AI result should remain separate from confirmed stats: %d/%d", aiAnswered, aiCorrect)
 		}
+		var memory learning.LearningMemory
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet, "/api/v1/learning-memory", nil, ""), &memory)
+		if memory.EstimatedAccuracy == nil || *memory.EstimatedAccuracy != 0.75 {
+			t.Fatalf("unexpected estimated accuracy: %+v", memory)
+		}
 		if countRows(t, pool, `SELECT count(*) FROM grading_results gr JOIN practice_sessions ps ON ps.id = gr.session_id WHERE ps.user_id = $1`, learnerBID) != 20 {
 			t.Fatal("re-practice should preserve the first batch grading history")
 		}
@@ -534,7 +539,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				}
 			}
 			content, _ := json.Marshal(map[string]any{
-				"summary": "继续练习最近暴露的薄弱知识点。", "grades": grades, "explanations": explanations,
+				"summary": "本批表现：完成了当前练习。", "memoryAdvice": "累计进度：继续复习已暴露的薄弱知识点。", "grades": grades, "explanations": explanations,
 			})
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -547,9 +552,16 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		if err := batchHandler(context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+pre.ID+`"}`)); err != nil {
 			t.Fatalf("batch AI should update account advice: %v", err)
 		}
+		var batchSummary string
+		if err := pool.QueryRow(context.Background(), `SELECT ai_summary FROM practice_sessions WHERE id = $1`, pre.ID).Scan(&batchSummary); err != nil {
+			t.Fatal(err)
+		}
+		if batchSummary != "本批表现：完成了当前练习。" {
+			t.Fatalf("batch result should keep batch summary: %q", batchSummary)
+		}
 		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
 			"/api/v1/learning-memory", nil, ""), &after)
-		if after.Advice.Status != "completed" || after.Advice.Text == "" {
+		if after.Advice.Status != "completed" || after.Advice.Text != "累计进度：继续复习已暴露的薄弱知识点。" {
 			t.Fatalf("successful batch AI should persist account advice: %+v", after)
 		}
 	})
@@ -569,7 +581,11 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				Count          int `json:"count"`
 				LearningMemory struct {
 					KnowledgePoints []struct {
-						ID string `json:"id"`
+						ID                string  `json:"id"`
+						ConfirmedAnswered int     `json:"confirmedAnswered"`
+						ConfirmedCorrect  int     `json:"confirmedCorrect"`
+						RecentWrongCount  int     `json:"recentWrongCount"`
+						PriorityScore     float64 `json:"priorityScore"`
 					} `json:"knowledgePoints"`
 				} `json:"learningMemory"`
 			}
@@ -585,6 +601,13 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			if generation.Count > 0 {
 				if len(generation.LearningMemory.KnowledgePoints) == 0 {
 					http.Error(w, "missing knowledge points", http.StatusBadRequest)
+					return
+				}
+				if generation.LearningMemory.KnowledgePoints[0].ID != data.knowledgePoint1 ||
+					generation.LearningMemory.KnowledgePoints[0].ConfirmedAnswered == 0 ||
+					generation.LearningMemory.KnowledgePoints[0].RecentWrongCount == 0 ||
+					generation.LearningMemory.KnowledgePoints[0].PriorityScore <= 0 {
+					http.Error(w, "memory candidates are not ranked by weakness", http.StatusBadRequest)
 					return
 				}
 				pointID := generation.LearningMemory.KnowledgePoints[0].ID
@@ -611,7 +634,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 						})
 					}
 				}
-				output = map[string]any{"summary": "完成了 AI 个性化练习。", "grades": grades, "explanations": []any{}}
+				output = map[string]any{"summary": "本批表现：完成了 AI 个性化练习。", "memoryAdvice": "累计进度：继续保持练习。", "grades": grades, "explanations": []any{}}
 			}
 			content, _ := json.Marshal(output)
 			w.Header().Set("Content-Type", "application/json")

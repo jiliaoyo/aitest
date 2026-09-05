@@ -122,8 +122,11 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
           <p v-if="dashboard.memory.aiAnswered > 0" class="muted">
             另有 AI 判定 {{ dashboard.memory.aiAnswered }} 题（不计入正式正确率）。
           </p>
+          <p v-if="dashboard.memory.aiAnswered > 0 && dashboard.memory.estimatedAccuracy != null" class="muted">
+            含 AI 判定的估算正确率 {{ formatPercent(dashboard.memory.estimatedAccuracy) }}（可能有误）
+          </p>
           <div v-if="dashboard.memory.advice.status === 'completed' && dashboard.memory.advice.text">
-            <p><strong>AI 学习建议</strong></p>
+            <p><strong>AI 学习建议（基于累计进度）</strong></p>
             <p class="muted ai-text">{{ formatAIText(dashboard.memory.advice.text) }}</p>
           </div>
           <p v-else-if="dashboard.memory.advice.status === 'pending'" class="muted" role="status">

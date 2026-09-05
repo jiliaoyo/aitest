@@ -288,6 +288,7 @@ export interface LearningMemoryDTO {
   confirmedCorrect: number
   aiAnswered: number
   aiCorrect: number
+  estimatedAccuracy?: number | null
   statsUpdatedAt?: string | null
   advice: {
     status: 'not_requested' | 'pending' | 'completed' | 'failed'

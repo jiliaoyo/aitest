@@ -1054,6 +1054,7 @@ components:
         confirmedCorrect: { type: integer }
         aiAnswered: { type: integer, description: AI 判定数量，不计入正式正确率 }
         aiCorrect: { type: integer, description: AI 判定正确数量，不计入正式正确率 }
+        estimatedAccuracy: { type: number, nullable: true, description: 含 AI 判定的估算正确率，可能有误，不计入正式正确率 }
         statsUpdatedAt: { type: string, nullable: true }
         advice:
           type: object

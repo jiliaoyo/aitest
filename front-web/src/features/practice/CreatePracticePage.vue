@@ -364,7 +364,7 @@ async function generateAIPractice(): Promise<void> {
         <h2 id="ai-practice-title" style="font-size: 18px">AI 个性化练习</h2>
         <p class="muted">
           AI 会
-          <template v-if="aiGenerationMode === 'memory'">参考你的全局做题记忆和薄弱知识点</template>
+          <template v-if="aiGenerationMode === 'memory'">结合薄弱点、重复错误、复习间隔和低样本知识点</template>
           <template v-else>根据指定的 {{ selectedLevelName }} 级别</template>
           生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。
         </p>

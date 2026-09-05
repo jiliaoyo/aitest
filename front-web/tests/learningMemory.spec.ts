@@ -27,11 +27,11 @@ afterEach(() => {
 })
 
 describe('账号学习记忆', () => {
-  it('展示服务端生成的 AI 学习建议和累计统计', async () => {
+  it('展示基于累计统计生成的 AI 学习建议', async () => {
     requestMock.mockResolvedValue({
       activeSession: null, recentSessions: [], recommendations: [], statsEmpty: true,
       memory: {
-        confirmedAnswered: 12, confirmedCorrect: 7, aiAnswered: 1, aiCorrect: 1,
+        confirmedAnswered: 12, confirmedCorrect: 7, aiAnswered: 1, aiCorrect: 1, estimatedAccuracy: 8 / 13,
         advice: { status: 'completed', text: '继续练习助词的场所用法。' },
       },
     })
@@ -44,6 +44,7 @@ describe('账号学习记忆', () => {
     const wrapper = mount(DashboardPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('继续练习助词的场所用法。'))
     expect(wrapper.text()).toContain('已确认作答 12 题，正确 7 题')
+    expect(wrapper.text()).toContain('含 AI 判定的估算正确率 61.5%（可能有误）')
   })
 
   it('确认后调用删除接口并提示从新进度累计', async () => {

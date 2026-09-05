@@ -73,6 +73,7 @@ type LearningMemory struct {
 	ConfirmedCorrect  int          `json:"confirmedCorrect"`
 	AIAnswered        int          `json:"aiAnswered"`
 	AICorrect         int          `json:"aiCorrect"`
+	EstimatedAccuracy *float64     `json:"estimatedAccuracy,omitempty"`
 	StatsUpdatedAt    *string      `json:"statsUpdatedAt,omitempty"`
 	Advice            MemoryAdvice `json:"advice"`
 }
@@ -91,15 +92,20 @@ type AIMemoryWeakPoint struct {
 }
 
 type AIGenerationKnowledgePoint struct {
-	ID               string `json:"id"`
-	Name             string `json:"name"`
-	SubjectID        string `json:"subjectId"`
-	Description      string `json:"description"`
-	CommonMistakes   string `json:"commonMistakes"`
-	Examples         string `json:"examples"`
-	RecentAnswered   int    `json:"recentAnswered"`
-	RecentCorrect    int    `json:"recentCorrect"`
-	ConsecutiveWrong int    `json:"consecutiveWrong"`
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	SubjectID         string  `json:"subjectId"`
+	Description       string  `json:"description"`
+	CommonMistakes    string  `json:"commonMistakes"`
+	Examples          string  `json:"examples"`
+	ConfirmedAnswered int     `json:"confirmedAnswered"`
+	ConfirmedCorrect  int     `json:"confirmedCorrect"`
+	RecentAnswered    int     `json:"recentAnswered"`
+	RecentCorrect     int     `json:"recentCorrect"`
+	RecentWrongCount  int     `json:"recentWrongCount"`
+	ConsecutiveWrong  int     `json:"consecutiveWrong"`
+	DaysSincePractice *int    `json:"daysSincePractice,omitempty"`
+	PriorityScore     float64 `json:"priorityScore"`
 }
 
 type AIGenerationMemory struct {

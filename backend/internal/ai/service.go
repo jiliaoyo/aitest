@@ -21,7 +21,8 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v1"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v2"
+	legacyBatchPromptVersion   = "practice_batch_analysis.v1"
 )
 
 //go:embed prompts/practice_grade.v1.md
@@ -30,7 +31,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v1.md
+//go:embed prompts/practice_batch_analysis.v2.md
 var batchAnalysisPrompt string
 
 type Service struct {
@@ -242,14 +243,19 @@ func (s *Service) needsExplanation(row batchAnalysisRow) bool {
 	if row.ExplanationSource != nil && (*row.ExplanationSource == "official" || *row.ExplanationSource == "human_verified") {
 		return false
 	}
-	return row.CachedExplanation == nil || row.CachedPromptVersion == nil || *row.CachedPromptVersion != batchAnalysisPromptVersion
+	return row.CachedExplanation == nil || row.CachedPromptVersion == nil || !validQuestionExplanationPrompt(*row.CachedPromptVersion)
 }
 
 func (s *Service) cachedExplanation(row batchAnalysisRow) (string, bool) {
-	if row.CachedExplanation == nil || row.CachedPromptVersion == nil || *row.CachedPromptVersion != batchAnalysisPromptVersion {
+	if row.CachedExplanation == nil || row.CachedPromptVersion == nil || !validQuestionExplanationPrompt(*row.CachedPromptVersion) {
 		return "", false
 	}
 	return strings.TrimSpace(*row.CachedExplanation), true
+}
+
+// v2 只新增账号级建议字段，v1 的题目解析仍然有效，避免无谓重算历史缓存。
+func validQuestionExplanationPrompt(version string) bool {
+	return version == batchAnalysisPromptVersion || version == legacyBatchPromptVersion
 }
 
 func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
@@ -324,8 +330,9 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		return err
 	}
 	var response struct {
-		Summary string `json:"summary"`
-		Grades  []struct {
+		Summary      string `json:"summary"`
+		MemoryAdvice string `json:"memoryAdvice"`
+		Grades       []struct {
 			ItemID        string          `json:"itemId"`
 			Correctness   string          `json:"correctness"`
 			CorrectAnswer json.RawMessage `json:"correctAnswer"`
@@ -345,6 +352,14 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	summary := strings.TrimSpace(response.Summary)
 	if summary == "" || len([]rune(summary)) > 4000 {
 		err := errors.New("AI 批次总结文本缺失或超长")
+		if attempts >= maxAttempts {
+			return s.failBatchAnalysis(ctx, req.SessionID, err)
+		}
+		return err
+	}
+	memoryAdvice := strings.TrimSpace(response.MemoryAdvice)
+	if memoryAdvice == "" || len([]rune(memoryAdvice)) > 4000 {
+		err := errors.New("AI 全局学习建议文本缺失或超长")
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
 		}
@@ -461,7 +476,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		if err := practice.NewStore(tx).SetAISummary(ctx, req.SessionID, "completed", summary); err != nil {
 			return err
 		}
-		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", summary)
+		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", memoryAdvice)
 	})
 	if err != nil {
 		return fmt.Errorf("写回批次 AI 分析失败: %w", err)

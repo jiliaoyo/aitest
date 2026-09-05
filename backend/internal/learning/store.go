@@ -185,6 +185,10 @@ func (s *Store) MemoryForUser(ctx context.Context, userID string) (LearningMemor
 	).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect, &memory.AIAnswered, &memory.AICorrect); err != nil {
 		return memory, err
 	}
+	if total := memory.ConfirmedAnswered + memory.AIAnswered; total > 0 {
+		accuracy := float64(memory.ConfirmedCorrect+memory.AICorrect) / float64(total)
+		memory.EstimatedAccuracy = &accuracy
+	}
 	memory.StatsUpdatedAt = statsUpdatedAt
 	memory.Advice = MemoryAdvice{Status: adviceStatus, Text: adviceText, UpdatedAt: adviceUpdatedAt}
 	return memory, nil
@@ -221,8 +225,8 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 	return snapshot, nil
 }
 
-// GenerationMemoryForAI 返回当前级别的已审核知识点；memory 模式附带账号统计，level 模式不读取账号统计。
-// memory 模式优先薄弱点，level 模式随机抽取更大的知识点样本，避免生成内容只围绕少数薄弱点。
+// GenerationMemoryForAI 返回当前级别的已审核知识点；memory 模式按多项学习信号排序，level 模式不读取账号统计。
+// ponytail: 固定权重和 90 天线性复习间隔；积累真实复习效果后再校准为遗忘曲线模型。
 func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
 	var memory AIGenerationMemory
 	if generationMode == "memory" {
@@ -237,22 +241,49 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		knowledgePointIDs = []string{}
 	}
 	rows, err := store.CollectRows[AIGenerationKnowledgePoint](ctx, s.db,
-		`SELECT kp.id::text, kp.name, kp.subject_id::text, kp.description, kp.common_mistakes, kp.examples,
-		        coalesce(st.recent_answered, 0), coalesce(st.recent_correct, 0),
-		        coalesce(st.consecutive_wrong, 0)
-		 FROM knowledge_points kp
-		 LEFT JOIN user_knowledge_stats st
-		   ON st.knowledge_point_id = kp.id AND st.user_id = $1 AND $5 = 'memory'
-		 WHERE kp.status = 'published'
-		   AND kp.level_id::text = $2
-		   AND ($3 = '' OR kp.subject_id::text = $3)
-		   AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
-		 ORDER BY CASE WHEN $5 = 'level' THEN random() END,
-		          CASE WHEN $5 = 'memory' AND coalesce(st.recent_answered, 0) >= 5 THEN 0 ELSE 1 END,
-		          CASE WHEN $5 = 'memory' THEN coalesce(st.recent_correct, 0)::float / greatest(coalesce(st.recent_answered, 0), 1) END,
-		          CASE WHEN $5 = 'memory' THEN coalesce(st.consecutive_wrong, 0)::float END DESC,
-		          random()
-		 LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 5 ELSE 20 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
+		`WITH base AS (
+			SELECT kp.id::text, kp.name, kp.subject_id::text, kp.description, kp.common_mistakes, kp.examples,
+			       coalesce(st.confirmed_answered, 0) AS confirmed_answered,
+			       coalesce(st.confirmed_correct, 0) AS confirmed_correct,
+			       coalesce(st.recent_answered, 0) AS recent_answered,
+			       coalesce(st.recent_correct, 0) AS recent_correct,
+			       greatest(coalesce(st.recent_answered, 0) - coalesce(st.recent_correct, 0), 0) AS recent_wrong_count,
+			       coalesce(st.consecutive_wrong, 0) AS consecutive_wrong,
+			       CASE WHEN st.last_practiced_at IS NULL THEN NULL
+			            ELSE greatest(0, floor(extract(epoch FROM (now() - st.last_practiced_at)) / 86400))::int
+			       END AS days_since_practice
+			FROM knowledge_points kp
+			LEFT JOIN user_knowledge_stats st
+			  ON st.knowledge_point_id = kp.id AND st.user_id = $1 AND $5 = 'memory'
+			WHERE kp.status = 'published'
+			  AND kp.level_id::text = $2
+			  AND ($3 = '' OR kp.subject_id::text = $3)
+			  AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
+		), scored AS (
+			SELECT base.*,
+			       CASE WHEN $5 <> 'memory' THEN 0.0 ELSE (
+				       0.45 * CASE WHEN recent_answered = 0 THEN 0.0 ELSE
+					       ((recent_wrong_count + 1.0) / (recent_answered + 2.0))
+					       * least(recent_answered, 10)::float8 / 10.0 END
+				     + 0.25 * CASE WHEN confirmed_answered = 0 THEN 0.0 ELSE
+					       ((confirmed_answered - confirmed_correct + 1.0) / (confirmed_answered + 2.0))
+					       * least(confirmed_answered, 20)::float8 / 20.0 END
+				     + 0.20 * least(consecutive_wrong, 5)::float8 / 5.0
+				     + 0.10 * CASE WHEN days_since_practice IS NULL THEN 0.0
+					       ELSE least(days_since_practice::float8 / 90.0, 1.0) END
+				     + 0.12 * CASE WHEN confirmed_answered = 0 THEN 1.0
+					       WHEN confirmed_answered < 5 THEN 0.5 ELSE 0.0 END
+				       )::float8 END AS priority_score
+			FROM base
+		)
+		SELECT id, name, subject_id, description, common_mistakes, examples,
+		       confirmed_answered, confirmed_correct, recent_answered, recent_correct,
+		       recent_wrong_count, consecutive_wrong, days_since_practice, priority_score
+		FROM scored
+		ORDER BY CASE WHEN $5 = 'level' THEN random() END,
+		         CASE WHEN $5 = 'memory' THEN priority_score END DESC,
+		         random()
+		LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 8 ELSE 20 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
 	if err != nil {
 		return memory, err
 	}
