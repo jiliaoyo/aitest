@@ -20,9 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v6"
+const questionGenerationPromptVersion = "practice_question_generation.v7"
 
-//go:embed prompts/practice_question_generation.v6.md
+//go:embed prompts/practice_question_generation.v7.md
 var questionGenerationPrompt string
 
 const (
