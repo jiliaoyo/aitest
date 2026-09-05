@@ -367,7 +367,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 		RandomSeed: seed, LearningMemory: memory,
 	})
-	out, err := s.client.RunPromptWithTemperature(ctx, "practice_question_generation", questionGenerationPromptVersion,
+	out, err := s.client.RunPromptWithTemperature(ctx, row.UserID, "practice_question_generation", questionGenerationPromptVersion,
 		req.SessionID, questionGenerationPrompt, string(inputJSON), 0.8)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)

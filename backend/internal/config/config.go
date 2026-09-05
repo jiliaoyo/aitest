@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"net/netip"
 	"os"
 	"strconv"
@@ -28,6 +29,9 @@ type Config struct {
 	AIAPIKey  string
 	AIModel   string
 	AITimeout time.Duration
+	// 费用按美元/百万 token 配置，并在每次调用审计时固化，避免模型价格变化污染历史统计。
+	AIInputPricePerMillion  float64
+	AIOutputPricePerMillion float64
 }
 
 func Load() (Config, error) {
@@ -79,6 +83,16 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("AI_TIMEOUT 无效: %w", err)
 	}
 	c.AITimeout = aiTimeout
+	inputPrice, err := parsePrice("AI_INPUT_PRICE_PER_MILLION")
+	if err != nil {
+		return c, err
+	}
+	outputPrice, err := parsePrice("AI_OUTPUT_PRICE_PER_MILLION")
+	if err != nil {
+		return c, err
+	}
+	c.AIInputPricePerMillion = inputPrice
+	c.AIOutputPricePerMillion = outputPrice
 
 	if c.AppEnv != "dev" && c.AppEnv != "prod" {
 		return c, fmt.Errorf("APP_ENV 必须是 dev 或 prod")
@@ -113,6 +127,14 @@ func getenv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func parsePrice(key string) (float64, error) {
+	value, err := strconv.ParseFloat(getenv(key, "0"), 64)
+	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+		return 0, fmt.Errorf("%s 无效: 请输入非负数字", key)
+	}
+	return value, nil
 }
 
 func loadDotEnv() error {

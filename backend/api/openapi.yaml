@@ -448,6 +448,40 @@ paths:
                   publishedNoSource: { type: integer }
                   publishedNoAnswer: { type: integer }
                   openIssues: { type: integer }
+  /admin/users:
+    get:
+      tags: [admin]
+      summary: 用户列表与用量汇总
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: 按邮箱搜索 }
+        - { name: role, in: query, schema: { type: string, enum: [learner, admin] } }
+        - { name: from, in: query, schema: { type: string, format: date }, description: 统计开始日期（含） }
+        - { name: to, in: query, schema: { type: string, format: date }, description: 统计结束日期（含） }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: 用户用量与 AI 成本统计
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUsersResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+  /admin/users/{id}:
+    get:
+      tags: [admin]
+      summary: 用户用量详情
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date }, description: 统计开始日期（含） }
+        - { name: to, in: query, schema: { type: string, format: date }, description: 统计结束日期（含） }
+      responses:
+        '200':
+          description: 用户资料、练习使用情况、AI 调用明细
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /admin/questions:
     get:
       tags: [admin]
@@ -970,6 +1004,139 @@ components:
         examples: { type: string }
         status: { type: string, enum: [draft, published, retired] }
         questionCount: { type: integer }
+    AdminAIUsage:
+      type: object
+      description: AI 实际模型调用统计；重试会分别计数
+      properties:
+        calls: { type: integer }
+        successfulCalls: { type: integer }
+        failedCalls: { type: integer }
+        generationCalls: { type: integer }
+        promptTokens: { type: integer, format: int64 }
+        completionTokens: { type: integer, format: int64 }
+        totalTokens: { type: integer, format: int64 }
+        durationMs: { type: integer, format: int64 }
+        costedCalls: { type: integer }
+        estimatedCostUsd: { type: number, format: double, nullable: true, description: 没有配置调用时费率时为 null }
+    AdminAIUsageBreakdown:
+      type: object
+      properties:
+        key: { type: string }
+        calls: { type: integer }
+        successfulCalls: { type: integer }
+        failedCalls: { type: integer }
+        promptTokens: { type: integer, format: int64 }
+        completionTokens: { type: integer, format: int64 }
+        totalTokens: { type: integer, format: int64 }
+        durationMs: { type: integer, format: int64 }
+        costedCalls: { type: integer }
+        estimatedCostUsd: { type: number, format: double, nullable: true }
+    AdminAIDailyUsage:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        calls: { type: integer }
+        failedCalls: { type: integer }
+        promptTokens: { type: integer, format: int64 }
+        completionTokens: { type: integer, format: int64 }
+        totalTokens: { type: integer, format: int64 }
+        durationMs: { type: integer, format: int64 }
+        costedCalls: { type: integer }
+        estimatedCostUsd: { type: number, format: double, nullable: true }
+    AdminUserUsage:
+      type: object
+      properties:
+        activeDays: { type: integer }
+        lastActiveAt: { type: string, nullable: true }
+        loginCount: { type: integer }
+        activeAuthSessions: { type: integer }
+        lastLoginAt: { type: string, nullable: true }
+        practiceSessions: { type: integer }
+        completedSessions: { type: integer }
+        analysisFailedSessions: { type: integer }
+        generationFailedSessions: { type: integer }
+        activeSessions: { type: integer }
+        submittedSessions: { type: integer }
+        practiceItems: { type: integer }
+        answeredItems: { type: integer }
+        aiGenerationRequests: { type: integer }
+        aiGeneratedQuestions: { type: integer }
+        ai: { $ref: '#/components/schemas/AdminAIUsage' }
+    AdminUserProfile:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [learner, admin] }
+        defaultLevelId: { type: string, nullable: true }
+        defaultLevelCode: { type: string }
+        defaultLevelName: { type: string }
+        createdAt: { type: string }
+        lastActiveAt: { type: string, nullable: true }
+        lastLoginAt: { type: string, nullable: true }
+    AdminUserListItem:
+      allOf:
+        - $ref: '#/components/schemas/AdminUserProfile'
+        - type: object
+          properties:
+            usage: { $ref: '#/components/schemas/AdminUserUsage' }
+    AdminUsersSummary:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        learnerUsers: { type: integer }
+        adminUsers: { type: integer }
+        newUsers: { type: integer }
+        activeUsers: { type: integer }
+        usage: { $ref: '#/components/schemas/AdminUserUsage' }
+        aiByKind: { type: array, items: { $ref: '#/components/schemas/AdminAIUsageBreakdown' } }
+        aiByModel: { type: array, items: { $ref: '#/components/schemas/AdminAIUsageBreakdown' } }
+        aiDaily: { type: array, items: { $ref: '#/components/schemas/AdminAIDailyUsage' } }
+    AdminUsersResponse:
+      type: object
+      properties:
+        summary: { $ref: '#/components/schemas/AdminUsersSummary' }
+        users: { type: array, items: { $ref: '#/components/schemas/AdminUserListItem' } }
+        nextCursor: { type: string }
+    AdminAIRun:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        promptVersion: { type: string }
+        model: { type: string }
+        inputRef: { type: string }
+        status: { type: string, enum: [succeeded, failed] }
+        promptTokens: { type: integer }
+        completionTokens: { type: integer }
+        totalTokens: { type: integer }
+        durationMs: { type: integer }
+        estimatedCostUsd: { type: number, format: double, nullable: true }
+        error: { type: string }
+        createdAt: { type: string }
+    AdminPracticeSession:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string }
+        mode: { type: string }
+        requestedCount: { type: integer }
+        totalCount: { type: integer }
+        answeredCount: { type: integer }
+        aiSummaryStatus: { type: string }
+        createdAt: { type: string }
+        submittedAt: { type: string, nullable: true }
+        deletedAt: { type: string, nullable: true }
+    AdminUserDetail:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/AdminUserProfile' }
+        usage: { $ref: '#/components/schemas/AdminUserUsage' }
+        aiByKind: { type: array, items: { $ref: '#/components/schemas/AdminAIUsageBreakdown' } }
+        aiByModel: { type: array, items: { $ref: '#/components/schemas/AdminAIUsageBreakdown' } }
+        aiDaily: { type: array, items: { $ref: '#/components/schemas/AdminAIDailyUsage' } }
+        recentAiRuns: { type: array, items: { $ref: '#/components/schemas/AdminAIRun' } }
+        recentPracticeSessions: { type: array, items: { $ref: '#/components/schemas/AdminPracticeSession' } }
     Source:
       type: object
       properties:

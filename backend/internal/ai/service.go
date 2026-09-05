@@ -56,6 +56,7 @@ func (s *Service) Handlers() map[string]jobs.Handler {
 }
 
 type itemContext struct {
+	UserID       string
 	ItemID       string
 	SessionID    string
 	Type         string
@@ -92,7 +93,7 @@ type batchAnalysisRow struct {
 }
 
 func (s *Service) loadItem(ctx context.Context, db store.DBTx, sessionID, itemID string) (itemContext, error) {
-	const q = `SELECT pi.id::text, pi.session_id::text, v.type, v.stem, v.options::text,
+	const q = `SELECT ps.user_id::text, pi.id::text, pi.session_id::text, v.type, v.stem, v.options::text,
 	        mv.content, ua.value::text, ak.value::text, ak.authority, ak.explanation
 	 FROM practice_items pi
 	 JOIN question_versions v ON v.id = pi.question_version_id
@@ -143,7 +144,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		"material":   item.Material,
 		"userAnswer": item.UserValue,
 	})
-	out, err := s.client.RunPrompt(ctx, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON))
+	out, err := s.client.RunPrompt(ctx, item.UserID, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON))
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
@@ -335,7 +336,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		input.Materials = nil
 	}
 	inputJSON, _ := json.Marshal(input)
-	out, err := s.client.RunPrompt(ctx, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON))
+	out, err := s.client.RunPrompt(ctx, userID, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON))
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
@@ -594,7 +595,7 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		"options": item.Options, "material": item.Material,
 		"standardAnswer": item.KeyValue, "userAnswer": item.UserValue,
 	})
-	out, err := s.client.RunPrompt(ctx, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON))
+	out, err := s.client.RunPrompt(ctx, item.UserID, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON))
 	if err != nil {
 		return err // 解析失败不影响判分，直接按任务重试策略处理
 	}

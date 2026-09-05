@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	adminmodule "github.com/aishuati/backend/internal/admin"
 	"github.com/aishuati/backend/internal/ai"
 	"github.com/aishuati/backend/internal/auth"
 	"github.com/aishuati/backend/internal/catalog"
@@ -88,6 +89,7 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 
 	aiClient := ai.NewClient(ai.Config{
 		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
+		InputPricePerMillion: cfg.AIInputPricePerMillion, OutputPricePerMillion: cfg.AIOutputPricePerMillion,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger)
 	importService := imports.NewService(pool, contentService, cfg.UploadDir, cfg.UploadMaxBytes, logger)
@@ -123,6 +125,7 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 	imports.NewHandler(importService, logger).RegisterRoutes(adminMux)
 	catalogHandler.RegisterRoutes(nil, adminMux)
 	learningHandler.RegisterRoutes(nil, adminMux)
+	adminmodule.NewHandler(adminmodule.NewService(adminmodule.NewStore(pool)), logger).RegisterRoutes(adminMux)
 
 	validate := func(r *http.Request) (string, string, error) {
 		u, ok := authService.ValidateSession(r.Context(), auth.Token(r))

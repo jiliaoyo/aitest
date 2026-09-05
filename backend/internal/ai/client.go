@@ -15,10 +15,12 @@ import (
 )
 
 type Config struct {
-	BaseURL string
-	APIKey  string
-	Model   string
-	Timeout time.Duration
+	BaseURL               string
+	APIKey                string
+	Model                 string
+	Timeout               time.Duration
+	InputPricePerMillion  float64
+	OutputPricePerMillion float64
 }
 
 type Client struct {
@@ -40,20 +42,20 @@ func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
 }
 
 // RunPrompt 记录一次 ai_runs 审计并返回模型原始 JSON 输出。
-func (c *Client) RunPrompt(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, error) {
-	return c.runPrompt(ctx, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
+func (c *Client) RunPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, error) {
+	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
 }
 
 // RunPromptWithTemperature 用于需要随机性的内容生成；判分与统计类任务继续使用温度 0。
-func (c *Client) RunPromptWithTemperature(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
-	return c.runPrompt(ctx, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
+func (c *Client) RunPromptWithTemperature(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
+	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
 }
 
 func (c *Client) Configured() bool {
 	return c.cfg.BaseURL != "" && c.cfg.APIKey != "" && c.cfg.Model != ""
 }
 
-func (c *Client) runPrompt(ctx context.Context, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64, disableThinking bool) (json.RawMessage, error) {
+func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64, disableThinking bool) (json.RawMessage, error) {
 	if c.cfg.BaseURL == "" || c.cfg.APIKey == "" || c.cfg.Model == "" {
 		return nil, errNotConfigured
 	}
@@ -82,18 +84,18 @@ func (c *Client) runPrompt(ctx context.Context, kind, promptVersion, inputRef st
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		c.audit(ctx, kind, promptVersion, inputRef, start, nil, 0, 0, err)
+		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
 		return nil, fmt.Errorf("AI 服务请求失败: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		c.audit(ctx, kind, promptVersion, inputRef, start, nil, 0, 0, err)
+		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
 		return nil, fmt.Errorf("读取 AI 响应失败: %w", err)
 	}
 	if resp.StatusCode >= 400 {
 		err := fmt.Errorf("AI 服务返回 %d", resp.StatusCode)
-		c.audit(ctx, kind, promptVersion, inputRef, start, nil, 0, 0, err)
+		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
 		return nil, err
 	}
 	var chat struct {
@@ -109,7 +111,7 @@ func (c *Client) runPrompt(ctx context.Context, kind, promptVersion, inputRef st
 	}
 	if err := json.Unmarshal(body, &chat); err != nil || len(chat.Choices) == 0 {
 		err := fmt.Errorf("AI 响应结构不合法")
-		c.audit(ctx, kind, promptVersion, inputRef, start, nil, 0, 0, err)
+		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
 		return nil, err
 	}
 	content := chat.Choices[0].Message.Content
@@ -118,14 +120,14 @@ func (c *Client) runPrompt(ctx context.Context, kind, promptVersion, inputRef st
 	var out json.RawMessage
 	if json.Unmarshal([]byte(content), &out) != nil {
 		err := fmt.Errorf("AI 输出不是合法 JSON")
-		c.audit(ctx, kind, promptVersion, inputRef, start, nil, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, err)
+		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, err)
 		return nil, err
 	}
-	c.audit(ctx, kind, promptVersion, inputRef, start, out, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, nil)
+	c.audit(ctx, userID, kind, promptVersion, inputRef, start, out, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, nil)
 	return out, nil
 }
 
-func (c *Client) audit(ctx context.Context, kind, promptVersion, inputRef string, start time.Time, output any, promptTokens, completionTokens int, err error) {
+func (c *Client) audit(ctx context.Context, userID, kind, promptVersion, inputRef string, start time.Time, output any, promptTokens, completionTokens int, err error) {
 	errMsg := ""
 	if err != nil {
 		errMsg = err.Error()
@@ -137,11 +139,19 @@ func (c *Client) audit(ctx context.Context, kind, promptVersion, inputRef string
 	if output != nil {
 		outputArg = output
 	}
+	var userIDArg any
+	if userID != "" {
+		userIDArg = userID
+	}
+	var costArg any
+	if (c.cfg.InputPricePerMillion > 0 || c.cfg.OutputPricePerMillion > 0) && (promptTokens > 0 || completionTokens > 0) {
+		costArg = (float64(promptTokens)*c.cfg.InputPricePerMillion + float64(completionTokens)*c.cfg.OutputPricePerMillion) / 1_000_000
+	}
 	_, e := c.pool.Exec(ctx,
-		`INSERT INTO ai_runs (kind, prompt_version, model, input_ref, output, prompt_tokens, completion_tokens, duration_ms, error)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		kind, promptVersion, c.cfg.Model, inputRef, outputArg, promptTokens, completionTokens,
-		time.Since(start).Milliseconds(), errMsg)
+		`INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, output, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		userIDArg, kind, promptVersion, c.cfg.Model, inputRef, outputArg, promptTokens, completionTokens,
+		time.Since(start).Milliseconds(), errMsg, costArg)
 	if e != nil {
 		c.logger.Error("ai_audit_failed", "error", e)
 	}

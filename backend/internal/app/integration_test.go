@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
 	"testing"
@@ -103,6 +104,99 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 	loginIntegration(t, data.admin, server.URL, "admin@example.com", "admin-pass-123")
 	loginIntegration(t, data.learnerA, server.URL, "learner-a@example.com", "learner-pass-123")
 	loginIntegration(t, data.learnerB, server.URL, "learner-b@example.com", "learner-pass-123")
+
+	t.Run("管理端用户用量接口", func(t *testing.T) {
+		learnerID := dataUserID(t, pool, "learner-a@example.com")
+		if _, err := pool.Exec(context.Background(), `
+			INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd)
+			VALUES ($1, 'practice_question_generation', 'test.v1', 'test-model', 'test-ref', 17, 3, 42, '', 0.0012)`, learnerID); err != nil {
+			t.Fatal(err)
+		}
+		var page struct {
+			Summary struct {
+				TotalUsers int `json:"totalUsers"`
+				Usage      struct {
+					AI struct {
+						Calls int `json:"calls"`
+					} `json:"ai"`
+				} `json:"usage"`
+			} `json:"summary"`
+			Users []struct {
+				Email string `json:"email"`
+				Usage struct {
+					AI struct {
+						Calls int `json:"calls"`
+					} `json:"ai"`
+				} `json:"usage"`
+			} `json:"users"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/users", nil, ""), &page)
+		if page.Summary.TotalUsers != 3 || page.Summary.Usage.AI.Calls != 1 || len(page.Users) != 3 {
+			t.Fatalf("unexpected user page: %+v", page)
+		}
+		var detail struct {
+			User struct {
+				Email string `json:"email"`
+			} `json:"user"`
+			Usage struct {
+				PracticeSessions int `json:"practiceSessions"`
+				AI               struct {
+					Calls            int      `json:"calls"`
+					PromptTokens     int64    `json:"promptTokens"`
+					EstimatedCostUSD *float64 `json:"estimatedCostUsd"`
+				} `json:"ai"`
+			} `json:"usage"`
+			RecentAIRuns []struct {
+				Kind string `json:"kind"`
+			} `json:"recentAiRuns"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/users/"+learnerID, nil, ""), &detail)
+		if detail.User.Email != "learner-a@example.com" || detail.Usage.PracticeSessions != 0 ||
+			detail.Usage.AI.Calls != 1 || detail.Usage.AI.PromptTokens != 17 || detail.Usage.AI.EstimatedCostUSD == nil ||
+			*detail.Usage.AI.EstimatedCostUSD != 0.0012 || len(detail.RecentAIRuns) != 1 || detail.RecentAIRuns[0].Kind != "practice_question_generation" {
+			t.Fatalf("unexpected user detail: %+v", detail)
+		}
+		var emptyRange struct {
+			Summary struct {
+				Usage struct {
+					AI struct {
+						Calls int `json:"calls"`
+					} `json:"ai"`
+				} `json:"usage"`
+			} `json:"summary"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/users?from=2099-01-01&to=2099-01-02", nil, ""), &emptyRange)
+		if emptyRange.Summary.Usage.AI.Calls != 0 {
+			t.Fatalf("future date range should have no AI calls: %+v", emptyRange)
+		}
+		var filtered struct {
+			Users []struct {
+				Email string `json:"email"`
+			} `json:"users"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/users?role=learner&q=learner-a", nil, ""), &filtered)
+		if len(filtered.Users) != 1 || filtered.Users[0].Email != "learner-a@example.com" {
+			t.Fatalf("role and email filters should narrow users: %+v", filtered.Users)
+		}
+		var firstPage, secondPage struct {
+			Users []struct {
+				Email string `json:"email"`
+			} `json:"users"`
+			NextCursor string `json:"nextCursor"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/users?limit=1", nil, ""), &firstPage)
+		if len(firstPage.Users) != 1 || firstPage.NextCursor == "" {
+			t.Fatalf("first user page should include a cursor: %+v", firstPage)
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/users?limit=1&cursor="+url.QueryEscape(firstPage.NextCursor), nil, ""), &secondPage)
+		if len(secondPage.Users) != 1 || secondPage.Users[0].Email == firstPage.Users[0].Email {
+			t.Fatalf("cursor should advance user page: %+v", secondPage)
+		}
+		assertStatus(t, jsonRequest(t, data.learnerA, server.URL, http.MethodGet, "/api/v1/admin/users", nil, ""), http.StatusForbidden)
+	})
 
 	t.Run("管理概览质量入口与题目筛选", func(t *testing.T) {
 		var overview struct {

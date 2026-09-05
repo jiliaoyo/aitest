@@ -12,6 +12,17 @@ const dateTimeFmt = new Intl.DateTimeFormat('zh-CN', {
   minute: '2-digit',
 })
 
+const integerFmt = new Intl.NumberFormat('zh-CN')
+const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 6 })
+
+export function formatInteger(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : integerFmt.format(value)
+}
+
+export function formatUSD(value: number | null | undefined): string {
+  return value === null || value === undefined ? '—' : usdFmt.format(value)
+}
+
 export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined) {
     return '—'
@@ -118,4 +129,25 @@ export const statusText: Record<string, string> = {
   pending: '待审核',
   approved: '已审核',
   rejected: '已退回',
+  succeeded: '成功',
+  failed: '失败',
+}
+
+export const roleText: Record<string, string> = {
+  learner: '学习者',
+  admin: '管理员',
+}
+
+export const aiRunKindText: Record<string, string> = {
+  practice_question_generation: 'AI 出题',
+  practice_batch_analysis: '批次分析',
+  practice_grade: 'AI 判分',
+  practice_explain: 'AI 解析',
+}
+
+export const practiceModeText: Record<string, string> = {
+  ai_generated: 'AI 出题练习',
+  comprehensive: '综合练习',
+  knowledge: '知识点练习',
+  wrong_items: '错题重练',
 }

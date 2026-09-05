@@ -15,6 +15,7 @@ const learnerNav = [
 
 const adminNav = [
   { to: '/admin', label: '内容概览' },
+  { to: '/admin/users', label: '用户与用量' },
   { to: '/admin/questions', label: '题目' },
   { to: '/admin/imports', label: '导入任务' },
   { to: '/admin/knowledge', label: '知识点' },
@@ -26,7 +27,7 @@ const isAdminArea = computed(() => route.path.startsWith('/admin'))
 const nav = computed(() => (isAdminArea.value ? adminNav : learnerNav))
 
 function isActive(to: string): boolean {
-  if (to === '/') {
+  if (to === '/' || to === '/admin') {
     return route.path === '/'
   }
   return route.path === to || route.path.startsWith(to + '/')

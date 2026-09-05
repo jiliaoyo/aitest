@@ -81,6 +81,7 @@ onMounted(load)
         <p class="muted" style="margin-top: 0">快捷入口</p>
         <p style="display: flex; gap: 10px; flex-wrap: wrap">
           <RouterLink class="tag" to="/admin/questions/new">新建题目</RouterLink>
+          <RouterLink class="tag" to="/admin/users">用户与用量</RouterLink>
           <RouterLink class="tag" to="/admin/questions">题目列表</RouterLink>
           <RouterLink class="tag" to="/admin/knowledge">知识点管理</RouterLink>
           <RouterLink class="tag" to="/admin/sources">来源管理</RouterLink>

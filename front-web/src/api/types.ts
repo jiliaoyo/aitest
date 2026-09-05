@@ -380,6 +380,136 @@ export interface OverviewDTO {
   openIssues: number
 }
 
+export interface AdminAIUsage {
+  calls: number
+  successfulCalls: number
+  failedCalls: number
+  generationCalls: number
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  durationMs: number
+  costedCalls: number
+  estimatedCostUsd: number | null
+}
+
+export interface AdminAIUsageBreakdown extends Omit<AdminAIUsage, 'generationCalls'> {
+  key: string
+}
+
+export interface AdminAIDailyUsage {
+  date: string
+  calls: number
+  failedCalls: number
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  durationMs: number
+  costedCalls: number
+  estimatedCostUsd: number | null
+}
+
+export interface AdminUserUsage {
+  activeDays: number
+  lastActiveAt: string | null
+  loginCount: number
+  activeAuthSessions: number
+  lastLoginAt: string | null
+  practiceSessions: number
+  completedSessions: number
+  analysisFailedSessions: number
+  generationFailedSessions: number
+  activeSessions: number
+  submittedSessions: number
+  practiceItems: number
+  answeredItems: number
+  aiGenerationRequests: number
+  aiGeneratedQuestions: number
+  ai: AdminAIUsage
+}
+
+export interface AdminUserListItem {
+  id: string
+  email: string
+  role: Role
+  defaultLevelId: string | null
+  defaultLevelCode: string
+  defaultLevelName: string
+  createdAt: string
+  lastActiveAt: string | null
+  lastLoginAt: string | null
+  usage: AdminUserUsage
+}
+
+export interface AdminUsersSummary {
+  totalUsers: number
+  learnerUsers: number
+  adminUsers: number
+  newUsers: number
+  activeUsers: number
+  usage: AdminUserUsage
+  aiByKind: AdminAIUsageBreakdown[]
+  aiByModel: AdminAIUsageBreakdown[]
+  aiDaily: AdminAIDailyUsage[]
+}
+
+export interface AdminUsersResponse {
+  summary: AdminUsersSummary
+  users: AdminUserListItem[]
+  nextCursor: string
+}
+
+export interface AdminUserProfile {
+  id: string
+  email: string
+  role: Role
+  defaultLevelId: string | null
+  defaultLevelCode: string
+  defaultLevelName: string
+  createdAt: string
+  lastActiveAt: string | null
+  lastLoginAt: string | null
+}
+
+export interface AdminAIRun {
+  id: string
+  kind: string
+  promptVersion: string
+  model: string
+  inputRef: string
+  status: 'succeeded' | 'failed'
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  durationMs: number
+  estimatedCostUsd: number | null
+  error: string
+  createdAt: string
+}
+
+export interface AdminPracticeSession {
+  id: string
+  status: SessionStatus
+  mode: string
+  requestedCount: number
+  totalCount: number
+  answeredCount: number
+  aiSummaryStatus: AIAnalysis['status']
+  createdAt: string
+  submittedAt: string | null
+  deletedAt: string | null
+}
+
+export interface AdminUserDetail {
+  user: AdminUserProfile
+  usage: AdminUserUsage
+  aiByKind: AdminAIUsageBreakdown[]
+  aiByModel: AdminAIUsageBreakdown[]
+  aiDaily: AdminAIDailyUsage[]
+  recentAiRuns: AdminAIRun[]
+  recentPracticeSessions: AdminPracticeSession[]
+}
+
 export interface AdminKnowledgePoint {
   id: string
   examId: string

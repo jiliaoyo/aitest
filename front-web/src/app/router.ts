@@ -21,6 +21,8 @@ const router = createRouter({
     { path: '/settings', component: () => import('@/features/settings/SettingsPage.vue') },
     // 管理端
     { path: '/admin', component: () => import('@/features/admin/AdminOverviewPage.vue') },
+    { path: '/admin/users', component: () => import('@/features/admin/AdminUsersPage.vue') },
+    { path: '/admin/users/:userId', component: () => import('@/features/admin/AdminUserDetailPage.vue') },
     { path: '/admin/questions', component: () => import('@/features/admin/AdminQuestionListPage.vue') },
     { path: '/admin/questions/new', component: () => import('@/features/admin/AdminQuestionEditPage.vue') },
     { path: '/admin/questions/:questionId', component: () => import('@/features/admin/AdminQuestionEditPage.vue') },

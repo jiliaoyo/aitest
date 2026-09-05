@@ -35,6 +35,7 @@ func main() {
 
 	aiClient := ai.NewClient(ai.Config{
 		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
+		InputPricePerMillion: cfg.AIInputPricePerMillion, OutputPricePerMillion: cfg.AIOutputPricePerMillion,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger)
 	learningHandler := learning.NewHandler(pool, logger)
