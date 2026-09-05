@@ -38,6 +38,8 @@ describe('结果分层展示', () => {
     expect(text).toContain('错误')
     expect(text).toContain('已审核答案')
     expect(text).toContain('人工解析')
+    expect(text).toContain('B. ことから')
+    expect(text).toContain('C. に沿って')
     expect(text).not.toContain('AI 判定')
     expect(text).not.toContain('AI 解析')
   })

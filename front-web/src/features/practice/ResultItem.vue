@@ -11,7 +11,10 @@ function answerText(answer: ResultItemDTO['userAnswer'], options: OptionDTO[]): 
   if (!answer) return '—'
   if ('optionIds' in answer && answer.optionIds) {
     return answer.optionIds
-      .map((id) => options.find((o) => o.id === id)?.label ?? id)
+      .map((id) => {
+        const option = options.find((o) => o.id === id)
+        return option ? `${option.label}. ${option.text}` : id
+      })
       .join('、')
   }
   if ('text' in answer && answer.text) return answer.text
