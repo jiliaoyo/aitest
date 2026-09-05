@@ -62,7 +62,7 @@ npm run test       # vitest
 - PostgreSQL 持久卷固定为 `ai_shuati_postgres_data`，上传文件卷固定为 `ai_shuati_uploads`。更新服务禁止使用 `docker compose down -v`；涉及数据同步前先做 `pg_dump` 备份。
 - 题库快照初始化顺序：启动 `postgres` → `/app/migrate` → 导入 `backend/questions/current_knowledge_points.sql` → 导入 `backend/questions/current_question_bank.sql` → 启动 `backend`、`worker`、`frontend`。快照已包含考试目录、知识点和题库；`/app/seed` 只用于没有快照的空开发库，不要与快照混用。
 - 后端 `.env` 只放服务器环境变量和密钥，不提交、不打印；AI 服务必须同时配置 `AI_BASE_URL`、`AI_API_KEY`、`AI_MODEL`。前端 `nginx.conf` 使用 Docker DNS 动态解析 `backend`，避免后端容器重建后反代缓存旧 IP。
-- 常规更新：`sudo docker compose build backend frontend && sudo docker compose up -d --force-recreate backend worker frontend`；完成后检查 `/health/live`、前端 `/api` 反代和容器健康状态。
+- 常规更新：`sudo docker compose build backend worker frontend && sudo docker compose up -d --force-recreate backend worker frontend`；完成后检查 `/health/live`、前端 `/api` 反代和容器健康状态。
 
 ### 线上更新流程
 
