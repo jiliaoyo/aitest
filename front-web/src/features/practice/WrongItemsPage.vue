@@ -53,7 +53,10 @@ onMounted(async () => {
 
 function optionText(item: WrongItem, ids: string[] | undefined): string {
   if (!ids) return '—'
-  return ids.map((id) => item.options?.find((o) => o.id === id)?.label ?? id).join('、')
+  return ids.map((id) => {
+    const option = item.options?.find((o) => o.id === id)
+    return option ? `${option.label}. ${option.text}` : id
+  }).join('、')
 }
 
 function answerText(item: WrongItem, answer: WrongItem['userAnswer']): string {

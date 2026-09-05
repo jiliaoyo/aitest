@@ -54,7 +54,7 @@ describe('历史与错题本软删除', () => {
         return {
           wrongItems: [{
             itemId: 'item-1', sessionId: 'session-1', questionId: 'question-1', position: 1,
-            type: 'single_choice', stem: '練習問題です。', options: [], knowledgePoints: [], gradingStatus: 'incorrect',
+            type: 'single_choice', stem: '練習問題です。', options: [{ id: 'a', label: 'A', text: '甲' }, { id: 'b', label: 'B', text: '乙' }], knowledgePoints: [], gradingStatus: 'incorrect',
             userAnswer: { optionIds: ['a'] }, correctAnswer: { optionIds: ['b'] },
           }],
         }
@@ -67,6 +67,7 @@ describe('历史与错题本软删除', () => {
     await router.isReady()
     const wrapper = mount(WrongItemsPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('練習問題です。'))
+    expect(wrapper.text()).toContain('你的答案：A. 甲 · 标准答案：B. 乙')
 
     await wrapper.get('button.danger').trigger('click')
     await flushPromises()
