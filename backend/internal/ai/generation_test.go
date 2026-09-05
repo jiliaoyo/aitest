@@ -37,6 +37,21 @@ func TestValidateGeneratedQuestionsAcceptsReviewedKnowledgePoint(t *testing.T) {
 	}
 }
 
+func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
+	question := generatedQuestion{
+		Type: "single_choice", Stem: "これは知識点なしの練習問題です。", Difficulty: 3,
+		Options: []generatedOption{
+			{ID: "a", Label: "A", Text: "一"}, {ID: "b", Label: "B", Text: "二"},
+			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
+		},
+		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`),
+		Explanation:   "这是没有匹配知识点的测试解析。",
+	}
+	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err != nil {
+		t.Fatalf("unmatched knowledge point should be allowed: %v", err)
+	}
+}
+
 func TestQuestionTypeMatches(t *testing.T) {
 	for _, test := range []struct {
 		mode, questionType string

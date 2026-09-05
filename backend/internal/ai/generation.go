@@ -20,9 +20,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v7"
+const questionGenerationPromptVersion = "practice_question_generation.v9"
 
-//go:embed prompts/practice_question_generation.v7.md
+//go:embed prompts/practice_question_generation.v9.md
 var questionGenerationPrompt string
 
 const (
@@ -267,6 +267,7 @@ type generatedQuestion struct {
 	CorrectAnswer     json.RawMessage   `json:"correctAnswer"`
 	Explanation       string            `json:"explanation"`
 	KnowledgePointIDs []string          `json:"knowledgePointIds"`
+	SubjectID         string            `json:"subjectId"`
 	Difficulty        int               `json:"difficulty"`
 }
 
@@ -440,9 +441,6 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 		if !difficultyMatches(difficulty, question.Difficulty) || strings.TrimSpace(question.Explanation) == "" || len([]rune(question.Explanation)) > 2000 {
 			return fmt.Errorf("AI 第 %d 题难度或解析不合法", i+1)
 		}
-		if len(question.KnowledgePointIDs) == 0 {
-			return fmt.Errorf("AI 第 %d 题缺少知识点", i+1)
-		}
 		for _, pointID := range question.KnowledgePointIDs {
 			if !allowed[pointID] {
 				return fmt.Errorf("AI 第 %d 题引用了未审核知识点", i+1)
@@ -474,8 +472,10 @@ func difficultyMatches(mode string, difficulty int) bool {
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		pointSubjects := make(map[string]string, len(points))
+		allowedSubjects := make(map[string]bool, len(points))
 		for _, point := range points {
 			pointSubjects[point.ID] = point.SubjectID
+			allowedSubjects[point.SubjectID] = true
 		}
 		var sourceID, sectionID string
 		if err := tx.QueryRow(ctx,
@@ -509,7 +509,10 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 				}
 			}
 			if questionSubjectID == "" {
-				return errors.New("AI 题目无法确定科目")
+				questionSubjectID = strings.TrimSpace(question.SubjectID)
+				if !allowedSubjects[questionSubjectID] {
+					return errors.New("AI 题目无法确定合法科目")
+				}
 			}
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO question_versions

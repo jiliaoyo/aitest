@@ -250,7 +250,7 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		          CASE WHEN $5 = 'memory' THEN coalesce(st.recent_correct, 0)::float / greatest(coalesce(st.recent_answered, 0), 1) END,
 		          CASE WHEN $5 = 'memory' THEN coalesce(st.consecutive_wrong, 0)::float END DESC,
 		          random()
-		 LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 5 ELSE 50 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
+		 LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 5 ELSE 20 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
 	if err != nil {
 		return memory, err
 	}
