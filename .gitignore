@@ -21,3 +21,4 @@ backend/questions/redblue_questions.sql
 __pycache__/
 *.pyc
 /data/
+/duckai2api/

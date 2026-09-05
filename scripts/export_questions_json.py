@@ -5,7 +5,7 @@
     .venv/bin/python scripts/export_questions_json.py [输出目录]
 
 - 数据源：PG_URL 环境变量或默认 ai_shuati_dev 库，取每题 current_version。
-- 输出：按 级别-科目 分组、每组最多 500 题（与后端导入上限一致）拆成多个文件。
+- 输出：只导出书籍来源，每本书一个 JSON 文件。
 - 约定：human_verified 答案导出为 official（导入格式只接受 official）；
   无答案题目 sourceAnswer 为 null；materialKey 用材料 ID 以便重新导入时共享材料。
 """
@@ -19,8 +19,6 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = REPO / "questions_json"
-CHUNK = 500  # backend internal/imports/json_import.go 限制单批 1-500 题
-
 QUERY = r"""
 SELECT json_build_object(
   'questionId', q.id,
@@ -51,9 +49,9 @@ JOIN question_versions qv ON qv.id = q.current_version_id
 JOIN exam_levels l ON l.id = qv.level_id
 JOIN subjects sub ON sub.id = qv.subject_id
 LEFT JOIN material_versions mv ON mv.id = qv.material_version_id
-LEFT JOIN source_sections ss ON ss.id = qv.source_section_id
-LEFT JOIN sources src ON src.id = ss.source_id
-ORDER BY l.code, sub.code, ss.name NULLS LAST, qv.source_order NULLS LAST, q.created_at;
+JOIN source_sections ss ON ss.id = qv.source_section_id
+JOIN sources src ON src.id = ss.source_id AND src.kind = 'book'
+ORDER BY src.name, ss.name, qv.source_order NULLS LAST, q.created_at;
 """
 
 
@@ -67,10 +65,10 @@ def main() -> None:
 
     questions = [json.loads(line) for line in rows if line.strip()]
     if not questions:
-        sys.exit("数据库里没有题目")
+        sys.exit("数据库里没有书籍题目")
 
-    # 分组：级别-科目；答案 authority 归一为 official（导入格式硬约束）。
-    groups: dict[tuple[str, str], list[dict]] = {}
+    # 分组：书籍来源；答案 authority 归一为 official（导入格式硬约束）。
+    groups: dict[str, list[dict]] = {}
     human_verified = 0
     for q in questions:
         answer = q["sourceAnswer"]
@@ -94,33 +92,21 @@ def main() -> None:
             "aiSuggestedAnswer": None,
             "anomalies": [],
         }
-        groups.setdefault((q["levelCode"], q["subjectCode"]), []).append((q, item))
+        groups.setdefault(q["sourceName"], []).append(item)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    total = 0
-    manifest = []
-    for (level, subject), pairs in sorted(groups.items()):
-        for part in range(0, len(pairs), CHUNK):
-            chunk = pairs[part:part + CHUNK]
-            suffix = f"-{part // CHUNK + 1}" if len(pairs) > CHUNK else ""
-            name = f"{level}-{subject}{suffix}.json"
-            payload = {"items": [item for _, item in chunk]}
-            (out_dir / name).write_text(
-                json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
-            total += len(chunk)
-            manifest.append({
-                "file": name, "count": len(chunk),
-                "published": sum(1 for q, _ in chunk if q["status"] == "published"),
-                "draft": sum(1 for q, _ in chunk if q["status"] != "published"),
-            })
+    for old_file in out_dir.glob("*.json"):
+        old_file.unlink()
 
-    (out_dir / "manifest.json").write_text(
-        json.dumps({"total": total, "files": manifest,
-                    "note": "human_verified 答案已按导入格式要求导出为 official"},
-                   ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"导出 {total} 题 -> {out_dir}（{len(manifest)} 个文件，human_verified 归一 {human_verified} 题）")
-    for m in manifest:
-        print(f"  {m['file']}: {m['count']}（发布 {m['published']} / 草稿 {m['draft']}）")
+    total = 0
+    for source_name, items in sorted(groups.items()):
+        name = re.sub(r'[\\/:*?"<>|]', "_", source_name).strip() or "未命名书籍"
+        (out_dir / f"{name}.json").write_text(
+            json.dumps({"items": items}, ensure_ascii=False, indent=1), encoding="utf-8")
+        total += len(items)
+        print(f"  {name}.json: {len(items)}")
+
+    print(f"导出 {total} 题 -> {out_dir}（{len(groups)} 本书，human_verified 归一 {human_verified} 题）")
 
 
 if __name__ == "__main__":
