@@ -34,6 +34,7 @@ describe('AI 个性化练习', () => {
     await vi.waitFor(() => expect(wrapper.text()).toContain('根据我的记忆生成题目'))
 
     await wrapper.get('input[name="ai-generation-mode"][value="level"]').setValue(true)
+    expect(wrapper.get('button[type="button"]').text()).toContain('根据当前级别生成题目')
     await wrapper.get('#ai-level').setValue('n1')
     await wrapper.get('#ai-subject').setValue('grammar')
     await wrapper.get('#ai-category').setValue('grammar_case_particle')

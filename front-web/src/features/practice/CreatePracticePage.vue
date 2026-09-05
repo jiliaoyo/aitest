@@ -422,7 +422,7 @@ async function generateAIPractice(): Promise<void> {
         </div>
         <p v-if="generateAIError" class="error-summary" role="alert">{{ generateAIError }}</p>
         <button class="primary" type="button" :disabled="!levelId || generatingAI" @click="generateAIPractice">
-          {{ generatingAI ? 'AI 出题中…' : '根据我的记忆生成题目' }}
+          {{ generatingAI ? 'AI 出题中…' : aiGenerationMode === 'memory' ? '根据我的记忆生成题目' : '根据当前级别生成题目' }}
         </button>
       </section>
     </template>

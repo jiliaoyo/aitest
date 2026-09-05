@@ -221,15 +221,17 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 	return snapshot, nil
 }
 
-// GenerationMemoryForAI 返回当前级别的已审核知识点和账号统计，供生成题任务使用。
+// GenerationMemoryForAI 返回当前级别的已审核知识点；memory 模式附带账号统计，level 模式不读取账号统计。
 // memory 模式优先薄弱点，level 模式随机抽取更大的知识点样本，避免生成内容只围绕少数薄弱点。
 func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
 	var memory AIGenerationMemory
-	if err := s.db.QueryRow(ctx,
-		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
-		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
-	).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect); err != nil {
-		return memory, err
+	if generationMode == "memory" {
+		if err := s.db.QueryRow(ctx,
+			`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
+			 FROM user_knowledge_stats WHERE user_id = $1`, userID,
+		).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect); err != nil {
+			return memory, err
+		}
 	}
 	if knowledgePointIDs == nil {
 		knowledgePointIDs = []string{}
@@ -240,7 +242,7 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		        coalesce(st.consecutive_wrong, 0)
 		 FROM knowledge_points kp
 		 LEFT JOIN user_knowledge_stats st
-		   ON st.knowledge_point_id = kp.id AND st.user_id = $1
+		   ON st.knowledge_point_id = kp.id AND st.user_id = $1 AND $5 = 'memory'
 		 WHERE kp.status = 'published'
 		   AND kp.level_id::text = $2
 		   AND ($3 = '' OR kp.subject_id::text = $3)

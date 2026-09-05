@@ -382,7 +382,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err := shuffleGeneratedChoiceOptions(response.Questions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("打乱 AI 选项失败: %w", err))
 	}
-	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, memory.KnowledgePoints, response.Questions); err != nil {
+	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, generationMode, memory.KnowledgePoints, response.Questions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("保存 AI 题目失败: %w", err))
 	}
 	s.logger.Info("ai_generated_practice_done", "session_id", req.SessionID, "count", len(response.Questions))
@@ -535,7 +535,7 @@ func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error
 	return nil
 }
 
-func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
+func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		pointSubjects := make(map[string]string, len(points))
 		allowedSubjects := make(map[string]bool, len(points))
@@ -550,8 +550,12 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 			 RETURNING id::text`, userID).Scan(&sourceID); err != nil {
 			return err
 		}
+		sectionName := "根据全局记忆生成"
+		if generationMode == generationModeLevel {
+			sectionName = "根据当前级别生成"
+		}
 		if err := tx.QueryRow(ctx,
-			`INSERT INTO source_sections (source_id, name, sort_order) VALUES ($1, '根据全局记忆生成', 1) RETURNING id::text`, sourceID).Scan(&sectionID); err != nil {
+			`INSERT INTO source_sections (source_id, name, sort_order) VALUES ($1, $2, 1) RETURNING id::text`, sourceID, sectionName).Scan(&sectionID); err != nil {
 			return err
 		}
 		for i, question := range questions {
