@@ -30,6 +30,7 @@ const submitError = ref('')
 const autosave = useAnswerAutosave(sessionID)
 const currentEntry = computed(() => autosave.entryOf(currentItem.value?.id ?? ''))
 let generationTimer: ReturnType<typeof setInterval> | null = null
+let loadSequence = 0
 
 const currentItem = computed<PreSubmitItem | null>(() => {
   const item = session.value?.items[currentIndex.value]
@@ -54,17 +55,23 @@ function isMarked(item: PreSubmitItem): boolean {
   return autosave.entries.get(item.id)?.marked ?? false
 }
 
-onMounted(load)
+onMounted(() => {
+  void load()
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
 
 async function load(silent = false): Promise<void> {
+  const sequence = ++loadSequence
   if (!silent) pageState.value = 'loading'
   try {
     const data = await request<PreSubmitSession>(`/practice-sessions/${sessionID.value}`)
+    if (sequence !== loadSequence) return
     session.value = data
     showLocalDraftNote.value = autosave.init(data.items)
     pageState.value = 'ready'
     scheduleGenerationPolling()
   } catch (err) {
+    if (sequence !== loadSequence) return
     if (silent) return
     if (err instanceof ApiError && err.status === 404) {
       pageState.value = 'notfound'
@@ -78,11 +85,19 @@ async function load(silent = false): Promise<void> {
 
 function scheduleGenerationPolling(): void {
   if (session.value?.status === 'generating' && generationTimer === null) {
-    generationTimer = setInterval(() => void load(true), 2000)
+    generationTimer = setInterval(() => {
+      if (!document.hidden) void load(true)
+    }, 2000)
   }
   if (session.value?.status !== 'generating' && generationTimer !== null) {
     clearInterval(generationTimer)
     generationTimer = null
+  }
+}
+
+function onVisibilityChange(): void {
+  if (!document.hidden && session.value?.status === 'generating') {
+    void load(true)
   }
 }
 
@@ -165,7 +180,9 @@ async function doSubmit(): Promise<void> {
 }
 
 onBeforeUnmount(() => {
+  loadSequence++
   if (generationTimer) clearInterval(generationTimer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
   for (const entry of autosave.entries.values()) {
     if (entry.timer) clearTimeout(entry.timer)
   }
@@ -180,6 +197,10 @@ onBeforeUnmount(() => {
     <template v-else-if="session">
       <template v-if="session.status === 'generating'">
         <div class="card" role="status">
+          <div class="ai-generation-loading">
+            <span class="loading-spinner" aria-hidden="true" />
+            <span class="muted">正在准备题目…</span>
+          </div>
           <h2>AI 正在生成个性化题目</h2>
           <p class="muted">正在根据你的全局做题记忆和薄弱知识点随机出题，请稍候。</p>
           <button type="button" @click="load()">刷新生成状态</button>

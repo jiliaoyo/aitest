@@ -159,6 +159,35 @@
   background: var(--accent);
 }
 
+.ai-generation-loading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: 3px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+}
+
 .tag {
   display: inline-flex;
   align-items: center;
