@@ -242,15 +242,6 @@ func (s *Store) MarkSubmitted(ctx context.Context, tx pgx.Tx, sessionID, submitK
 	return err
 }
 
-func (s *Store) MarkMemoryAdvicePending(ctx context.Context, tx pgx.Tx, userID string) error {
-	_, err := tx.Exec(ctx,
-		`INSERT INTO user_learning_memory (user_id, ai_advice_status, updated_at)
-		 VALUES ($1, 'pending', now())
-		 ON CONFLICT (user_id) DO UPDATE
-		 SET ai_advice_status = 'pending', updated_at = now()`, userID)
-	return err
-}
-
 func (s *Store) HasActiveBatchAnalysisJob(ctx context.Context, tx pgx.Tx, sessionID string) (bool, error) {
 	return store.Exists(ctx, tx,
 		`SELECT true FROM jobs

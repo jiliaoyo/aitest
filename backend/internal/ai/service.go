@@ -21,7 +21,8 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v2"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v3"
+	previousBatchPromptVersion = "practice_batch_analysis.v2"
 	legacyBatchPromptVersion   = "practice_batch_analysis.v1"
 )
 
@@ -31,7 +32,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v2.md
+//go:embed prompts/practice_batch_analysis.v3.md
 var batchAnalysisPrompt string
 
 type Service struct {
@@ -231,9 +232,10 @@ type batchAnalysisItem struct {
 }
 
 type batchAnalysisInput struct {
-	Materials      map[string]string         `json:"materials,omitempty"`
-	Items          []batchAnalysisItem       `json:"items"`
-	LearningMemory learning.AIMemorySnapshot `json:"learningMemory"`
+	Materials           map[string]string         `json:"materials,omitempty"`
+	Items               []batchAnalysisItem       `json:"items"`
+	LearningMemory      learning.AIMemorySnapshot `json:"learningMemory"`
+	RefreshMemoryAdvice bool                      `json:"refreshMemoryAdvice"`
 }
 
 func (s *Service) needsExplanation(row batchAnalysisRow) bool {
@@ -253,9 +255,9 @@ func (s *Service) cachedExplanation(row batchAnalysisRow) (string, bool) {
 	return strings.TrimSpace(*row.CachedExplanation), true
 }
 
-// v2 只新增账号级建议字段，v1 的题目解析仍然有效，避免无谓重算历史缓存。
+// v2/v3 只调整账号级建议，历史版本生成的题目解析仍然有效，避免无谓重算缓存。
 func validQuestionExplanationPrompt(version string) bool {
-	return version == batchAnalysisPromptVersion || version == legacyBatchPromptVersion
+	return version == batchAnalysisPromptVersion || version == previousBatchPromptVersion || version == legacyBatchPromptVersion
 }
 
 func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
@@ -281,6 +283,14 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		}
 		return err
 	}
+	refreshMemoryAdvice, err := learning.NewStore(s.pool).MemoryAdviceRefreshDue(ctx, userID)
+	if err != nil {
+		err = fmt.Errorf("检查全局学习建议刷新时间失败: %w", err)
+		if attempts >= maxAttempts {
+			return s.failBatchAnalysis(ctx, req.SessionID, err)
+		}
+		return err
+	}
 	memory, err := learning.NewStore(s.pool).MemorySnapshotForAI(ctx, userID)
 	if err != nil {
 		err = fmt.Errorf("读取账号学习记忆失败: %w", err)
@@ -297,7 +307,10 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		}
 		return err
 	}
-	input := batchAnalysisInput{Materials: map[string]string{}, Items: make([]batchAnalysisItem, 0, len(rows)), LearningMemory: memory}
+	input := batchAnalysisInput{
+		Materials: map[string]string{}, Items: make([]batchAnalysisItem, 0, len(rows)),
+		LearningMemory: memory, RefreshMemoryAdvice: refreshMemoryAdvice,
+	}
 	for _, row := range rows {
 		section := ""
 		if row.SourceSection != nil {
@@ -358,7 +371,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		return err
 	}
 	memoryAdvice := strings.TrimSpace(response.MemoryAdvice)
-	if memoryAdvice == "" || len([]rune(memoryAdvice)) > 4000 {
+	if refreshMemoryAdvice && (memoryAdvice == "" || len([]rune(memoryAdvice)) > 4000) {
 		err := errors.New("AI 全局学习建议文本缺失或超长")
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
@@ -476,7 +489,10 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		if err := practice.NewStore(tx).SetAISummary(ctx, req.SessionID, "completed", summary); err != nil {
 			return err
 		}
-		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", memoryAdvice)
+		if refreshMemoryAdvice {
+			return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", memoryAdvice)
+		}
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("写回批次 AI 分析失败: %w", err)
@@ -500,11 +516,7 @@ func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause
 		if err := practice.NewStore(tx).SetAISummary(ctx, sessionID, "failed", message); err != nil {
 			return err
 		}
-		userID, resetAt, err := s.sessionMemoryContext(ctx, tx, sessionID)
-		if err != nil {
-			return err
-		}
-		return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "failed", "AI 建议暂时不可用，请稍后重试。")
+		return nil
 	})
 	if err != nil {
 		return err

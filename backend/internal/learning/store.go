@@ -194,6 +194,20 @@ func (s *Store) MemoryForUser(ctx context.Context, userID string) (LearningMemor
 	return memory, nil
 }
 
+// MemoryAdviceRefreshDue 控制首页自然语言建议的刷新频率；统计数据仍可每批重算。
+// ponytail: 24 小时冷却；有真实使用数据后再按新增题量校准刷新策略。
+func (s *Store) MemoryAdviceRefreshDue(ctx context.Context, userID string) (bool, error) {
+	var due bool
+	err := s.db.QueryRow(ctx,
+		`SELECT NOT EXISTS (
+			 SELECT 1 FROM user_learning_memory
+			 WHERE user_id = $1 AND ai_advice_status = 'completed'
+			   AND ai_advice_updated_at >= now() - interval '24 hours'
+		)`, userID,
+	).Scan(&due)
+	return due, err
+}
+
 // MemorySnapshotForAI 只返回可解释的统计事实，不把账号身份或原始答案发送给模型。
 func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemorySnapshot, error) {
 	var snapshot AIMemorySnapshot

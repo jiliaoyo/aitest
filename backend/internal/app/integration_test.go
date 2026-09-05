@@ -501,7 +501,9 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			t.Fatal("a new batch must keep exactly one batch AI job")
 		}
 
+		analysisCalls := 0
 		fakeAI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			analysisCalls++
 			var request struct {
 				Messages []struct {
 					Content string `json:"content"`
@@ -512,7 +514,8 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				return
 			}
 			var input struct {
-				LearningMemory struct {
+				RefreshMemoryAdvice bool `json:"refreshMemoryAdvice"`
+				LearningMemory      struct {
 					ConfirmedAnswered int `json:"confirmedAnswered"`
 				} `json:"learningMemory"`
 				Items []struct {
@@ -523,6 +526,10 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			}
 			if err := json.Unmarshal([]byte(request.Messages[1].Content), &input); err != nil || input.LearningMemory.ConfirmedAnswered == 0 {
 				http.Error(w, "missing learning memory", http.StatusBadRequest)
+				return
+			}
+			if (analysisCalls == 1 && !input.RefreshMemoryAdvice) || (analysisCalls > 1 && input.RefreshMemoryAdvice) {
+				http.Error(w, "unexpected memory advice refresh flag", http.StatusBadRequest)
 				return
 			}
 			grades := []map[string]any{}
@@ -538,8 +545,12 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 					explanations = append(explanations, map[string]string{"itemId": item.ItemID, "text": "根据权威答案判断。"})
 				}
 			}
+			memoryAdvice := ""
+			if input.RefreshMemoryAdvice {
+				memoryAdvice = "累计进度：继续复习已暴露的薄弱知识点。"
+			}
 			content, _ := json.Marshal(map[string]any{
-				"summary": "本批表现：完成了当前练习。", "memoryAdvice": "累计进度：继续复习已暴露的薄弱知识点。", "grades": grades, "explanations": explanations,
+				"summary": "本批表现：完成了当前练习。", "memoryAdvice": memoryAdvice, "grades": grades, "explanations": explanations,
 			})
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -563,6 +574,14 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			"/api/v1/learning-memory", nil, ""), &after)
 		if after.Advice.Status != "completed" || after.Advice.Text != "累计进度：继续复习已暴露的薄弱知识点。" {
 			t.Fatalf("successful batch AI should persist account advice: %+v", after)
+		}
+		if err := batchHandler(context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+pre.ID+`"}`)); err != nil {
+			t.Fatalf("batch AI should succeed without refreshing recent account advice: %v", err)
+		}
+		decodeResponse(t, jsonRequest(t, data.learnerB, server.URL, http.MethodGet,
+			"/api/v1/learning-memory", nil, ""), &after)
+		if after.Advice.Text != "累计进度：继续复习已暴露的薄弱知识点。" {
+			t.Fatalf("recent account advice should not be overwritten: %+v", after.Advice)
 		}
 	})
 

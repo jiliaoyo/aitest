@@ -329,10 +329,6 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 		if err := st.MarkSubmitted(ctx, tx, sessionID, idemKey, bodyHash); err != nil {
 			return err
 		}
-		if err := st.MarkMemoryAdvicePending(ctx, tx, userID); err != nil {
-			return err
-		}
-
 		for _, row := range rows {
 			answer := byItem[row.ItemID]
 			userValue := []byte(nil)
