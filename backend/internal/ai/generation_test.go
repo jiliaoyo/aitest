@@ -9,7 +9,7 @@ import (
 
 func TestValidateGeneratedQuestionsRejectsUnapprovedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
-		Type: "single_choice", Stem: "これは練習問題です。", Difficulty: 3,
+		Type: "single_choice", Stem: "これは＿＿＿練習問題です。", Difficulty: 3,
 		Options: []generatedOption{
 			{ID: "a", Label: "A", Text: "一"}, {ID: "b", Label: "B", Text: "二"},
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
@@ -24,7 +24,7 @@ func TestValidateGeneratedQuestionsRejectsUnapprovedKnowledgePoint(t *testing.T)
 
 func TestValidateGeneratedQuestionsAcceptsReviewedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
-		Type: "single_choice", Stem: "これは別の練習問題です。", Difficulty: 3,
+		Type: "single_choice", Stem: "これは＿＿＿別の練習問題です。", Difficulty: 3,
 		Options: []generatedOption{
 			{ID: "a", Label: "A", Text: "一"}, {ID: "b", Label: "B", Text: "二"},
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
@@ -37,9 +37,41 @@ func TestValidateGeneratedQuestionsAcceptsReviewedKnowledgePoint(t *testing.T) {
 	}
 }
 
+func TestValidateGeneratedQuestionsRejectsChoiceWithoutBlank(t *testing.T) {
+	question := generatedQuestion{
+		Type: "single_choice", Stem: "図書館で日本語を勉強します。", Difficulty: 3,
+		Options: []generatedOption{
+			{ID: "a", Label: "A", Text: "を"}, {ID: "b", Label: "B", Text: "で"},
+			{ID: "c", Label: "C", Text: "に"}, {ID: "d", Label: "D", Text: "へ"},
+		},
+		CorrectAnswer: json.RawMessage(`{"optionIds":["b"]}`),
+		Explanation:   "这是测试解析。", KnowledgePointIDs: []string{"approved"},
+	}
+	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err == nil {
+		t.Fatal("choice question without a blank should be rejected")
+	}
+}
+
+func TestChoiceStemHasBlank(t *testing.T) {
+	for _, test := range []struct {
+		stem string
+		want bool
+	}{
+		{"図書館＿＿＿日本語を勉強します。", true},
+		{"図書館___日本語を勉強します。", true},
+		{"図書館（　）日本語を勉強します。", true},
+		{"図書館で日本語を勉強します。", false},
+		{"（としょかん）で勉強します。", false},
+	} {
+		if got := choiceStemHasBlank(test.stem); got != test.want {
+			t.Fatalf("choiceStemHasBlank(%q) = %v, want %v", test.stem, got, test.want)
+		}
+	}
+}
+
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
-		Type: "single_choice", Stem: "これは知識点なしの練習問題です。", Difficulty: 3,
+		Type: "single_choice", Stem: "これは＿＿＿知識点なしの練習問題です。", Difficulty: 3,
 		Options: []generatedOption{
 			{ID: "a", Label: "A", Text: "一"}, {ID: "b", Label: "B", Text: "二"},
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},

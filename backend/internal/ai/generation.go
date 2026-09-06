@@ -21,12 +21,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v10"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v10.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v11"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v11.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
-//go:embed prompts/practice_question_generation.v10.md
+//go:embed prompts/practice_question_generation.v11.md
 var questionGenerationPrompt string
 
 const (
@@ -449,6 +449,9 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 		seenStems[stem] = true
 		options := make([]content.Option, 0, len(question.Options))
 		if content.IsChoiceType(question.Type) {
+			if !choiceStemHasBlank(stem) {
+				return fmt.Errorf("AI 第 %d 题选择题题干必须包含空栏（＿＿＿）", i+1)
+			}
 			if len(question.Options) != 4 {
 				return fmt.Errorf("AI 第 %d 题必须有 4 个选项", i+1)
 			}
@@ -484,6 +487,38 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 		}
 	}
 	return nil
+}
+
+func choiceStemHasBlank(stem string) bool {
+	underscoreRun := 0
+	for _, r := range []rune(stem) {
+		if r == '_' || r == '＿' {
+			underscoreRun++
+			if underscoreRun >= 2 {
+				return true
+			}
+			continue
+		}
+		underscoreRun = 0
+	}
+	runes := []rune(stem)
+	for i, r := range runes {
+		if r != '（' && r != '(' {
+			continue
+		}
+		closing := '）'
+		if r == '(' {
+			closing = ')'
+		}
+		j := i + 1
+		for j < len(runes) && (runes[j] == ' ' || runes[j] == '　' || runes[j] == '\t') {
+			j++
+		}
+		if j < len(runes) && runes[j] == closing {
+			return true
+		}
+	}
+	return false
 }
 
 func questionTypeMatches(mode, questionType string) bool {
