@@ -69,6 +69,16 @@ func TestChoiceStemHasBlank(t *testing.T) {
 	}
 }
 
+func TestRejectExistingGeneratedStems(t *testing.T) {
+	questions := []generatedQuestion{{Stem: "図書館＿＿＿日本語を勉強します。"}}
+	if err := rejectExistingGeneratedStems(questions, []string{"図書館 ＿＿＿ 日本語を勉強します。"}); err == nil {
+		t.Fatal("expected an existing normalized stem to be rejected")
+	}
+	if err := rejectExistingGeneratedStems(questions, []string{"駅＿＿＿本を読みます。"}); err != nil {
+		t.Fatalf("different stem should be accepted: %v", err)
+	}
+}
+
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
 		Type: "single_choice", Stem: "これは＿＿＿知識点なしの練習問題です。", Difficulty: 3,

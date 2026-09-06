@@ -21,12 +21,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v11"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v11.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v12"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v12.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
-//go:embed prompts/practice_question_generation.v11.md
+//go:embed prompts/practice_question_generation.v12.md
 var questionGenerationPrompt string
 
 const (
@@ -39,6 +39,8 @@ const (
 	generatedQuestionTypeMixed = "mixed"
 	generatedCategoryMixed     = "mixed"
 )
+
+const maxGeneratedStemsInPrompt = 300
 
 var generatedCategories = map[string]struct{}{
 	generatedCategoryMixed:  {},
@@ -256,6 +258,7 @@ type questionGenerationInput struct {
 	Category       string                      `json:"category"`
 	RandomSeed     string                      `json:"randomSeed"`
 	RetryFeedback  string                      `json:"retryFeedback,omitempty"`
+	AvoidStems     []string                    `json:"avoidStems,omitempty"`
 	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
 }
 
@@ -288,6 +291,41 @@ type generationSessionRow struct {
 	RequestedCount int
 	Scope          string
 	Status         string
+}
+
+type generatedStemRow struct {
+	Stem string
+}
+
+func (s *Service) loadGeneratedStems(ctx context.Context, db store.DBTx, userID, levelID, subjectID string, limit int) ([]string, error) {
+	rows, err := store.CollectRows[generatedStemRow](ctx, db,
+		`SELECT v.stem
+		 FROM question_versions v
+		 JOIN source_sections ss ON ss.id = v.source_section_id
+		 JOIN sources src ON src.id = ss.source_id
+		 WHERE src.kind = 'ai_generated' AND src.created_by = $1
+		   AND v.level_id::text = $2
+		   AND ($3 = '' OR v.subject_id::text = $3)
+		 ORDER BY src.created_at DESC, v.id DESC
+		 LIMIT CASE WHEN $4 > 0 THEN $4 ELSE NULL END`, userID, levelID, subjectID, limit)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]struct{}, len(rows))
+	stems := make([]string, 0, len(rows))
+	for _, row := range rows {
+		stem := strings.TrimSpace(row.Stem)
+		key := normalizeGeneratedStem(stem)
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		stems = append(stems, stem)
+	}
+	return stems, nil
 }
 
 func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
@@ -362,6 +400,10 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if len(memory.KnowledgePoints) == 0 {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("没有可用于 AI 出题的已审核知识点"))
 	}
+	avoidStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, maxGeneratedStemsInPrompt)
+	if err != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取历史 AI 题干失败: %w", err))
+	}
 	var response generatedQuestionResponse
 	promptVersion := questionGenerationPromptVersion
 	var validationErr error
@@ -382,7 +424,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		inputJSON, _ := json.Marshal(questionGenerationInput{
 			Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
-			RandomSeed: seed, RetryFeedback: feedback, LearningMemory: memory,
+			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, LearningMemory: memory,
 		})
 		out, err := s.client.RunPromptWithTemperature(ctx, row.UserID, "practice_question_generation", promptVersion,
 			req.SessionID, systemPrompt, string(inputJSON), temperature)
@@ -395,6 +437,10 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		}
 		response.Questions = capGeneratedQuestions(response.Questions, row.RequestedCount)
 		if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
+			validationErr = err
+			continue
+		}
+		if err := rejectExistingGeneratedStems(response.Questions, avoidStems); err != nil {
 			validationErr = err
 			continue
 		}
@@ -443,10 +489,11 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 			return fmt.Errorf("AI 第 %d 题题型或题干不合法", i+1)
 		}
 		stem := strings.TrimSpace(question.Stem)
-		if seenStems[stem] {
+		stemKey := normalizeGeneratedStem(stem)
+		if seenStems[stemKey] {
 			return fmt.Errorf("AI 第 %d 题与其他题目重复", i+1)
 		}
-		seenStems[stem] = true
+		seenStems[stemKey] = true
 		options := make([]content.Option, 0, len(question.Options))
 		if content.IsChoiceType(question.Type) {
 			if !choiceStemHasBlank(stem) {
@@ -484,6 +531,28 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 			if !allowed[pointID] {
 				return fmt.Errorf("AI 第 %d 题引用了未审核知识点", i+1)
 			}
+		}
+	}
+	return nil
+}
+
+func normalizeGeneratedStem(stem string) string {
+	return strings.Join(strings.Fields(stem), "")
+}
+
+func rejectExistingGeneratedStems(questions []generatedQuestion, existing []string) error {
+	if len(existing) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(existing))
+	for _, stem := range existing {
+		if key := normalizeGeneratedStem(stem); key != "" {
+			seen[key] = struct{}{}
+		}
+	}
+	for i, question := range questions {
+		if _, ok := seen[normalizeGeneratedStem(question.Stem)]; ok {
+			return fmt.Errorf("AI 第 %d 题与历史 AI 题目重复", i+1)
 		}
 	}
 	return nil
@@ -604,6 +673,13 @@ func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error
 
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode, promptVersion string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		existing, err := s.loadGeneratedStems(ctx, tx, userID, levelID, subjectID, 0)
+		if err != nil {
+			return fmt.Errorf("检查历史 AI 题目失败: %w", err)
+		}
+		if err := rejectExistingGeneratedStems(questions, existing); err != nil {
+			return err
+		}
 		pointSubjects := make(map[string]string, len(points))
 		allowedSubjects := make(map[string]bool, len(points))
 		for _, point := range points {
@@ -684,7 +760,7 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 			`UPDATE practice_sessions SET status = 'active', updated_at = now() WHERE id = $1 AND status = 'generating'`, sessionID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx,
+		_, err = tx.Exec(ctx,
 			`INSERT INTO audit_logs (actor_user_id, action, object_type, object_id, detail)
 			 VALUES ($1, 'ai_practice_generated', 'practice_session', $2, jsonb_build_object('count', $3::int))`, userID, sessionID, len(questions))
 		return err
