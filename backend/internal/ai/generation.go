@@ -40,7 +40,7 @@ const (
 	generatedCategoryMixed     = "mixed"
 )
 
-const maxGeneratedStemsInPrompt = 300
+const maxRecentGeneratedStemsInPrompt = 20
 
 var generatedCategories = map[string]struct{}{
 	generatedCategoryMixed:  {},
@@ -400,7 +400,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if len(memory.KnowledgePoints) == 0 {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("没有可用于 AI 出题的已审核知识点"))
 	}
-	avoidStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, maxGeneratedStemsInPrompt)
+	avoidStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, maxRecentGeneratedStemsInPrompt)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取历史 AI 题干失败: %w", err))
 	}
