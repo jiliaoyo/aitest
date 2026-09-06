@@ -22,3 +22,4 @@ __pycache__/
 *.pyc
 /data/
 /duckai2api/
+/tmp/

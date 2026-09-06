@@ -1197,6 +1197,27 @@ def n1_u14_tail() -> list[dict]:
 def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
     """Apply page-checked corrections that OCR/LLM extraction cannot infer."""
     if level == "N1" and unit == 2:
+        set_options(items, 1, ["食べたくない", "食べるしかない", "食べられない", "食べてしょうがない"])
+        set_options(items, 4, ["次第で", "がてら", "のことで", "の一方で"])
+        set_options(items, 9, ["かいもなく", "かいもあり", "かいがない", "かいがあって"])
+        items[8]["stem"] = "三ヶ月間休まずに頑張った（ ）、見事に検定試験にパスした。"
+        items[8]["rawExcerpt"] = items[8]["stem"]
+        items[8]["anomalies"] = []
+        items[37]["stem"] = "かわいがっていた愛犬に死なれて、寂しい（ ）。"
+        items[37]["rawExcerpt"] = items[37]["stem"]
+        items[37]["anomalies"] = []
+        set_options(items, 39, ["ごあいさついただきました", "ごあいさつ差し上げました", "ごあいさつにいらっしゃいました", "ごあいさつに伺いました"])
+        sort_options = {
+            41: ["体操", "かいもなく", "二度と", "膝の手術の"],
+            42: ["作ろうにも", "作ってみたいが", "でも", "調味料が足りなくて"],
+            43: ["辺りの様子を", "買い物", "がてら", "見て回った"],
+            44: ["ごあいさつ", "新製品のカタログを", "かたがた", "持参した"],
+            45: ["コーチになる", "勉強も", "かたわら", "活躍する"],
+        }
+        for number, options in sort_options.items():
+            set_options(items, number, options)
+        for number, answer in enumerate([2, 4, 3, 2, 1], 41):
+            set_choice_answer(items, number, answer)
         for number in list(range(1, 11)) + list(range(31, 41)):
             items[number - 1]["anomalies"] = []
         for number, answer in enumerate([3, 4, 3, 2, 1, 2, 4, 3, 4, 1], 1):
@@ -1217,7 +1238,7 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             items[number - 1]["stem"] = stem
             items[number - 1]["rawExcerpt"] = stem
             items[number - 1]["anomalies"] = []
-        for number, answer in enumerate([3, 4, 1, 2, 1], 41):
+        for number, answer in enumerate([2, 4, 3, 2, 1], 41):
             set_choice_answer(items, number, answer)
         reading_content = (
             "成功する人と、そうでない人の差は紙一重です。成功しない人は、必ずしも責任感がない[16]。"
@@ -1242,8 +1263,14 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         for number, (opts, answer) in zip(range(46, 51), reading_rows):
             set_reading_question(items, number, number - 30, opts, answer, reading_content)
             items[number - 1]["anomalies"] = []
-    elif level == "N1" and unit == 5:
+    elif level == "N1" and unit == 3:
+        items[1]["stem"] = "働き盛りのサラリーマンは仕事に追われ、健康管理を怠る（ ）。"
+        items[1]["rawExcerpt"] = items[1]["stem"]
         items[1]["anomalies"] = []
+    elif level == "N1" and unit == 5:
+        set_options(items, 2, ["がたい", "きりだ", "っこない", "かねない"])
+        items[1]["anomalies"] = []
+        items[36]["anomalies"] = []
         items[36]["stem"] = "人類が宇宙に行ける日が来るなんて、100年前には想像（　）しなかった。"
         items[36]["rawExcerpt"] = items[36]["stem"]
         items[36]["anomalies"] = []
@@ -1252,7 +1279,7 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         items[39]["anomalies"] = []
         items[43]["stem"] = "彼女はそのネックレスを ______ ______ ★ ______ まいか迷っていた。"
         items[43]["rawExcerpt"] = items[43]["stem"]
-        items[43]["anomalies"] = []
+        items[43]["anomalies"] = ["原书选项3、4印为「すがめつ」「ためつ」，按扫描原文保留。"]
     elif level == "N1" and unit == 6:
         items[15]["stem"] = "今月の売れ行きは好調だが、喜んでばかりも（　）。来月にはライバル社から新製品が発売になるからだ。"
         items[15]["rawExcerpt"] = items[15]["stem"]
@@ -1265,8 +1292,12 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         set_options(items, 39, ["もちろん", "とはいえ", "もともと", "だめもと"])
         items[38]["anomalies"] = []
     elif level == "N1" and unit == 1:
+        set_options(items, 3, ["いがいのなにものだ", "いがいのなにものでもない", "のいがいのそのものだ", "でいがいのなにものだ"])
+        items[2]["anomalies"] = []
         set_options(items, 38, ["いかんによらず", "いかんでは", "いかんともしかたい", "いかんによって"])
-        items[2]["anomalies"] = ["原书扫描确认选项1与选项4分别为「いがいのなにものだ」和「でいがいのなにものだ」，按原文保留。"]
+        set_options(items, 33, ["いがいのなにものでもない", "いかんだ", "あってのものだ", "言わずもがなだ"])
+        set_options(items, 34, ["言えず", "言わず", "言えない", "言わない"])
+        set_choice_answer(items, 34, 2)
         items[4]["anomalies"] = []
         items[14]["stem"] = "参加しようがする（　）、会費を払わなければならない。"
         items[14]["rawExcerpt"] = items[14]["stem"]
@@ -1282,10 +1313,20 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             44: "たとえ ______ ______ ★ ______ 方法はあるはずだ。",
             45: "いざ ______ ______ ★ ______ が大変だ。",
         }
+        sort_options = {
+            41: ["あってのことだから", "自分の都合だけを", "相手", "主張しても"],
+            42: ["弱音を吐いた", "どんなに", "大変であろうと", "一度も"],
+            43: ["実行しようが", "するまいが", "事前の準備は", "しっかりやる"],
+            44: ["暮らす", "幸せに", "なかろうと", "お金が"],
+            45: ["となると", "海外旅行に", "旅支度", "行く"],
+        }
         for number, stem in sort_stems.items():
             items[number - 1]["stem"] = stem
             items[number - 1]["rawExcerpt"] = stem
             items[number - 1]["anomalies"] = []
+            set_options(items, number, sort_options[number])
+        for number, answer in enumerate([2, 4, 3, 2, 1], 41):
+            set_choice_answer(items, number, answer)
         reading_content = (
             "愚痴はわがままであり、他人に向けられれば非難の言葉である。"
             "愚痴がわがままなのは、[16]、自分は何もしないからである。\n"
@@ -1316,6 +1357,9 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             set_reading_question(items, number, number - 30, opts, answer, reading_content)
             items[number - 1]["anomalies"] = []
     elif level == "N1" and unit == 8:
+        items[22]["stem"] = "自分の悩みを誰かに______てはやりきれない。"
+        items[22]["rawExcerpt"] = items[22]["stem"]
+        items[22]["anomalies"] = []
         set_options(items, 46, ["やってもらおう", "やってあげよう", "やらせてもらおう", "やらせてくれよう"])
         set_options(items, 47, ["見守ってやまない", "見守っても始まらない", "見守ってこそ", "見守ってはやりきれない"])
         set_options(items, 48, ["見るとあっては", "見てからというもの", "見てもどうにもならない", "見ようとしている"])
@@ -1553,15 +1597,20 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             set_reading_question(items, number, number - 30, opts, answer, content)
             items[number - 1]["anomalies"] = []
     elif level == "N1" and unit == 17:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        set_options(items, 2, ["べからず", "べくした", "べからざる", "べくもない"])
+        items[1]["anomalies"] = ["原书选项2印为「べくした」，按原文保留（疑似印刷错误）。"]
+        items[9]["stem"] = "人の命を救う医者として、医療ミスは成す（　）行為である。"
+        items[9]["rawExcerpt"] = items[9]["stem"]
+        items[9]["anomalies"] = ["原书题干印为「成す」，按原文保留；语义上通常应为「犯す」。"]
         set_options(items, 50, ["対応するわけにはいかない", "対応しようとしない", "対応しにくい", "対応しないほうがいい"])
-        for number, answer in enumerate([3, 2, 4, 3, 1, 2, 3, 1, 4, 2], 31):
+        for number, answer in enumerate([3, 2, 1, 4, 2, 3, 4, 1, 2, 4], 31):
             set_choice_answer(items, number, answer)
         for number, answer in enumerate([2, 4, 3, 2, 1], 41):
             set_choice_answer(items, number, answer)
         for number, answer in enumerate([3, 1, 2, 4, 3], 46):
             set_choice_answer(items, number, answer)
-        for number in range(31, 51):
-            items[number - 1]["anomalies"] = []
     elif level == "N1" and unit == 18:
         set_options(items, 1, ["までのことだ", "までもない", "まではない", "までにはいかなかった"])
         set_options(items, 4, ["はもちろん", "もさることながら", "はいざしらず", "もあいまって"])
@@ -1569,11 +1618,21 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             set_choice_answer(items, number, answer)
         items[23]["stem"] = "駅前にできた新しい定食のお店は、値段が手ごろなのもさることながら、______ので人気があるそうだ。"
         items[23]["rawExcerpt"] = items[23]["stem"]
-        items[23]["anomalies"] = []
-    elif level == "N1" and unit == 19:
-        items[2]["anomalies"] = ["原书扫描确认选项1与选项4均为「がはやいか」，按原文保留。"]
-        for number in range(41, 46):
+        for number in range(1, 51):
             items[number - 1]["anomalies"] = []
+    elif level == "N1" and unit == 19:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        items[0]["anomalies"] = ["原书选项3印为「がいなか」，按原文保留。"]
+        items[2]["anomalies"] = ["原书选项1与选项4均印为「がはやいか」，按原文保留。"]
+        items[21]["stem"] = "アメリカで学生による______が行われたのをかわきりに、反戦運動が繰り広げられた。"
+        items[21]["rawExcerpt"] = items[21]["stem"]
+        items[25]["stem"] = "______持ちようで、サラリーマンの生活も悪くはない。"
+        items[25]["rawExcerpt"] = items[25]["stem"]
+        for number in range(46, 51):
+            items[number - 1]["materialContent"] = items[number - 1].get("materialContent", "").replace(
+                "あなたが気づかれたら", "あなたが気づかぬうちに"
+            )
     elif level == "N1" and unit == 20:
         for number, answer in ((4, 4), (5, 1), (9, 3)):
             set_choice_answer(items, number, answer)
@@ -1590,6 +1649,8 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         set_choice_answer(items, 29, 1)
         items[28]["anomalies"] = []
     elif level == "N2" and unit == 3:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
         for number, answer in enumerate([2, 4, 3, 1, 2, 1, 3, 2, 4, 2], 1):
             set_choice_answer(items, number, answer)
         for number, answer in zip(range(11, 21), "BGDAICJEFH"):
@@ -1599,7 +1660,9 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         set_fill_answer(items, 21, "部屋に入るか入らないか")
         set_fill_answer(items, 22, "お答えいたし")
         set_fill_answer(items, 27, "緊張か何かで")
-        for number, answer in enumerate([2, 4, 3, 3, 1, 1, 2, 3, 1, 2, 2, 3], 29):
+        set_fill_answer(items, 28, "寝た")
+        set_options(items, 33, ["なりかねる", "つながらない", "よらない", "なりかねない"])
+        for number, answer in enumerate([1, 2, 2, 2, 4, 3, 3, 1, 1, 2, 3, 2], 29):
             set_choice_answer(items, number, answer)
         for number, answer in enumerate([4, 1, 1, 3, 2], 41):
             set_choice_answer(items, number, answer)
@@ -1644,11 +1707,25 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             set_reading_question(items, number, blank, opts, answer, reading_content)
             items[number - 1]["anomalies"] = []
     elif level == "N2" and unit == 5:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
         shared = ["ことだから", "くらい", "ことか", "きれない", "ことから", "くせに", "ことだ", "ことは", "ことはない", "ことなく"]
         for number in range(11, 21):
             set_options(items, number, shared)
         set_choice_answer(items, 11, 10)
+        set_options(items, 30, ["かと思うと", "からには", "ことから", "ことな"])
+        items[29]["anomalies"] = ["原书选项4印为「ことな」，按原文保留（题目正确答案为选项3）。"]
+        set_options(items, 34, ["しかない", "ことだ", "あげくだ", "ことはない"])
+        items[33]["anomalies"] = ["原书选项3印为「 あげくだ」，按原文保留。"]
     elif level == "N2" and unit == 7:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        items[11]["stem"] = "（　）負けると分かっていて（　）、力を尽くして戦わなければならない。"
+        items[11]["rawExcerpt"] = items[11]["stem"]
+        items[11]["anomalies"] = []
+        set_choice_answer(items, 12, 5)
+        set_fill_answer(items, 27, "タクシーで行っ")
+        items[26]["anomalies"] = []
         for number, answer in enumerate([2, 1, 3, 4, 2, 4, 1, 3, 2, 3], 1):
             set_choice_answer(items, number, answer)
         for number, answer in enumerate([1, 2, 4, 2, 3, 1, 4, 3, 4, 2, 1, 2], 29):
@@ -1665,6 +1742,7 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             items[number - 1]["rawExcerpt"] = stem
             set_options(items, number, opts)
             set_choice_answer(items, number, answer)
+            items[number - 1]["anomalies"] = []
         content = (
             "人間は周囲からの影響を受けやすい。どんなに独自路線を貫いている人でも、（18）。\n\n"
             "周りに面白い人間ばかりがいる環境にいれば、面白い発想をしやすくなるし、周りに一生懸命に勉強する人間が多いと、"
@@ -1687,13 +1765,62 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         ]
         for number, blank, opts, answer in zip(range(46, 51), range(18, 23), reading_options, [2, 3, 4, 1, 2]):
             set_reading_question(items, number, blank, opts, answer, content)
+            items[number - 1]["anomalies"] = []
+    elif level == "N2" and unit == 8:
+        items[27]["stem"] = "この子は実際の年齢よりもちょっと（　）っぽく見える。"
+        items[27]["rawExcerpt"] = items[27]["stem"]
+        items[27]["anomalies"] = []
+        content = (
+            "時間とはスーツケースのようなものだ。\n\n"
+            "荷物をきちんと整理して（18）、相当な量を収容することができるし、適当に詰め込もうとすれば、あまり多くのものが入らない。\n\n"
+            "また、「かさばるから洋服を一枚減らそう」とか、「持っていくネクタイを一本少なくしよう」と考え、それらを減らした（19）、画期的に広いスペースが生まれるというものでもない。\n\n"
+            "時間も、まさにスーツケースの空間そのもので、（20）なしに過ごしていては、一日24時間はあっという間に過ぎていく。\n\n"
+            "しかも、「少しでも時間を節約しよう」と、部分的に効率アップを求めるだけでは、時間という資産は（21）。\n\n"
+            "自分を伸ばしたいと思い、劇的に自分の自由になる時間をひねり出したいと考えるなら、次の三つに留意することだ。\n\n"
+            "「好きなこと」「興味があること」「得意なこと」の中から、これから何をしたいのか、伸ばしてみたいのかを決める。\n\n"
+            "それをするために、仕事の大半をランチまでに片付けると決め、午前中に何をやるか計画を立てる。\n\n"
+            "仕事（22）、少しずつ時間を節約するという考え方を捨て、「一気に半分の時間で処理できないか」と考える。\n\n"
+            "（清水克彦『残業ゼロで自分を伸ばす！40歳からの時間術』による）"
+        )
+        reading_options = [
+            ["入れるつもりで", "入れてからでないと", "入れてしょうがなく", "入れようとすれば"],
+            ["とたんに", "たびに", "からといって", "ばかりに"],
+            ["計画性", "実用性", "可能性", "統一性"],
+            ["増えてもしょうがない", "一向に増えない", "増えつつある", "増えるだけのことはある"],
+            ["だからといって", "のことだから", "をきっかけに", "にかんしては"],
+        ]
+        for number, blank, opts, answer in zip(range(46, 51), range(18, 23), reading_options, [4, 3, 1, 2, 4]):
+            set_reading_question(items, number, blank, opts, answer, content)
+            items[number - 1]["anomalies"] = []
     elif level == "N2" and unit == 9:
         set_options(items, 10, ["教えられたとおり", "教えたどおり", "教えてもらったとおり", "教えてくれたとおり"])
+        items[9]["anomalies"] = []
+        set_options(items, 50, ["あっていらい", "あってからでないと", "あってこそ", "あったとたんに"])
+        items[49]["anomalies"] = []
     elif level == "N2" and unit == 10:
         set_options(items, 7, ["成功しえない", "成功できる", "成功しがたい", "成功しない"])
         items[6]["anomalies"] = []
         set_options(items, 10, ["技術の進歩な", "技術の進歩の", "技術の進歩に", "技術の進歩"])
         items[9]["anomalies"] = []
+        items[14]["stem"] = "授業の最中に、居眠りしている（ ）先生に見られた。"
+        items[14]["rawExcerpt"] = items[14]["stem"]
+        items[14]["anomalies"] = []
+        items[22]["stem"] = "十分な（　）ことには起業することは考えられない。"
+        items[22]["rawExcerpt"] = items[22]["stem"]
+        set_fill_answer(items, 23, ["資金がない", "基本金がない"])
+        items[22]["anomalies"] = ["答案页印刷为「基本金がない」，按句意补入「資金がない」作为兼容答案。"]
+        sort_stems = {
+            41: "もし定価より ______ ______ ★ ______ が高い。",
+            42: "彼が ______ ______ ★ ______ だろう。",
+            43: "年を取る ______ ______ ★ ______ 多い。",
+            44: "もう少しで ______ ★ ______ ______ ところだった。",
+            45: "今の ______ ______ ★ ______ どころではない。",
+        }
+        for number, stem, answer in zip(range(41, 46), sort_stems.values(), [1, 2, 1, 3, 3]):
+            items[number - 1]["stem"] = stem
+            items[number - 1]["rawExcerpt"] = stem
+            set_choice_answer(items, number, answer)
+            items[number - 1]["anomalies"] = []
     elif level == "N2" and unit == 11:
         set_fill_answer(items, 23, "理解できる")
     elif level == "N2" and unit == 12:
@@ -1701,15 +1828,33 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
     elif level == "N2" and unit == 15:
         items[49]["stem"] = "相手を自分よりも（　）。"
         items[49]["rawExcerpt"] = items[49]["stem"]
+    elif level == "N2" and unit == 16:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        items[3]["stem"] = "卒業してみんなばらばらになるのは（ ）ものがある。"
+        items[3]["rawExcerpt"] = items[3]["stem"]
+        shared = ["ものだ", "ものなら", "ものではない", "まま", "も当然だ", "ものだから", "もかまわず", "も～ば～も", "ものがある", "ものか"]
+        for number in range(11, 21):
+            set_options(items, number, shared)
+        set_options(items, 29, ["ものがある", "ことがある", "わけがある", "ほどがある"])
+        set_options(items, 36, ["ものなら", "かと思うと", "にも", "といっても"])
+        set_options(items, 37, ["ものだ", "に決まっている", "くらいだ", "ということだ"])
+        set_options(items, 38, ["会社に行っていない", "電話してきた", "まだ帰ってこない", "翌日戻ってきた"])
+        set_options(items, 40, ["ものでもない", "ものもある", "ものはない", "ものではない"])
     elif level == "N2" and unit == 17:
-        set_choice_answer(items, 31, 4)
-        set_choice_answer(items, 32, 2)
-        set_choice_answer(items, 33, 2)
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([1, 3, 4, 4, 2, 3, 1, 2, 3, 4, 2, 1], 29):
+            set_choice_answer(items, number, answer)
+        items[25]["anomalies"] = ["答案页印为「部長に怒鳴れた」，按原文保留（句意通常为「怒鳴られた」）。"]
         set_options(items, 46, ["支配している", "支配させている", "支配されている", "支配するものがある"])
         set_options(items, 47, ["べきです", "わけです", "ものです", "いっぽうです"])
         set_options(items, 48, ["限界にぶつかりようがなく", "限界にぶつかりはせずに", "限界にぶつからようなら", "必ず限界にぶつかるから"])
         set_options(items, 49, ["言いたがります", "言うわけがないです", "言うわけではないです", "言いようがないです"])
-        set_choice_answer(items, 48, 4)
+        set_options(items, 50, ["やら獲得するかもしれない", "しか獲得できない", "やさきに獲得できる", "なら獲得できないに違いない"])
+        for number, answer in enumerate([3, 2, 4, 1, 2], 46):
+            set_choice_answer(items, number, answer)
+        items[49]["anomalies"] = ["原书选项1印为「やら獲得するかもしれない」，按原文保留。"]
     elif level == "N2" and unit == 19:
         set_options(items, 4, ["お見えになりました", "まいりました", "お越しになられました", "お目にかかりました"])
         items[10]["anomalies"] = [
@@ -1718,9 +1863,12 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         ]
     elif level == "N3" and unit == 1:
         items[0]["stem"] = "彼は背が高いうえ（　）、ハンサムだ。"
+        items[0]["rawExcerpt"] = items[0]["stem"]
+        items[0]["anomalies"] = []
         set_options(items, 1, ["は", "で", "に", "が"])
         set_choice_answer(items, 1, 3)
         set_options(items, 8, ["あいだを", "うえで", "あいだに", "うえは"])
+        items[7]["anomalies"] = []
         shared = ["間に", "やすい", "以上", "一方だ", "一方で", "上で", "上に", "うちに", "うち", "おかげで"]
         shared_rows = [
             ("せっかくこの会社に入った（　）、一生懸命に頑張らなければならない。", 3),
@@ -1739,6 +1887,7 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             items[number - 1]["rawExcerpt"] = stem
             set_options(items, number, shared)
             set_choice_answer(items, number, answer)
+            items[number - 1]["anomalies"] = []
         sort_stems = {
             41: "きのう ______ ______ ★ ______、眠ってしまった。",
             42: "バスの ______ ______ ★ ______、財布を盗まれた。",
@@ -1749,6 +1898,7 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         for number, stem in sort_stems.items():
             items[number - 1]["stem"] = stem
             items[number - 1]["rawExcerpt"] = stem
+            items[number - 1]["anomalies"] = []
         set_options(items, 41, ["うちに", "を", "見ている", "テレビ"])
         set_options(items, 42, ["をしている", "居眠り", "間に", "中で"])
         set_options(items, 43, ["吸わない", "タバコを", "決心した", "と"])
@@ -1757,6 +1907,8 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         for number, answer in enumerate([3, 1, 4, 1, 4], 41):
             set_choice_answer(items, number, answer)
         set_options(items, 50, ["親切でたすけてくれて", "親切にしてくださって", "親切でたすけてもらって", "親切にしてあげて"])
+        for number in range(41, 51):
+            items[number - 1]["anomalies"] = []
         items[37]["anomalies"] = ["原书扫描确认选项3与选项4均为「指導してもらったうちは」，按原文保留。"]
     elif level == "N3" and unit == 2:
         shared = ["おきに", "恐れ", "がする", "がたい", "がちだ", "か", "か何か", "かもしれない", "から", "から言うと"]
@@ -1766,11 +1918,58 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
         items[14]["rawExcerpt"] = items[14]["stem"]
         for number in (14, 15):
             set_options(items, number, shared)
+            items[number - 1]["anomalies"] = []
+        for number in range(16, 21):
+            items[number - 1]["anomalies"] = []
+        for number in range(16, 21):
+            items[number - 1]["anomalies"] = []
         set_choice_answer(items, 14, 1)
         set_choice_answer(items, 15, 5)
+        set_fill_answer(items, 26, "入れる")
+        items[25]["anomalies"] = []
+        sort_stems = {
+            41: "彼女は5ヶ国語も話せる。貿易会社 ______ ______ ★ ______ だ。",
+            42: "家から空港までどのぐらい ______ ______ ★ ______ で調べます。",
+            43: "彼の実力から言えば、 ______ ______ ★ ______ の努力が必要だ。",
+            44: "運転免許証 ______ ______ ★ ______ 証明するものを見せてください。",
+            45: "今夜台風が上陸するそうだ。強風 ______ ______ ★ ______、鉢植えなどはベランダに置かないでください。",
+        }
+        for number, stem, answer in zip(range(41, 46), sort_stems.values(), [3, 2, 1, 2, 2]):
+            items[number - 1]["stem"] = stem
+            items[number - 1]["rawExcerpt"] = stem
+            set_choice_answer(items, number, answer)
+            items[number - 1]["anomalies"] = []
+        content = (
+            "ヤンさんへの手紙\n"
+            "拝啓\n"
+            "お元気ですか。\n"
+            "日本に来てからもう3か月たちました。本当に早いです。今、私は中村さんという人の家で（19）、大学で日本語を勉強しています。"
+            "中村さんの家は、お父さんとお母さんと息子さんの3人家族です。皆英語が少し分かるので、初めは英語と日本語を使っていましたが、"
+            "今はたいてい日本語だけで話しています。息子さんの誠君は大学の2年生で、一週間に3日家庭教師のアルバイトをしています。"
+            "アルバイトをしながら勉強するのは（20）、日本の大学はアメリカの大学より宿題がずっと少ないので大丈夫だ、と誠君が言っていました。"
+            "日本の大学生はアメリカの大学生（21）。週末だけでなく、普通の日でもよくお酒を飲んだり、コンサートへ行ったりして遊びます。"
+            "誠君の話では、日本人は大学受験のためによく勉強しますし、会社に入ったらよく仕事をしますから、大学の4年間はよく遊んだそうです。"
+            "アメリカとずいぶん違いますね。\n\n"
+            "今度の夏休みに私の両親が日本に遊びに来るかもしれません。両親をいろいろなところへ連れて（22）。"
+            "ヤンさんは夏休みに何をするつもりですか。予定を教えて下さい。\n"
+            "これから暑くなりますが、（23）。\n\n"
+            "敬具\n"
+            "スミス"
+        )
+        reading_options = [
+            ["ホームステイをしても", "ホームステイをしたら", "ホームステイをしながら", "ホームステイをすれば"],
+            ["大変ではないと思いますが", "大変ではないかと言いますが", "大変だろうと言いますが", "大変だろうと思いましたが"],
+            ["ほどよく勉強しません", "と同じように勉強します", "あまり勉強しません", "よりよく勉強します"],
+            ["行くと思います", "行こうと思っています", "行けると思います", "行けばと思っています"],
+            ["体に気をつけなさい", "体にお気をつけなさい", "お体に気をつけてください", "お体に気をつけてください"],
+        ]
+        for number, blank, opts, answer in zip(range(46, 51), range(19, 24), reading_options, [3, 4, 1, 2, 2]):
+            set_reading_question(items, number, blank, opts, answer, content)
+            items[number - 1]["materialTitle"] = "第2単元 パートⅡ 問題3「ヤンさんへの手紙」"
+            items[number - 1]["anomalies"] = []
         items[49]["anomalies"] = ["原书扫描确认选项3与选项4均为「お体に気をつけてください」，按原文保留。"]
     elif level == "N3" and unit == 4:
-        for number, answer in zip(range(21, 28), ["す", "吸わない", "残念な", "いる", "す", "行く", "見る"]):
+        for number, answer in zip(range(21, 28), ["吸わない", "残念な", "鳴る", "行った", "吸わない", "行く", "見る"]):
             set_fill_answer(items, number, answer)
         choice_options = {
             28: ["こと", "もの", "ところ", "かい"],
@@ -1786,19 +1985,219 @@ def repair_items(level: str, unit: int, items: list[dict]) -> list[dict]:
             set_options(items, number, opts)
         for number, answer in enumerate([1, 2, 4, 4, 3, 4, 3], 28):
             set_choice_answer(items, number, answer)
+        for number in [21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35, 39]:
+            items[number - 1]["anomalies"] = []
+        set_options(items, 36, ["予知するかもしれない", "予知するようになった", "予知することにした", "予知することができる"])
+        set_options(items, 37, ["始まることになっている", "始まることをした", "始めることにしている", "始めるおそれがある"])
+        set_options(items, 38, ["出られないことにした", "出さないことにした", "出られないことになった", "出さないことになった"])
+        items[35]["stem"] = "この小説の主人公は超能力を持っていて、未来のことを（　）。"
+        items[36]["stem"] = "新学期は4月8日から（　）。"
+        items[37]["stem"] = "彼は足を怪我して入院しているので、あしたの試合に（　）。"
+        for number in range(36, 39):
+            items[number - 1]["rawExcerpt"] = items[number - 1]["stem"]
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([4, 1, 4], 36):
+            set_choice_answer(items, number, answer)
+        sort_stems = {
+            41: "水曜日から ______ ______ ★ ______ を行うことになった。",
+            42: "まだ時間があるので、 ______ ______ ★ ______ ことにした。",
+            43: "先日、同僚が私を家に呼んでくれたのだが、驚いた ______ ______ ★ ______ は私の小学生の時のクラスメートだった。",
+            44: "A「来週また来ます。」 B「じゃ、 ______ ______ ★ ______ きてください。」",
+            45: "あしたの ______ ★ ______ ______ ことになった。",
+        }
+        sort_options = {
+            41: ["本社で", "の", "新人研修", "東京"],
+            42: ["公園を", "散歩する", "の", "近く"],
+            43: ["その", "ことに", "主人", "同僚の"],
+            44: ["ときに", "連れて", "その", "田中さんを"],
+            45: ["来てくれる", "授業参観", "母が", "には"],
+        }
+        for number in range(41, 46):
+            items[number - 1]["stem"] = sort_stems[number]
+            items[number - 1]["rawExcerpt"] = sort_stems[number]
+            set_options(items, number, sort_options[number])
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([1, 1, 4, 4, 4], 41):
+            set_choice_answer(items, number, answer)
         items[38]["stem"] = "（　）ことに、その人気女優が昨夜自殺したそうだ。"
         items[38]["rawExcerpt"] = items[38]["stem"]
         set_choice_answer(items, 39, 2)
+        set_options(items, 47, ["ことにします", "ことになりました", "ことがありません", "ことができます"])
+        content = (
+            "アメリカでは、口に物を入れながら話をしたり、食事中に大きな音を立てたりすると、（19）。"
+            "しかし、日本では食事中様々な音を聞く（20）。音を立ててすすってもかまいません。"
+            "スープを飲む時、そばを食べる時、ズルズル音を立ててすすっても問題ではありません。"
+            "コーヒーやお茶を飲む時でも大丈夫です。はじめは変な気持ちがしましたが、（21）何でもなくなりました。"
+            "（22）私にもコーヒーをすする習慣がついて、アメリカに帰ってきて、すぐ母に注意されました。\n\n"
+            "アメリカで日本語を勉強した時、日本語についてはいろいろ習ったが、日本の文化や習慣についてはクラスで全然習いませんでした。"
+            "日本人の家族と一緒に生活してはじめて、日本人が実際にどんな生活をして、どんな習慣を持っているのか（23）、"
+            "とても良い経験になりました。"
+        )
+        reading_options = [
+            ["両親からあまり言われません", "よく両親から叱られます", "両親からあまり叱られません", "よく両親から注意されます"],
+            ["ことにします", "ことになりました", "ことがありません", "ことができます"],
+            ["慣れてあげたら", "慣れておいたら", "慣れてしまうと", "慣れてみると"],
+            ["知っているうちに", "やっているうちに", "知らないうちに", "やらないうちに"],
+            ["よく分かって", "とうとう理解して", "あまり知らなくて", "よく知っていて"],
+        ]
+        for number, blank, opts, answer in zip(range(46, 51), range(19, 24), reading_options, [4, 4, 3, 3, 1]):
+            set_reading_question(items, number, blank, opts, answer, content)
+            items[number - 1]["materialTitle"] = "第4単元 パートⅡ 問題3"
+            items[number - 1]["anomalies"] = []
     elif level == "N3" and unit == 5:
         shared = ["ことはない", "さ", "最中に", "さえ", "ば", "させられた", "しか", "しかない", "上の", "ず"]
         for number in range(11, 21):
             set_options(items, number, shared)
+            items[number - 1]["anomalies"] = []
         for number, answer in zip(range(11, 21), "BDHJAE CGFI".replace(" ", "")):
             set_choice_answer(items, number, ord(answer) - 64)
         set_options(items, 50, ["ことに", "最中に", "くらいに", "と同時に"])
-        set_choice_answer(items, 50, 1)
+        set_choice_answer(items, 50, 4)
+        items[6]["stem"] = items[6]["stem"].replace("スポーツグラフ", "スポーツクラブ")
+        items[6]["rawExcerpt"] = items[6]["stem"]
+        items[6]["anomalies"] = []
+        items[21]["stem"] = items[21]["stem"].replace("一間間違い", "一問間違い")
+        items[21]["rawExcerpt"] = items[21]["stem"]
+        items[21]["anomalies"] = []
+        items[49]["anomalies"] = ["答案页将第23题题号误印为22，按题目页和文意取选项4。"]
+    elif level == "N3" and unit == 6:
+        for number in range(1, 51):
+            items[number - 1]["anomalies"] = []
+        set_options(items, 29, ["すぎて", "ぎみで", "きれて", "がちで"])
+        items[3]["anomalies"] = ["原书选项2印为「にども」，按原文保留。"]
+        items[28]["anomalies"] = ["原书选项3印为「きれて」，按原文保留（题目正确答案为选项1）。"]
+        set_options(items, 49, ["でなければ", "になってから", "になったら", "でいれば"])
+        set_choice_answer(items, 49, 1)
+        sort_stems = {
+            41: "春になった ______ ______ ★ ______ 眠くてしょうがない。",
+            42: "姉は ______ ______ ★ ______ 帰ってこなかった。",
+            43: "こんな難しい ______ ______ ★ ______ そうもない。",
+            44: "田中さんは ______ ______ ★ ______ 怒らせたみたい。",
+            45: "海外旅行の価格は ______ ★ ______ ______ ものだ。",
+        }
+        for number, stem in sort_stems.items():
+            items[number - 1]["stem"] = stem
+            items[number - 1]["rawExcerpt"] = stem
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([2, 4, 3, 1, 3], 41):
+            set_choice_answer(items, number, answer)
+        content = (
+            "りんごは寒い地方で（19）。青森県と長野県が、その産地として、特に有名です。\n\n"
+            "りんごの花は五月に咲きます。そして、小さい実がたくさんなります。一本の木に、あまり多くの実があると、"
+            "大きい実ができません。だから、（20）を残して、ほかの実はとってしまいます。害虫がつくのを（21）、"
+            "袋をかぶせたり農薬をかけたり、いろいろと世話をして育てます。\n\n"
+            "りんごにはいろいろな種類があります。形の大きいものもありますし、小さいものもあります。色の赤いのもありますし、"
+            "黄色いのもあります。また、夏ごろから食べられるものや、秋の終わり（22）、食べられないものもあります。"
+            "寒い地方でとれたりんごは、箱に詰められ、貨物列車やトラックに積まれて、他の地方へ運ばれます。"
+            "そして、町の果物屋や八百屋の店先に（23）のです。"
+        )
+        reading_options = [
+            ["生まれます", "作られます", "育てられます", "植えます"],
+            ["弱そうな実しか", "丈夫そうな実だけ", "弱そうな実だけ", "丈夫そうな実しか"],
+            ["防ぐために", "防げるように", "防いでいるのに", "防げるには"],
+            ["でなければ", "になってから", "になったら", "でいれば"],
+            ["並ばれる", "並ばせる", "並べられる", "並べさせる"],
+        ]
+        for number, blank, opts, answer in zip(range(46, 51), range(19, 24), reading_options, [2, 2, 1, 1, 3]):
+            set_reading_question(items, number, blank, opts, answer, content)
+            items[number - 1]["materialTitle"] = "第6単元 パートⅡ 問題3"
+            items[number - 1]["anomalies"] = []
+    elif level == "N3" and unit == 7:
+        sort_stems = {
+            41: "母はこの ______ ______ ★ ______ 文句を言う。",
+            42: "たとえ ______ ★ ______ ______ 言ってはならない。",
+            43: "服を買うとき、色やデザイン ______ ______ ★ ______ 重要だ。",
+            44: "きのう ______ ______ ★ ______、結果はまだ分からない。",
+            45: "このことはもう一回 ______ ★ ______ ______ ほうがいいよ。",
+        }
+        for number, stem, answer in zip(range(41, 46), sort_stems.values(), [4, 3, 4, 3, 2]):
+            items[number - 1]["stem"] = stem
+            items[number - 1]["rawExcerpt"] = stem
+            set_choice_answer(items, number, answer)
+            items[number - 1]["anomalies"] = []
     elif level == "N3" and unit == 8:
         items[12]["stem"] = "時間があっ（　）、一緒に旅行にでも行きませんか。"
+    elif level == "N3" and unit == 9:
+        p1_options = {
+            1: ["いきました", "きました", "きます", "います"],
+            2: ["で", "が", "に", "と"],
+            3: ["いただきました", "くれました", "もらいました", "やりました"],
+            4: ["ています", "てあります", "ておきました", "てきました"],
+            5: ["いった", "みた", "いる", "ある"],
+            6: ["もの", "たら", "以来", "後で"],
+            7: ["くれました", "いたしました", "おきました", "いました"],
+            8: ["みる", "みて", "みない", "みれば"],
+            9: ["うれしい", "うれし", "うれしくて", "うれしいの"],
+            10: ["さえ", "で", "では", "と"],
+        }
+        for number, options in p1_options.items():
+            set_options(items, number, options)
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([2, 1, 4, 2, 1, 3, 1, 2, 3, 2], 1):
+            set_choice_answer(items, number, answer)
+        items[16]["stem"] = "このごろ、スポーツクラブに通う人が増え（ ）。"
+        items[16]["rawExcerpt"] = items[16]["stem"]
+        items[16]["anomalies"] = []
+        sort_stem = "彼はアメリカから ______ ★ ______ ______ 人が変わったように真面目になった。"
+        items[44]["stem"] = sort_stem
+        items[44]["rawExcerpt"] = sort_stem
+        set_options(items, 45, ["きて", "まるで", "帰って", "以来"])
+        set_choice_answer(items, 45, 1)
+        items[44]["anomalies"] = []
+        content = (
+            "以前、ヨーロッパを旅行したとき、（19）。観光バスに乗ってあちらこちら見て回った時のことです。"
+            "私は三歳の孫を抱いていました。バスに乗り合わせた四十人ばかりの乗客はみな外国人でした。"
+            "子供をかわいがる人たちとみえて、私のそばを通る時に、孫の顔を見てにっこり笑ったり、手を振ったり、"
+            "孫の手を握ったり、あるいは自国の言葉で（20）。\n\n"
+            "そのうちに、一人の中年の婦人が突然孫の方に顔を寄せて、日本語で「こんにちは」と言いました。"
+            "（21）私はびっくりしてしまいました。いかにも人の良さそうな笑顔でした。"
+            "おそらくその人は日本に（22）のでしょう。日本語を覚えていて、しかも、私たちが日本人であることを知って、"
+            "わざわざ日本語であいさつをしてくれたのでしょう。私はこういう人たちに大変親しみを感じた。\n\n"
+            "こんな時、日本人だったらどうでしょうか。知らない人同士がバスに乗り合わせたら、互いにあいさつをするでしょうか。"
+            "どちらかと言うと、（23）と思われます。殊に私たちみたいな子供連れの外国人がいたら、"
+            "その人たちに対してどんな態度をとるでしょうか。おそらく積極的に声をかける人は少ないでしょう。"
+            "知らない人と話すのは恥ずかしい、面倒だなどと大部分の人が思ってしまうのではないでしょうか。"
+        )
+        reading_rows = [
+            (["そんなことを覚えました", "こんな経験をしました", "あんなことをしました", "どんな経験をしました"], 2),
+            (["声がかかっていきます", "声をかけたりしていきます", "声がかかったりしてくれます", "声をかけたりしてくれます"], 4),
+            (["面白いことなので", "うれしいことなので", "意外なことに", "おそろしいことに"], 3),
+            (["来ることがあった", "来たことがある", "来ることがある", "来たことがあった"], 1),
+            (["あまり話をしないのではないか", "それほど話をしなかったのか", "なかり話をしていたのか", "そうとう話をかけていたのか"], 1),
+        ]
+        for number, (options, answer) in zip(range(46, 51), reading_rows):
+            set_reading_question(items, number, number - 27, options, answer, content)
+            items[number - 1]["materialTitle"] = "第9単元 パートⅡ 問題3"
+            items[number - 1]["anomalies"] = []
+        items[49]["anomalies"] = ["原书选项3印作「なかり話をしていたのか」，按扫描原文保留。"]
+        items[33]["anomalies"] = ["原书选项2印为「送ってくださいましょうか」，按扫描原文保留。"]
+    elif level == "N3" and unit == 10:
+        items[27 - 1]["stem"] = "大事なお客さんがもうすぐ来るので、のんびりお茶を________ではいられない。（飲む）"
+        items[27 - 1]["rawExcerpt"] = items[27 - 1]["stem"]
+        items[27 - 1]["anomalies"] = []
+        set_options(items, 28, ["そうもない", "のではないか", "ことがある", "おかげだ"])
+        items[27]["anomalies"] = []
+        sort_stems = {
+            41: "あしたは ______ ______ ★ ______ 早く止んでほしい。",
+            42: "自分の店を ______ ______ ★ ______ が分かった。",
+            43: "彼の傲慢な ______ ______ ★ ______ いられない。",
+            44: "8年間飼っていた犬が ______ ______ ★ ______ ならなかった。",
+            45: "読み終わった新聞紙を ______ ★ ______ ______ にやさしいのではないかと思う。",
+        }
+        sort_options = {
+            41: ["行く", "遠足に", "ので", "雨が"],
+            42: ["苦労", "持って", "その", "はじめて"],
+            43: ["もう", "には", "我慢しては", "態度"],
+            44: ["悲しくて", "は", "死んだ", "とき"],
+            45: ["環境", "すれば", "地球の", "リサイクル"],
+        }
+        for number in range(41, 46):
+            items[number - 1]["stem"] = sort_stems[number]
+            items[number - 1]["rawExcerpt"] = sort_stems[number]
+            set_options(items, number, sort_options[number])
+            items[number - 1]["anomalies"] = []
+        for number, answer in enumerate([3, 3, 1, 2, 2], 41):
+            set_choice_answer(items, number, answer)
     elif level == "N3" and unit == 13:
         for number, answer in ((41, 2), (44, 3), (45, 4)):
             set_choice_answer(items, number, answer)
