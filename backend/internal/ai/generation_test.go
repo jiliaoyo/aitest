@@ -79,6 +79,25 @@ func TestRejectExistingGeneratedStems(t *testing.T) {
 	}
 }
 
+func TestGeneratedStemDuplicatesReturnsOnlyMatchedStems(t *testing.T) {
+	questions := []generatedQuestion{
+		{Stem: "図書館＿＿＿日本語を勉強します。"},
+		{Stem: "駅＿＿＿本を読みます。"},
+		{Stem: "図書館 ＿＿＿ 日本語を勉強します。"},
+	}
+	got := generatedStemDuplicates(questions, []string{
+		"図書館 ＿＿＿ 日本語を勉強します。",
+		"学校＿＿＿行きます。",
+	})
+	if len(got) != 1 || got[0] != "図書館 ＿＿＿ 日本語を勉強します。" {
+		t.Fatalf("unexpected duplicate stems: %v", got)
+	}
+	merged := appendUniqueGeneratedStems([]string{"駅＿＿＿本を読みます。"}, got)
+	if len(merged) != 2 {
+		t.Fatalf("unexpected merged stems: %v", merged)
+	}
+}
+
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
 		Type: "single_choice", Stem: "これは＿＿＿知識点なしの練習問題です。", Difficulty: 3,

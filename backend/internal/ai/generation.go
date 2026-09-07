@@ -404,6 +404,11 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取历史 AI 题干失败: %w", err))
 	}
+	// 全量题干只用于服务端精确去重，不放进提示词，避免历史增长后消耗大量 token。
+	existingStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, 0)
+	if err != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取全部历史 AI 题干失败: %w", err))
+	}
 	var response generatedQuestionResponse
 	promptVersion := questionGenerationPromptVersion
 	var validationErr error
@@ -440,8 +445,10 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			validationErr = err
 			continue
 		}
-		if err := rejectExistingGeneratedStems(response.Questions, avoidStems); err != nil {
-			validationErr = err
+		if duplicates := generatedStemDuplicates(response.Questions, existingStems); len(duplicates) > 0 {
+			// 只把本轮实际命中的旧题干加入重试上下文，避免把全部历史题干发给模型。
+			avoidStems = appendUniqueGeneratedStems(avoidStems, duplicates)
+			validationErr = fmt.Errorf("AI 输出包含历史重复题干，请改写：%s", strings.Join(duplicates, "；"))
 			continue
 		}
 		validationErr = nil
@@ -541,21 +548,56 @@ func normalizeGeneratedStem(stem string) string {
 }
 
 func rejectExistingGeneratedStems(questions []generatedQuestion, existing []string) error {
-	if len(existing) == 0 {
-		return nil
-	}
-	seen := make(map[string]struct{}, len(existing))
-	for _, stem := range existing {
-		if key := normalizeGeneratedStem(stem); key != "" {
-			seen[key] = struct{}{}
-		}
-	}
-	for i, question := range questions {
-		if _, ok := seen[normalizeGeneratedStem(question.Stem)]; ok {
-			return fmt.Errorf("AI 第 %d 题与历史 AI 题目重复", i+1)
-		}
+	if duplicates := generatedStemDuplicates(questions, existing); len(duplicates) > 0 {
+		return fmt.Errorf("AI 题目与历史 AI 题目重复：%s", strings.Join(duplicates, "；"))
 	}
 	return nil
+}
+
+func generatedStemDuplicates(questions []generatedQuestion, existing []string) []string {
+	if len(existing) == 0 || len(questions) == 0 {
+		return nil
+	}
+	historical := make(map[string]string, len(existing))
+	for _, stem := range existing {
+		stem = strings.TrimSpace(stem)
+		if key := normalizeGeneratedStem(stem); key != "" {
+			historical[key] = stem
+		}
+	}
+	seen := make(map[string]struct{})
+	duplicates := make([]string, 0)
+	for _, question := range questions {
+		key := normalizeGeneratedStem(question.Stem)
+		stem, ok := historical[key]
+		if !ok {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		duplicates = append(duplicates, stem)
+	}
+	return duplicates
+}
+
+func appendUniqueGeneratedStems(stems, additions []string) []string {
+	seen := make(map[string]struct{}, len(stems)+len(additions))
+	out := make([]string, 0, len(stems)+len(additions))
+	for _, stem := range append(stems, additions...) {
+		stem = strings.TrimSpace(stem)
+		key := normalizeGeneratedStem(stem)
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, stem)
+	}
+	return out
 }
 
 func choiceStemHasBlank(stem string) bool {
