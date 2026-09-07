@@ -13,7 +13,7 @@ func TestGeneratedAnswerFallbackKeepsCandidateAnswer(t *testing.T) {
 	if !ok || string(answer) != `{"optionIds":["a"]}` {
 		t.Fatalf("unexpected fallback answer: %s, ok=%v", answer, ok)
 	}
-	if explanation == "" || !strings.Contains(explanation, "出题时解析：") {
+	if explanation == "" || !strings.Contains(explanation, "出题时生成的解析：") {
 		t.Fatalf("fallback explanation should preserve generation context: %q", explanation)
 	}
 }

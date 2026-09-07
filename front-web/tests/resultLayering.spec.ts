@@ -84,12 +84,12 @@ describe('结果分层展示', () => {
           ...baseItem,
           gradingSource: 'ai',
           gradingStatus: 'failed',
-          explanation: { text: 'AI 无法可靠判定本题，已展示出题时生成的答案，仅供参考。', source: 'ai' },
+				explanation: { text: '本题暂未完成 AI 判定，以下答案来自出题时的 AI 生成结果，仅供参考。', source: 'ai' },
         },
       },
     })
     expect(wrapper.text()).toContain('出题时答案（仅供参考）')
     expect(wrapper.text()).toContain('C. に沿って')
-    expect(wrapper.text()).toContain('AI 无法可靠判定本题')
+		expect(wrapper.text()).toContain('本题暂未完成 AI 判定')
   })
 })

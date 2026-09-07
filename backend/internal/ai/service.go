@@ -264,9 +264,9 @@ func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, boo
 	if answer == "" || !json.Valid([]byte(answer)) {
 		return nil, "", false
 	}
-	text := "AI 无法可靠判定本题，已展示出题时生成的答案，仅供参考；可重试本批失败题目。"
+	text := "本题暂未完成 AI 判定，以下答案来自出题时的 AI 生成结果，仅供参考。"
 	if row.GeneratedExplanation != nil && strings.TrimSpace(*row.GeneratedExplanation) != "" {
-		text += "\n出题时解析：" + strings.TrimSpace(*row.GeneratedExplanation)
+		text += "\n出题时生成的解析：" + strings.TrimSpace(*row.GeneratedExplanation)
 	}
 	if len([]rune(text)) > 2000 {
 		text = string([]rune(text)[:2000])
@@ -535,8 +535,8 @@ func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause
 		if _, err := tx.Exec(ctx,
 			`UPDATE grading_results gr
 			 SET correct_value = aga.value,
-			     explanation = left('AI 批次分析失败，已展示出题时生成的答案，仅供参考；可重试本批失败题目。' ||
-			       CASE WHEN aga.explanation = '' THEN '' ELSE E'\n出题时解析：' || aga.explanation END, 2000),
+				 explanation = left('本题暂未完成 AI 判定，以下答案来自出题时的 AI 生成结果，仅供参考。' ||
+				   CASE WHEN aga.explanation = '' THEN '' ELSE E'\n出题时生成的解析：' || aga.explanation END, 2000),
 			     explanation_source = 'ai', updated_at = now()
 			 FROM practice_items pi
 			 JOIN ai_generated_question_answers aga ON aga.question_version_id = pi.question_version_id
