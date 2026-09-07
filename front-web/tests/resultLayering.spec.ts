@@ -88,7 +88,7 @@ describe('结果分层展示', () => {
         },
       },
     })
-    expect(wrapper.text()).toContain('出题时答案（仅供参考）')
+    expect(wrapper.text()).toContain('出题时答案')
     expect(wrapper.text()).toContain('C. に沿って')
 		expect(wrapper.text()).toContain('本题暂未完成 AI 判定')
   })

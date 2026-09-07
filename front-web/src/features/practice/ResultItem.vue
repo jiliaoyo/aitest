@@ -23,7 +23,7 @@ function answerText(answer: ResultItemDTO['userAnswer'], options: OptionDTO[]): 
 
 const userText = computed(() => answerText(props.item.userAnswer, props.item.options))
 const hasGeneratedFallback = computed(() => props.item.gradingStatus === 'failed' && props.item.correctAnswer !== null)
-const correctLabel = computed(() => (hasGeneratedFallback.value ? '出题时答案（仅供参考）' : '标准答案'))
+const correctLabel = computed(() => (hasGeneratedFallback.value ? '出题时答案' : '标准答案'))
 const correctText = computed(() =>
   props.item.gradingStatus === 'pending' || (props.item.gradingStatus === 'failed' && !hasGeneratedFallback.value)
     ? '待 AI 判定'
