@@ -89,14 +89,14 @@ onMounted(load)
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load" />
     <AppStatus v-else-if="jobs.length === 0" state="empty" message="还没有导入任务。" />
     <div v-else class="card" style="overflow-x: auto">
-      <table class="data">
+      <table class="data mobile-card-table">
         <thead><tr><th>文件</th><th>状态</th><th class="num">题目数</th><th>更新时间</th></tr></thead>
         <tbody>
           <tr v-for="job in jobs" :key="job.id">
-            <td><RouterLink :to="`/admin/imports/${job.id}`">{{ job.fileName }}</RouterLink></td>
-            <td><StatusBadge :value="job.status" /></td>
-            <td class="num">{{ job.itemCount }}</td>
-            <td class="mono">{{ formatDateTime(job.updatedAt) }}</td>
+            <td data-label="文件"><RouterLink :to="`/admin/imports/${job.id}`">{{ job.fileName }}</RouterLink></td>
+            <td data-label="状态"><StatusBadge :value="job.status" /></td>
+            <td class="num" data-label="题目数">{{ job.itemCount }}</td>
+            <td class="mono" data-label="更新时间">{{ formatDateTime(job.updatedAt) }}</td>
           </tr>
         </tbody>
       </table>

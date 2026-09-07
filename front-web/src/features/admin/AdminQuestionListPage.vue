@@ -116,7 +116,7 @@ watch(filters, () => {
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load()" />
     <AppStatus v-else-if="questions.length === 0" state="empty" message="没有符合条件的题目。" action-label="新建题目" @action="router.push('/admin/questions/new')" />
     <div v-else class="card" style="overflow-x: auto">
-      <table class="data">
+      <table class="data mobile-card-table">
         <thead>
           <tr>
             <th>题干</th>
@@ -129,16 +129,16 @@ watch(filters, () => {
         </thead>
         <tbody>
           <tr v-for="q in questions" :key="q.id">
-            <td style="max-width: 320px">
+            <td data-label="题干" style="max-width: 320px">
               <RouterLink :to="`/admin/questions/${q.id}`" class="mono" lang="ja">
                 {{ q.currentVersion?.stem.slice(0, 40) ?? '' }}{{ (q.currentVersion?.stem.length ?? 0) > 40 ? '…' : '' }}
               </RouterLink>
             </td>
-            <td>{{ questionTypeText[q.currentVersion?.type ?? ''] ?? '—' }}</td>
-            <td><StatusBadge :value="q.status" /></td>
-            <td class="num">v{{ q.currentVersion?.versionNo ?? '-' }}</td>
-            <td>{{ q.hasAnswer ? '✓' : '—' }}</td>
-            <td class="mono">{{ formatDateTime(q.updatedAt) }}</td>
+            <td data-label="题型">{{ questionTypeText[q.currentVersion?.type ?? ''] ?? '—' }}</td>
+            <td data-label="状态"><StatusBadge :value="q.status" /></td>
+            <td class="num" data-label="版本">v{{ q.currentVersion?.versionNo ?? '-' }}</td>
+            <td data-label="有答案">{{ q.hasAnswer ? '✓' : '—' }}</td>
+            <td class="mono" data-label="更新时间">{{ formatDateTime(q.updatedAt) }}</td>
           </tr>
         </tbody>
       </table>

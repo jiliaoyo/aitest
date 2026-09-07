@@ -209,6 +209,84 @@ table.data td.num {
   font-family: var(--font-mono);
 }
 
+@media (max-width: 560px) {
+  table.data.mobile-card-table,
+  table.data.mobile-card-table tbody,
+  table.data.mobile-card-table tr,
+  table.data.mobile-card-table td {
+    display: block;
+    width: 100%;
+  }
+
+  table.data.mobile-card-table thead {
+    display: none;
+  }
+
+  table.data.mobile-card-table tr {
+    padding: 12px 0;
+  }
+
+  table.data.mobile-card-table tr:first-child {
+    padding-top: 0;
+  }
+
+  table.data.mobile-card-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  table.data.mobile-card-table td::before {
+    content: attr(data-label);
+    flex: 0 0 5em;
+    color: var(--muted);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  table.data.mobile-card-table td[data-label=''] {
+    justify-content: flex-end;
+    padding-top: 10px;
+  }
+
+  table.data.mobile-card-table td[data-label='']::before {
+    display: none;
+  }
+
+  table.data.mobile-card-table td.num {
+    text-align: right;
+  }
+
+  table.data.mobile-card-table tbody tr:has(> th) {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+
+  table.data.mobile-card-table tbody tr:has(> th) > th,
+  table.data.mobile-card-table tbody tr:has(> th) > td {
+    display: block;
+    width: auto;
+    padding: 5px 0;
+    border: 0;
+  }
+
+  table.data.mobile-card-table tbody tr:has(> th) > th {
+    flex: 1 1 55%;
+    text-align: left;
+  }
+
+  table.data.mobile-card-table tbody tr:has(> th) > td {
+    flex: 1 1 45%;
+    text-align: right;
+  }
+}
+
 [lang='ja'],
 .material-text {
   font-family: var(--font-japanese-serif);

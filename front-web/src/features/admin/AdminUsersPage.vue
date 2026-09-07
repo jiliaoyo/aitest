@@ -168,7 +168,7 @@ onMounted(() => void load())
       <div class="grid-2">
         <section class="card">
           <h2 style="font-size: 17px">练习使用情况</h2>
-          <table class="data">
+          <table class="data mobile-card-table">
             <tbody>
               <tr><th>练习批次</th><td class="num">{{ formatInteger(response.summary.usage.practiceSessions) }}</td></tr>
               <tr><th>已完成 / 分析失败</th><td class="num">{{ response.summary.usage.completedSessions }} / {{ response.summary.usage.analysisFailedSessions }}</td></tr>
@@ -180,7 +180,7 @@ onMounted(() => void load())
         </section>
         <section class="card">
           <h2 style="font-size: 17px">AI 出题与费用</h2>
-          <table class="data">
+          <table class="data mobile-card-table">
             <tbody>
               <tr><th>出题请求批次</th><td class="num">{{ formatInteger(response.summary.usage.aiGenerationRequests) }}</td></tr>
               <tr><th>实际出题调用</th><td class="num">{{ formatInteger(response.summary.usage.ai.generationCalls) }}</td></tr>
@@ -197,15 +197,15 @@ onMounted(() => void load())
           <h2 style="font-size: 17px">按 AI 用途</h2>
           <AppStatus v-if="response.summary.aiByKind.length === 0" state="empty" message="当前区间没有 AI 调用。" />
           <div v-else style="overflow-x: auto">
-            <table class="data">
+            <table class="data mobile-card-table">
               <thead><tr><th>用途</th><th class="num">调用</th><th class="num">失败</th><th class="num">token</th><th class="num">费用</th></tr></thead>
               <tbody>
                 <tr v-for="row in response.summary.aiByKind" :key="row.key">
-                  <td>{{ aiRunKindText[row.key] ?? row.key }}</td>
-                  <td class="num">{{ row.calls }}</td>
-                  <td class="num">{{ row.failedCalls }}</td>
-                  <td class="num">{{ formatInteger(row.totalTokens) }}</td>
-                  <td class="num">{{ breakdownCost(row) }}</td>
+                  <td data-label="用途">{{ aiRunKindText[row.key] ?? row.key }}</td>
+                  <td class="num" data-label="调用">{{ row.calls }}</td>
+                  <td class="num" data-label="失败">{{ row.failedCalls }}</td>
+                  <td class="num" data-label="token">{{ formatInteger(row.totalTokens) }}</td>
+                  <td class="num" data-label="费用">{{ breakdownCost(row) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -215,15 +215,15 @@ onMounted(() => void load())
           <h2 style="font-size: 17px">按模型</h2>
           <AppStatus v-if="response.summary.aiByModel.length === 0" state="empty" message="当前区间没有 AI 调用。" />
           <div v-else style="overflow-x: auto">
-            <table class="data">
+            <table class="data mobile-card-table">
               <thead><tr><th>模型</th><th class="num">调用</th><th class="num">成功 / 失败</th><th class="num">token</th><th class="num">费用</th></tr></thead>
               <tbody>
                 <tr v-for="row in response.summary.aiByModel" :key="row.key">
-                  <td class="mono">{{ row.key || '未记录' }}</td>
-                  <td class="num">{{ row.calls }}</td>
-                  <td class="num">{{ row.successfulCalls }} / {{ row.failedCalls }}</td>
-                  <td class="num">{{ formatInteger(row.totalTokens) }}</td>
-                  <td class="num">{{ breakdownCost(row) }}</td>
+                  <td class="mono" data-label="模型">{{ row.key || '未记录' }}</td>
+                  <td class="num" data-label="调用">{{ row.calls }}</td>
+                  <td class="num" data-label="成功 / 失败">{{ row.successfulCalls }} / {{ row.failedCalls }}</td>
+                  <td class="num" data-label="token">{{ formatInteger(row.totalTokens) }}</td>
+                  <td class="num" data-label="费用">{{ breakdownCost(row) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -235,16 +235,16 @@ onMounted(() => void load())
         <h2 style="font-size: 17px">AI 调用趋势</h2>
         <div v-if="response.summary.aiDaily.length === 0" class="muted">当前区间没有 AI 调用。</div>
         <div v-else style="overflow-x: auto">
-          <table class="data">
+          <table class="data mobile-card-table">
             <thead><tr><th>日期</th><th class="num">调用</th><th class="num">失败</th><th class="num">输入 token</th><th class="num">输出 token</th><th class="num">费用</th></tr></thead>
             <tbody>
               <tr v-for="row in response.summary.aiDaily" :key="row.date">
-                <td class="mono">{{ row.date }}</td>
-                <td class="num">{{ row.calls }}</td>
-                <td class="num">{{ row.failedCalls }}</td>
-                <td class="num">{{ formatInteger(row.promptTokens) }}</td>
-                <td class="num">{{ formatInteger(row.completionTokens) }}</td>
-                <td class="num">{{ formatUSD(row.estimatedCostUsd) }}</td>
+                <td class="mono" data-label="日期">{{ row.date }}</td>
+                <td class="num" data-label="调用">{{ row.calls }}</td>
+                <td class="num" data-label="失败">{{ row.failedCalls }}</td>
+                <td class="num" data-label="输入 token">{{ formatInteger(row.promptTokens) }}</td>
+                <td class="num" data-label="输出 token">{{ formatInteger(row.completionTokens) }}</td>
+                <td class="num" data-label="费用">{{ formatUSD(row.estimatedCostUsd) }}</td>
               </tr>
             </tbody>
           </table>
@@ -254,7 +254,7 @@ onMounted(() => void load())
       <AppStatus v-if="response.users.length === 0" state="empty" message="没有符合条件的用户。" />
       <section v-else class="card" style="overflow-x: auto">
         <h2 style="font-size: 17px">用户明细</h2>
-        <table class="data">
+        <table class="data mobile-card-table">
           <thead>
             <tr>
               <th>邮箱</th><th>角色</th><th>注册时间</th><th>最近活跃</th>
@@ -263,15 +263,15 @@ onMounted(() => void load())
           </thead>
           <tbody>
             <tr v-for="user in response.users" :key="user.id">
-              <td><RouterLink :to="{ path: `/admin/users/${user.id}`, query: { from: filters.from || undefined, to: filters.to || undefined } }">{{ user.email }}</RouterLink></td>
-              <td><span class="tag" :data-tone="user.role === 'admin' ? 'accent' : undefined">{{ roleText[user.role] ?? user.role }}</span></td>
-              <td class="mono">{{ formatDateTime(user.createdAt) }}</td>
-              <td class="mono">{{ formatDateTime(user.usage.lastActiveAt) }}</td>
-              <td class="num">{{ user.usage.practiceSessions }}</td>
-              <td class="num">{{ user.usage.aiGenerationRequests }}</td>
-              <td class="num">{{ user.usage.ai.calls }}</td>
-              <td class="num">{{ formatInteger(user.usage.ai.totalTokens) }}</td>
-              <td class="num">{{ formatUSD(user.usage.ai.estimatedCostUsd) }}</td>
+              <td data-label="邮箱"><RouterLink :to="{ path: `/admin/users/${user.id}`, query: { from: filters.from || undefined, to: filters.to || undefined } }">{{ user.email }}</RouterLink></td>
+              <td data-label="角色"><span class="tag" :data-tone="user.role === 'admin' ? 'accent' : undefined">{{ roleText[user.role] ?? user.role }}</span></td>
+              <td class="mono" data-label="注册时间">{{ formatDateTime(user.createdAt) }}</td>
+              <td class="mono" data-label="最近活跃">{{ formatDateTime(user.usage.lastActiveAt) }}</td>
+              <td class="num" data-label="练习批次">{{ user.usage.practiceSessions }}</td>
+              <td class="num" data-label="AI 出题请求">{{ user.usage.aiGenerationRequests }}</td>
+              <td class="num" data-label="AI 调用">{{ user.usage.ai.calls }}</td>
+              <td class="num" data-label="token">{{ formatInteger(user.usage.ai.totalTokens) }}</td>
+              <td class="num" data-label="费用">{{ formatUSD(user.usage.ai.estimatedCostUsd) }}</td>
             </tr>
           </tbody>
         </table>

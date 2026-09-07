@@ -95,7 +95,7 @@ function mastery(k: KnowledgePointItem): string {
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load" />
     <AppStatus v-else-if="items.length === 0" state="empty" message="没有符合条件且已发布的知识点。" />
     <div v-else class="card" style="overflow-x: auto">
-      <table class="data">
+      <table class="data mobile-card-table">
         <thead>
           <tr>
             <th>知识点</th>
@@ -110,17 +110,17 @@ function mastery(k: KnowledgePointItem): string {
         </thead>
         <tbody>
           <tr v-for="k in items" :key="k.id">
-            <td><RouterLink :to="`/knowledge/${k.id}`">{{ k.name }}</RouterLink></td>
-            <td>{{ k.levelCode }}</td>
-            <td>{{ k.subjectName }}</td>
-            <td class="num">{{ k.questionCount }}</td>
-            <td class="num">
+            <td data-label="知识点"><RouterLink :to="`/knowledge/${k.id}`">{{ k.name }}</RouterLink></td>
+            <td data-label="级别">{{ k.levelCode }}</td>
+            <td data-label="科目">{{ k.subjectName }}</td>
+            <td class="num" data-label="相关题目">{{ k.questionCount }}</td>
+            <td class="num" data-label="已确认正确率">
               {{ k.stats && k.stats.confirmedAnswered > 0
                 ? formatPercent(k.stats.confirmedCorrect / k.stats.confirmedAnswered) : '—' }}
             </td>
-            <td>{{ mastery(k) }}</td>
-            <td class="mono">{{ k.stats?.lastPracticedAt ? formatDateTime(k.stats.lastPracticedAt) : '—' }}</td>
-            <td><RouterLink :to="`/knowledge/${k.id}`">详情</RouterLink></td>
+            <td data-label="掌握状态">{{ mastery(k) }}</td>
+            <td class="mono" data-label="最近练习">{{ k.stats?.lastPracticedAt ? formatDateTime(k.stats.lastPracticedAt) : '—' }}</td>
+            <td data-label=""><RouterLink :to="`/knowledge/${k.id}`">详情</RouterLink></td>
           </tr>
         </tbody>
       </table>

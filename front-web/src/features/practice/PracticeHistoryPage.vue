@@ -90,7 +90,7 @@ async function deleteSession(session: SessionListItem): Promise<void> {
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load()" />
     <AppStatus v-else-if="sessions.length === 0" state="empty" message="还没有练习记录。" action-label="创建练习" @action="router.push('/practice/new')" />
     <div v-else class="card" style="overflow-x: auto">
-      <table class="data">
+      <table class="data mobile-card-table">
         <thead>
           <tr>
             <th>批次</th>
@@ -103,12 +103,12 @@ async function deleteSession(session: SessionListItem): Promise<void> {
         </thead>
         <tbody>
           <tr v-for="s in sessions" :key="s.id">
-            <td class="mono">{{ s.id.slice(0, 8) }}</td>
-            <td><StatusBadge :value="s.status" kind="session" /></td>
-            <td class="num">{{ s.totalCount }}</td>
-            <td class="mono">{{ formatDateTime(s.createdAt) }}</td>
-            <td class="mono">{{ formatDateTime(s.submittedAt) }}</td>
-            <td>
+            <td class="mono" data-label="批次">{{ s.id.slice(0, 8) }}</td>
+            <td data-label="状态"><StatusBadge :value="s.status" kind="session" /></td>
+            <td class="num" data-label="题数">{{ s.totalCount }}</td>
+            <td class="mono" data-label="创建时间">{{ formatDateTime(s.createdAt) }}</td>
+            <td class="mono" data-label="提交时间">{{ formatDateTime(s.submittedAt) }}</td>
+            <td data-label="">
               <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
                 <RouterLink :to="linkFor(s)">{{ ['active', 'generating'].includes(s.status) ? '继续练习' : s.status === 'generation_failed' ? '查看生成状态' : '查看结果' }}</RouterLink>
                 <button

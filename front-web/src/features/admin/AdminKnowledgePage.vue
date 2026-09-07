@@ -196,7 +196,7 @@ async function unpublish(k: AdminKnowledgePoint): Promise<void> {
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load" />
     <AppStatus v-else-if="kps.length === 0" state="empty" message="还没有知识点。" />
     <div v-else class="card" style="overflow-x: auto">
-      <table class="data">
+      <table class="data mobile-card-table">
         <thead>
           <tr>
             <th>名称</th>
@@ -209,12 +209,12 @@ async function unpublish(k: AdminKnowledgePoint): Promise<void> {
         </thead>
         <tbody>
           <tr v-for="k in kps" :key="k.id">
-            <td>{{ k.name }}</td>
-            <td class="mono">{{ k.levelId.slice(0, 6) }}</td>
-            <td class="mono">{{ k.subjectId.slice(0, 6) }}</td>
-            <td><StatusBadge :value="k.status" /></td>
-            <td class="num">{{ k.questionCount }}</td>
-            <td>
+            <td data-label="名称">{{ k.name }}</td>
+            <td class="mono" data-label="级别">{{ k.levelId.slice(0, 6) }}</td>
+            <td class="mono" data-label="科目">{{ k.subjectId.slice(0, 6) }}</td>
+            <td data-label="状态"><StatusBadge :value="k.status" /></td>
+            <td class="num" data-label="关联题目">{{ k.questionCount }}</td>
+            <td data-label="">
               <button v-if="k.status === 'draft'" style="min-height: 32px; font-size: 13px" @click="publish(k)">发布</button>
               <button v-else-if="k.status === 'published'" style="min-height: 32px; font-size: 13px" @click="unpublish(k)">转回草稿</button>
             </td>

@@ -132,7 +132,7 @@ onMounted(() => void load())
       <div class="grid-2">
         <section class="card">
           <h2 style="font-size: 17px">练习状态</h2>
-          <table class="data">
+          <table class="data mobile-card-table">
             <tbody>
               <tr><th>已完成批次</th><td class="num">{{ detail.usage.completedSessions }}</td></tr>
               <tr><th>进行中批次</th><td class="num">{{ detail.usage.activeSessions }}</td></tr>
@@ -147,7 +147,7 @@ onMounted(() => void load())
         </section>
         <section class="card">
           <h2 style="font-size: 17px">AI token 与费用</h2>
-          <table class="data">
+          <table class="data mobile-card-table">
             <tbody>
               <tr><th>输入 token</th><td class="num">{{ formatInteger(detail.usage.ai.promptTokens) }}</td></tr>
               <tr><th>输出 token</th><td class="num">{{ formatInteger(detail.usage.ai.completionTokens) }}</td></tr>
@@ -164,11 +164,11 @@ onMounted(() => void load())
           <h2 style="font-size: 17px">按 AI 用途</h2>
           <div v-if="detail.aiByKind.length === 0" class="muted">当前区间没有 AI 调用。</div>
           <div v-else style="overflow-x: auto">
-            <table class="data">
+            <table class="data mobile-card-table">
               <thead><tr><th>用途</th><th class="num">调用</th><th class="num">失败</th><th class="num">token</th><th class="num">费用</th></tr></thead>
               <tbody>
                 <tr v-for="row in detail.aiByKind" :key="row.key">
-                  <td>{{ aiRunKindText[row.key] ?? row.key }}</td><td class="num">{{ row.calls }}</td><td class="num">{{ row.failedCalls }}</td><td class="num">{{ formatInteger(row.totalTokens) }}</td><td class="num">{{ breakdownCost(row) }}</td>
+                  <td data-label="用途">{{ aiRunKindText[row.key] ?? row.key }}</td><td class="num" data-label="调用">{{ row.calls }}</td><td class="num" data-label="失败">{{ row.failedCalls }}</td><td class="num" data-label="token">{{ formatInteger(row.totalTokens) }}</td><td class="num" data-label="费用">{{ breakdownCost(row) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -178,11 +178,11 @@ onMounted(() => void load())
           <h2 style="font-size: 17px">按模型</h2>
           <div v-if="detail.aiByModel.length === 0" class="muted">当前区间没有 AI 调用。</div>
           <div v-else style="overflow-x: auto">
-            <table class="data">
+            <table class="data mobile-card-table">
               <thead><tr><th>模型</th><th class="num">调用</th><th class="num">成功 / 失败</th><th class="num">token</th><th class="num">费用</th></tr></thead>
               <tbody>
                 <tr v-for="row in detail.aiByModel" :key="row.key">
-                  <td class="mono">{{ row.key || '未记录' }}</td><td class="num">{{ row.calls }}</td><td class="num">{{ row.successfulCalls }} / {{ row.failedCalls }}</td><td class="num">{{ formatInteger(row.totalTokens) }}</td><td class="num">{{ breakdownCost(row) }}</td>
+                  <td class="mono" data-label="模型">{{ row.key || '未记录' }}</td><td class="num" data-label="调用">{{ row.calls }}</td><td class="num" data-label="成功 / 失败">{{ row.successfulCalls }} / {{ row.failedCalls }}</td><td class="num" data-label="token">{{ formatInteger(row.totalTokens) }}</td><td class="num" data-label="费用">{{ breakdownCost(row) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -194,11 +194,11 @@ onMounted(() => void load())
         <h2 style="font-size: 17px">每日 AI 使用</h2>
         <div v-if="detail.aiDaily.length === 0" class="muted">当前区间没有 AI 调用。</div>
         <div v-else style="overflow-x: auto">
-          <table class="data">
+          <table class="data mobile-card-table">
             <thead><tr><th>日期</th><th class="num">调用</th><th class="num">失败</th><th class="num">输入 token</th><th class="num">输出 token</th><th class="num">耗时</th><th class="num">费用</th></tr></thead>
             <tbody>
               <tr v-for="row in detail.aiDaily" :key="row.date">
-                <td class="mono">{{ row.date }}</td><td class="num">{{ row.calls }}</td><td class="num">{{ row.failedCalls }}</td><td class="num">{{ formatInteger(row.promptTokens) }}</td><td class="num">{{ formatInteger(row.completionTokens) }}</td><td class="num">{{ formatInteger(row.durationMs) }} ms</td><td class="num">{{ formatUSD(row.estimatedCostUsd) }}</td>
+                <td class="mono" data-label="日期">{{ row.date }}</td><td class="num" data-label="调用">{{ row.calls }}</td><td class="num" data-label="失败">{{ row.failedCalls }}</td><td class="num" data-label="输入 token">{{ formatInteger(row.promptTokens) }}</td><td class="num" data-label="输出 token">{{ formatInteger(row.completionTokens) }}</td><td class="num" data-label="耗时">{{ formatInteger(row.durationMs) }} ms</td><td class="num" data-label="费用">{{ formatUSD(row.estimatedCostUsd) }}</td>
               </tr>
             </tbody>
           </table>
@@ -209,18 +209,18 @@ onMounted(() => void load())
         <h2 style="font-size: 17px">最近 AI 调用（最多 100 条）</h2>
         <div v-if="detail.recentAiRuns.length === 0" class="muted">当前区间没有 AI 调用。</div>
         <div v-else style="overflow-x: auto">
-          <table class="data">
+          <table class="data mobile-card-table">
             <thead><tr><th>时间</th><th>用途</th><th>模型 / prompt</th><th>状态</th><th class="num">token</th><th class="num">耗时</th><th class="num">费用</th><th>错误</th></tr></thead>
             <tbody>
               <tr v-for="run in detail.recentAiRuns" :key="run.id">
-                <td class="mono">{{ formatDateTime(run.createdAt) }}</td>
-                <td>{{ aiRunKindText[run.kind] ?? run.kind }}</td>
-                <td class="mono">{{ run.model || '未记录' }}<br>{{ run.promptVersion }}</td>
-                <td><StatusBadge :value="run.status" /></td>
-                <td class="num">{{ formatInteger(run.totalTokens) }}</td>
-                <td class="num">{{ duration(run.durationMs) }}</td>
-                <td class="num">{{ formatUSD(run.estimatedCostUsd) }}</td>
-                <td style="max-width: 280px; overflow-wrap: anywhere">{{ run.error || '—' }}</td>
+                <td class="mono" data-label="时间">{{ formatDateTime(run.createdAt) }}</td>
+                <td data-label="用途">{{ aiRunKindText[run.kind] ?? run.kind }}</td>
+                <td class="mono" data-label="模型 / prompt">{{ run.model || '未记录' }}<br>{{ run.promptVersion }}</td>
+                <td data-label="状态"><StatusBadge :value="run.status" /></td>
+                <td class="num" data-label="token">{{ formatInteger(run.totalTokens) }}</td>
+                <td class="num" data-label="耗时">{{ duration(run.durationMs) }}</td>
+                <td class="num" data-label="费用">{{ formatUSD(run.estimatedCostUsd) }}</td>
+                <td data-label="错误" style="max-width: 280px; overflow-wrap: anywhere">{{ run.error || '—' }}</td>
               </tr>
             </tbody>
           </table>
@@ -231,18 +231,18 @@ onMounted(() => void load())
         <h2 style="font-size: 17px">最近练习批次（最多 50 条）</h2>
         <div v-if="detail.recentPracticeSessions.length === 0" class="muted">当前区间没有练习批次。</div>
         <div v-else style="overflow-x: auto">
-          <table class="data">
+          <table class="data mobile-card-table">
             <thead><tr><th>时间</th><th>批次 ID</th><th>类型</th><th>状态</th><th class="num">题数</th><th class="num">已作答</th><th>AI 分析</th><th>删除</th></tr></thead>
             <tbody>
               <tr v-for="session in detail.recentPracticeSessions" :key="session.id">
-                <td class="mono">{{ formatDateTime(session.createdAt) }}</td>
-                <td class="mono">{{ session.id.slice(0, 12) }}</td>
-                <td>{{ practiceModeText[session.mode] ?? session.mode }}</td>
-                <td><StatusBadge :value="session.status" kind="session" /></td>
-                <td class="num">{{ session.totalCount }} / {{ session.requestedCount }}</td>
-                <td class="num">{{ session.answeredCount }}</td>
-                <td><StatusBadge :value="session.aiSummaryStatus" /></td>
-                <td>{{ session.deletedAt ? '已隐藏' : '—' }}</td>
+                <td class="mono" data-label="时间">{{ formatDateTime(session.createdAt) }}</td>
+                <td class="mono" data-label="批次 ID">{{ session.id.slice(0, 12) }}</td>
+                <td data-label="类型">{{ practiceModeText[session.mode] ?? session.mode }}</td>
+                <td data-label="状态"><StatusBadge :value="session.status" kind="session" /></td>
+                <td class="num" data-label="题数">{{ session.totalCount }} / {{ session.requestedCount }}</td>
+                <td class="num" data-label="已作答">{{ session.answeredCount }}</td>
+                <td data-label="AI 分析"><StatusBadge :value="session.aiSummaryStatus" /></td>
+                <td data-label="删除">{{ session.deletedAt ? '已隐藏' : '—' }}</td>
               </tr>
             </tbody>
           </table>

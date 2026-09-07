@@ -68,15 +68,15 @@ onMounted(() => void load())
 
       <div v-if="items.length" class="card" style="overflow-x: auto">
         <h2 style="font-size: 18px">结构化草稿</h2>
-        <table class="data">
+        <table class="data mobile-card-table">
           <thead><tr><th class="num">#</th><th>题干</th><th>异常</th><th>审核状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="item in items" :key="item.id">
-              <td class="num">{{ item.position }}</td>
-              <td lang="ja">{{ item.draft?.stem ?? '—' }}</td>
-              <td><span v-if="item.anomalies.length" class="tag" data-tone="warning">{{ item.anomalies.length }} 项待确认</span><span v-else class="muted">—</span></td>
-              <td><StatusBadge :value="item.reviewStatus" /></td>
-              <td><RouterLink :to="`/admin/import-items/${item.id}`">对照审核</RouterLink></td>
+              <td class="num" data-label="#">{{ item.position }}</td>
+              <td data-label="题干" lang="ja">{{ item.draft?.stem ?? '—' }}</td>
+              <td data-label="异常"><span v-if="item.anomalies.length" class="tag" data-tone="warning">{{ item.anomalies.length }} 项待确认</span><span v-else class="muted">—</span></td>
+              <td data-label="审核状态"><StatusBadge :value="item.reviewStatus" /></td>
+              <td data-label=""><RouterLink :to="`/admin/import-items/${item.id}`">对照审核</RouterLink></td>
             </tr>
           </tbody>
         </table>
