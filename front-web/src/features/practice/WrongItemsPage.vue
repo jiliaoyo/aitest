@@ -17,7 +17,7 @@ const kpFilter = ref('')
 const fromDate = ref('')
 const toDate = ref('')
 const keyword = ref('')
-const showCorrectAnswer = ref(false)
+const includeCorrect = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -34,6 +34,7 @@ async function load(append = false): Promise<void> {
     if (fromDate.value) params.set('from', fromDate.value)
     if (toDate.value) params.set('to', toDate.value)
     if (keyword.value.trim()) params.set('keyword', keyword.value.trim())
+    if (includeCorrect.value) params.set('includeCorrect', 'true')
     if (append && nextCursor.value) params.set('cursor', nextCursor.value)
     const res = await request<{ wrongItems: WrongItem[]; nextCursor?: string }>(`/wrong-items?${params}`)
     items.value = append ? [...items.value, ...res.wrongItems] : res.wrongItems
@@ -85,7 +86,7 @@ function correctText(item: WrongItem): string {
   return '—'
 }
 
-const canRetrain = computed(() => items.value.length > 0)
+const canRetrain = computed(() => items.value.some((item) => item.gradingStatus !== 'correct'))
 
 async function retrain(): Promise<void> {
   creating.value = true
@@ -157,8 +158,8 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
       </div>
       <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center">
         <label class="option-row" style="margin: 0">
-          <input id="show-correct-answer" v-model="showCorrectAnswer" type="checkbox" />
-          <span>显示正确选项</span>
+          <input id="include-correct" v-model="includeCorrect" type="checkbox" @change="applyFilters" />
+          <span>显示正确题</span>
         </label>
         <button id="apply-wrong-filters" class="ghost" type="button" @click="applyFilters">筛选</button>
       </div>
@@ -179,8 +180,7 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           <p class="material-text" style="margin: 0; white-space: pre-wrap">{{ item.material.content }}</p>
         </section>
         <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap">{{ item.stem }}</p>
-        <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }}</p>
-        <p v-if="showCorrectAnswer" class="mono" style="margin: 6px 0 0">正确选项：{{ correctText(item) }}</p>
+        <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }} · 标准答案：{{ correctText(item) }}</p>
         <div v-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}

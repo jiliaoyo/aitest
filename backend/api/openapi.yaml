@@ -205,6 +205,7 @@ paths:
         - { name: from, in: query, schema: { type: string, format: date }, description: 错误作答开始日期（含当天） }
         - { name: to, in: query, schema: { type: string, format: date }, description: 错误作答结束日期（含当天） }
         - { name: keyword, in: query, schema: { type: string, maxLength: 100 }, description: 搜索题干、选项、材料或知识点 }
+        - { name: includeCorrect, in: query, schema: { type: boolean, default: false }, description: 是否同时显示最近一次作答正确的题目 }
         - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
         - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:

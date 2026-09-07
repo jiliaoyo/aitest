@@ -522,8 +522,8 @@ type wrongItemRow struct {
 	GradedAt          string
 }
 
-// WrongItems 返回每个错题（最近一次错误作答）及其解析，支持知识点、日期和关键词筛选。
-func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDate, toDate, keyword, cursor string, limit int) ([]wrongItemRow, string, error) {
+// WrongItems 返回每个题目（默认只含最近一次错误作答）及其解析，支持知识点、日期和关键词筛选。
+func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDate, toDate, keyword string, includeCorrect bool, cursor string, limit int) ([]wrongItemRow, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
@@ -558,6 +558,13 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 			)
 		)`
 	}
+	gradingFilter := ` AND (
+				 (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
+				 OR (gr.source = 'ai' AND gr.status = 'incorrect')`
+	if includeCorrect {
+		gradingFilter += ` OR gr.status = 'correct'`
+	}
+	gradingFilter += `)`
 	outerWhere := ""
 	if cursor != "" {
 		parts := strings.Split(cursor, "\x00")
@@ -589,9 +596,7 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 		   LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
 			   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL
 		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
-		     AND (
-		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
-		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))`+where+`
+		     `+gradingFilter+where+`
 		   ORDER BY pi.question_id, gr.updated_at DESC
 		 ) w`+outerWhere+` ORDER BY w.graded_at DESC, w.item_id DESC LIMIT `+limitPh, args...)
 	if err != nil {

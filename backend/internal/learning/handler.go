@@ -174,8 +174,17 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, httpapi.ValidationError(map[string]string{"keyword": "关键词不能超过 100 个字"}))
 		return
 	}
+	includeCorrect := false
+	if raw := strings.TrimSpace(q.Get("includeCorrect")); raw != "" {
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			httpapi.WriteError(w, r, httpapi.ValidationError(map[string]string{"includeCorrect": "includeCorrect 必须是 true 或 false"}))
+			return
+		}
+		includeCorrect = parsed
+	}
 	rows, nextCursor, err := h.store.WrongItems(r.Context(), ctxkeys.UserID(r.Context()),
-		q.Get("knowledgePointId"), fromDate, toDate, keyword, q.Get("cursor"), limit)
+		q.Get("knowledgePointId"), fromDate, toDate, keyword, includeCorrect, q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

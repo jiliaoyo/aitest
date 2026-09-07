@@ -68,10 +68,11 @@ describe('历史与错题本软删除', () => {
     const wrapper = mount(WrongItemsPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('練習問題です。'))
     expect(wrapper.text()).toContain('你的答案：A. 甲')
-    expect(wrapper.text()).not.toContain('正确选项：B. 乙')
+    expect(wrapper.text()).toContain('标准答案：B. 乙')
+    expect((wrapper.get('#include-correct').element as HTMLInputElement).checked).toBe(false)
 
-    await wrapper.get('#show-correct-answer').setValue(true)
-    expect(wrapper.text()).toContain('正确选项：B. 乙')
+    await wrapper.get('#include-correct').setValue(true)
+    expect(requestMock.mock.calls.some(([path]) => path === '/wrong-items?limit=20&includeCorrect=true')).toBe(true)
 
     await wrapper.get('button.danger').trigger('click')
     await flushPromises()
@@ -95,9 +96,10 @@ describe('历史与错题本软删除', () => {
     await wrapper.get('#wrong-keyword').setValue('语法')
     await wrapper.get('#wrong-from').setValue('2026-01-01')
     await wrapper.get('#wrong-to').setValue('2026-01-31')
+    await wrapper.get('#include-correct').setValue(true)
     await wrapper.get('#apply-wrong-filters').trigger('click')
     await flushPromises()
 
-    expect(requestMock.mock.calls.some(([path]) => path === '/wrong-items?limit=20&from=2026-01-01&to=2026-01-31&keyword=%E8%AF%AD%E6%B3%95')).toBe(true)
+    expect(requestMock.mock.calls.some(([path]) => path === '/wrong-items?limit=20&from=2026-01-01&to=2026-01-31&keyword=%E8%AF%AD%E6%B3%95&includeCorrect=true')).toBe(true)
   })
 })
