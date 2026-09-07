@@ -41,6 +41,7 @@ const (
 )
 
 const maxRecentGeneratedStemsInPrompt = 20
+const maxGenerationCalls = 6
 
 var generatedCategories = map[string]struct{}{
 	generatedCategoryMixed:  {},
@@ -409,10 +410,12 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取全部历史 AI 题干失败: %w", err))
 	}
-	var response generatedQuestionResponse
-	promptVersion := questionGenerationPromptVersion
+	generatedQuestions := make([]generatedQuestion, 0, row.RequestedCount)
+	lastPromptVersion := questionGenerationPromptVersion
 	var validationErr error
-	for localAttempt := 0; localAttempt < 2; localAttempt++ {
+	retryNote := ""
+	for generationAttempt := 0; generationAttempt < maxGenerationCalls && len(generatedQuestions) < row.RequestedCount; generationAttempt++ {
+		remaining := row.RequestedCount - len(generatedQuestions)
 		seed, err := randomSeed()
 		if err != nil {
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
@@ -420,14 +423,21 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		systemPrompt := questionGenerationPrompt
 		feedback := ""
 		temperature := 0.6
-		if validationErr != nil {
+		promptVersion := questionGenerationPromptVersion
+		if generationAttempt > 0 {
 			promptVersion = questionGenerationRetryPromptVersion
-			feedback = shortError(validationErr)
-			systemPrompt += "\n\n" + questionGenerationRetryInstructions + "\n服务端校验错误：" + feedback
-			temperature = 0.2
+			if validationErr != nil {
+				feedback = shortError(validationErr)
+				systemPrompt += "\n\n" + questionGenerationRetryInstructions + "\n服务端校验错误：" + feedback
+				temperature = 0.2
+			} else if retryNote != "" {
+				feedback = retryNote
+				systemPrompt += "\n\n" + feedback
+				temperature = 0.8
+			}
 		}
 		inputJSON, _ := json.Marshal(questionGenerationInput{
-			Count: row.RequestedCount, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
+			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, LearningMemory: memory,
 		})
@@ -436,34 +446,46 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		if err != nil {
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
+		var response generatedQuestionResponse
 		if err := strictDecode(out, &response); err != nil {
 			validationErr = fmt.Errorf("AI 出题输出不合法: %w", err)
+			retryNote = ""
 			continue
 		}
-		response.Questions = capGeneratedQuestions(response.Questions, row.RequestedCount)
-		if err := validateGeneratedQuestions(response.Questions, row.RequestedCount, difficulty, questionType, memory.KnowledgePoints); err != nil {
+		questions := capGeneratedQuestions(response.Questions, remaining)
+		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints); err != nil {
 			validationErr = err
+			retryNote = ""
 			continue
 		}
-		if duplicates := generatedStemDuplicates(response.Questions, existingStems); len(duplicates) > 0 {
+		blockedStems := append([]string{}, existingStems...)
+		blockedStems = append(blockedStems, generatedQuestionStems(generatedQuestions)...)
+		uniqueQuestions, duplicates := filterGeneratedStemDuplicates(questions, blockedStems)
+		if len(duplicates) > 0 {
 			// 只把本轮实际命中的旧题干加入重试上下文，避免把全部历史题干发给模型。
 			avoidStems = appendUniqueGeneratedStems(avoidStems, duplicates)
-			validationErr = fmt.Errorf("AI 输出包含历史重复题干，请改写：%s", strings.Join(duplicates, "；"))
-			continue
+			retryNote = fmt.Sprintf("上一轮返回的 %d 道题中有 %d 道与历史题目重复，已剔除；本轮只需补充剩余题目，并更换句式、场景和词汇。", len(questions), len(duplicates))
+		} else {
+			retryNote = ""
 		}
+		generatedQuestions = append(generatedQuestions, uniqueQuestions...)
+		avoidStems = appendUniqueGeneratedStems(avoidStems, generatedQuestionStems(uniqueQuestions))
+		lastPromptVersion = promptVersion
 		validationErr = nil
-		break
 	}
-	if validationErr != nil {
+	if len(generatedQuestions) != row.RequestedCount {
+		if validationErr == nil {
+			validationErr = fmt.Errorf("AI 题目去重后数量不足：需要 %d 道，实际 %d 道", row.RequestedCount, len(generatedQuestions))
+		}
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, validationErr)
 	}
-	if err := shuffleGeneratedChoiceOptions(response.Questions); err != nil {
+	if err := shuffleGeneratedChoiceOptions(generatedQuestions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("打乱 AI 选项失败: %w", err))
 	}
-	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, generationMode, promptVersion, memory.KnowledgePoints, response.Questions); err != nil {
+	if err := s.persistGeneratedQuestions(ctx, req.SessionID, row.UserID, row.LevelID, subjectID, generationMode, lastPromptVersion, memory.KnowledgePoints, generatedQuestions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("保存 AI 题目失败: %w", err))
 	}
-	s.logger.Info("ai_generated_practice_done", "session_id", req.SessionID, "count", len(response.Questions))
+	s.logger.Info("ai_generated_practice_done", "session_id", req.SessionID, "count", len(generatedQuestions))
 	return nil
 }
 
@@ -580,6 +602,33 @@ func generatedStemDuplicates(questions []generatedQuestion, existing []string) [
 		duplicates = append(duplicates, stem)
 	}
 	return duplicates
+}
+
+func generatedQuestionStems(questions []generatedQuestion) []string {
+	stems := make([]string, 0, len(questions))
+	for _, question := range questions {
+		stems = append(stems, question.Stem)
+	}
+	return stems
+}
+
+func filterGeneratedStemDuplicates(questions []generatedQuestion, existing []string) ([]generatedQuestion, []string) {
+	duplicates := generatedStemDuplicates(questions, existing)
+	if len(duplicates) == 0 {
+		return questions, nil
+	}
+	duplicateKeys := make(map[string]struct{}, len(duplicates))
+	for _, stem := range duplicates {
+		duplicateKeys[normalizeGeneratedStem(stem)] = struct{}{}
+	}
+	filtered := make([]generatedQuestion, 0, len(questions)-len(duplicates))
+	for _, question := range questions {
+		if _, ok := duplicateKeys[normalizeGeneratedStem(question.Stem)]; ok {
+			continue
+		}
+		filtered = append(filtered, question)
+	}
+	return filtered, duplicates
 }
 
 func appendUniqueGeneratedStems(stems, additions []string) []string {

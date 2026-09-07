@@ -96,6 +96,10 @@ func TestGeneratedStemDuplicatesReturnsOnlyMatchedStems(t *testing.T) {
 	if len(merged) != 2 {
 		t.Fatalf("unexpected merged stems: %v", merged)
 	}
+	filtered, filteredDuplicates := filterGeneratedStemDuplicates(questions[:2], []string{"図書館 ＿＿＿ 日本語を勉強します。"})
+	if len(filtered) != 1 || filtered[0].Stem != "駅＿＿＿本を読みます。" || len(filteredDuplicates) != 1 {
+		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v", filtered, filteredDuplicates)
+	}
 }
 
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
