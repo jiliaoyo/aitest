@@ -90,6 +90,14 @@ func TestGeneratedQuestionReuseKeyUsesFullQuestion(t *testing.T) {
 	if generatedQuestionReuseKey("level", "subject", first) == generatedQuestionReuseKey("level", "subject", differentOptions) {
 		t.Fatal("different options must remain different questions")
 	}
+	shuffled := first
+	shuffled.Options = append([]generatedOption(nil), first.Options...)
+	if err := remapGeneratedChoiceOptions(&shuffled, []int{2, 0, 3, 1}); err != nil {
+		t.Fatal(err)
+	}
+	if generatedQuestionReuseKey("level", "subject", first) != generatedQuestionReuseKey("level", "subject", shuffled) {
+		t.Fatal("option shuffling must not change the reuse key")
+	}
 }
 
 func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) {

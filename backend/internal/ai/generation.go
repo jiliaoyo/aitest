@@ -648,21 +648,45 @@ func normalizeGeneratedStem(stem string) string {
 }
 
 func generatedQuestionReuseKey(levelID, subjectID string, question generatedQuestion) string {
-	options := append([]generatedOption(nil), question.Options...)
+	correctOptionIDs := map[string]struct{}{}
+	var optionAnswer struct {
+		OptionIDs []string `json:"optionIds"`
+	}
+	if json.Unmarshal(question.CorrectAnswer, &optionAnswer) == nil {
+		for _, id := range optionAnswer.OptionIDs {
+			correctOptionIDs[id] = struct{}{}
+		}
+	}
+	type optionKey struct {
+		Text    string `json:"text"`
+		Correct bool   `json:"correct"`
+	}
+	options := make([]optionKey, 0, len(question.Options))
+	for _, option := range question.Options {
+		_, correct := correctOptionIDs[option.ID]
+		options = append(options, optionKey{Text: strings.TrimSpace(option.Text), Correct: correct})
+	}
 	sort.SliceStable(options, func(i, j int) bool {
-		return options[i].ID < options[j].ID
+		if options[i].Text != options[j].Text {
+			return options[i].Text < options[j].Text
+		}
+		return !options[i].Correct && options[j].Correct
 	})
+	answer := canonicalJSON(question.CorrectAnswer)
+	if len(correctOptionIDs) > 0 {
+		answer = nil
+	}
 	canonical := struct {
-		LevelID   string            `json:"levelId"`
-		SubjectID string            `json:"subjectId"`
-		Type      string            `json:"type"`
-		Stem      string            `json:"stem"`
-		Options   []generatedOption `json:"options"`
-		Answer    json.RawMessage   `json:"answer"`
+		LevelID   string          `json:"levelId"`
+		SubjectID string          `json:"subjectId"`
+		Type      string          `json:"type"`
+		Stem      string          `json:"stem"`
+		Options   []optionKey     `json:"options"`
+		Answer    json.RawMessage `json:"answer"`
 	}{
 		LevelID: levelID, SubjectID: subjectID, Type: question.Type,
 		Stem:    normalizeGeneratedStem(question.Stem),
-		Options: options, Answer: canonicalJSON(question.CorrectAnswer),
+		Options: options, Answer: answer,
 	}
 	data, _ := json.Marshal(canonical)
 	sum := md5.Sum(data)
