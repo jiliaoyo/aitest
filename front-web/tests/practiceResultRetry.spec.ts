@@ -45,14 +45,28 @@ describe('结果页 AI 重试', () => {
     await router.push('/practice/session-1/result')
     await router.isReady()
     const wrapper = mount(PracticeResultPage, { global: { plugins: [router] } })
-    await vi.waitFor(() => expect(wrapper.text()).toContain('重新分析'))
+    await vi.waitFor(() => expect(wrapper.text()).toContain('重试失败题目'))
 
     await wrapper.get('button').trigger('click')
     await flushPromises()
 
     expect(requestMock).toHaveBeenCalledWith('/practice-sessions/session-1/analysis/retry', { method: 'POST' })
-    const retryButton = wrapper.findAll('button').find((button) => button.text() === '重新分析中…')
+    const retryButton = wrapper.findAll('button').find((button) => button.text() === '重试中…')
     expect(retryButton?.attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('批次总结已完成但有失败题时仍显示批量重试', async () => {
+    requestMock.mockResolvedValue({ ...failedResult, aiAnalysis: { status: 'completed', text: '已完成总结' } })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/practice/:sessionId/result', component: PracticeResultPage }],
+    })
+    await router.push('/practice/session-2/result')
+    await router.isReady()
+    const wrapper = mount(PracticeResultPage, { global: { plugins: [router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('重试失败题目'))
+    expect(wrapper.findAll('button')).toHaveLength(1)
     wrapper.unmount()
   })
 })

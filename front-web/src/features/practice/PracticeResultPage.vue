@@ -69,7 +69,9 @@ function onVisibility(): void {
 }
 
 async function retryAnalysis(): Promise<void> {
-  if (retrying.value || result.value?.aiAnalysis.status !== 'failed') return
+  const aiStatus = result.value?.aiAnalysis.status
+  const failedCount = result.value?.summary.ai.failed ?? 0
+  if (retrying.value || aiStatus === 'pending' || (aiStatus !== 'failed' && failedCount === 0)) return
   retrying.value = true
   retryError.value = ''
   try {
@@ -94,6 +96,12 @@ onBeforeUnmount(() => {
 const summary = computed(() => result.value?.summary)
 const confirmedAccuracy = computed(() => summary.value?.confirmed.accuracy ?? null)
 const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.value?.ai.pending ?? 0) + (summary.value?.ai.failed ?? 0))
+const failedAI = computed(() => summary.value?.ai.failed ?? 0)
+const showRetryButton = computed(() => result.value?.aiAnalysis.status === 'failed' || result.value?.aiAnalysis.status === 'pending' || failedAI.value > 0)
+const retryButtonLabel = computed(() => {
+  if (retrying.value || result.value?.aiAnalysis.status === 'pending') return '重试中…'
+  return failedAI.value > 0 ? '重试失败题目' : '重新分析'
+})
 </script>
 
 <template>
@@ -136,8 +144,8 @@ const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.valu
           <span class="tag" :data-tone="result.aiAnalysis.status === 'failed' ? 'danger' : result.aiAnalysis.status === 'completed' ? 'success' : 'accent'">
             {{ aiAnalysisStatusText[result.aiAnalysis.status] ?? result.aiAnalysis.status }}
           </span>
-          <button v-if="result.aiAnalysis.status === 'failed' || result.aiAnalysis.status === 'pending'" type="button" :disabled="retrying || result.aiAnalysis.status === 'pending'" @click="retryAnalysis">
-            {{ result.aiAnalysis.status === 'pending' || retrying ? '重新分析中…' : '重新分析' }}
+          <button v-if="showRetryButton" type="button" :disabled="retrying || result.aiAnalysis.status === 'pending'" @click="retryAnalysis">
+            {{ retryButtonLabel }}
           </button>
         </div>
         <p v-if="retryError" class="error" role="alert">{{ retryError }}</p>
