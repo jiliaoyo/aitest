@@ -14,6 +14,10 @@ const nextCursor = ref('')
 const loadingMore = ref(false)
 const kps = ref<KnowledgePointItem[]>([])
 const kpFilter = ref('')
+const fromDate = ref('')
+const toDate = ref('')
+const keyword = ref('')
+const showCorrectAnswer = ref(false)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
@@ -27,6 +31,9 @@ async function load(append = false): Promise<void> {
   try {
     const params = new URLSearchParams({ limit: '20' })
     if (kpFilter.value) params.set('knowledgePointId', kpFilter.value)
+    if (fromDate.value) params.set('from', fromDate.value)
+    if (toDate.value) params.set('to', toDate.value)
+    if (keyword.value.trim()) params.set('keyword', keyword.value.trim())
     if (append && nextCursor.value) params.set('cursor', nextCursor.value)
     const res = await request<{ wrongItems: WrongItem[]; nextCursor?: string }>(`/wrong-items?${params}`)
     items.value = append ? [...items.value, ...res.wrongItems] : res.wrongItems
@@ -39,6 +46,10 @@ async function load(append = false): Promise<void> {
   } finally {
     loadingMore.value = false
   }
+}
+
+function applyFilters(): void {
+  void load()
 }
 
 onMounted(async () => {
@@ -122,12 +133,35 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
       </button>
     </div>
 
-    <div class="field" style="max-width: 320px">
-      <label for="kp-filter">按知识点筛选</label>
-      <select id="kp-filter" v-model="kpFilter" @change="() => load()">
-        <option value="">全部知识点</option>
-        <option v-for="k in kps" :key="k.id" :value="k.id">{{ k.name }}</option>
-      </select>
+    <div class="card" style="display: grid; gap: 12px; margin-bottom: 18px">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end">
+        <div class="field" style="margin: 0">
+          <label for="wrong-keyword">关键词</label>
+          <input id="wrong-keyword" v-model="keyword" type="search" placeholder="题干、选项或材料" @keydown.enter.prevent="applyFilters" />
+        </div>
+        <div class="field" style="margin: 0">
+          <label for="wrong-from">开始日期</label>
+          <input id="wrong-from" v-model="fromDate" type="date" @change="applyFilters" />
+        </div>
+        <div class="field" style="margin: 0">
+          <label for="wrong-to">结束日期</label>
+          <input id="wrong-to" v-model="toDate" type="date" @change="applyFilters" />
+        </div>
+        <div class="field" style="margin: 0">
+          <label for="kp-filter">知识点</label>
+          <select id="kp-filter" v-model="kpFilter" @change="applyFilters">
+            <option value="">全部知识点</option>
+            <option v-for="k in kps" :key="k.id" :value="k.id">{{ k.name }}</option>
+          </select>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center">
+        <label class="option-row" style="margin: 0">
+          <input id="show-correct-answer" v-model="showCorrectAnswer" type="checkbox" />
+          <span>显示正确选项</span>
+        </label>
+        <button id="apply-wrong-filters" class="ghost" type="button" @click="applyFilters">筛选</button>
+      </div>
     </div>
     <p v-if="deleteError" class="error-summary" role="alert">{{ deleteError }}</p>
 
@@ -145,7 +179,8 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           <p class="material-text" style="margin: 0; white-space: pre-wrap">{{ item.material.content }}</p>
         </section>
         <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap">{{ item.stem }}</p>
-        <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }} · 标准答案：{{ correctText(item) }}</p>
+        <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }}</p>
+        <p v-if="showCorrectAnswer" class="mono" style="margin: 6px 0 0">正确选项：{{ correctText(item) }}</p>
         <div v-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}

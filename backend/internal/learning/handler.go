@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
@@ -161,8 +163,19 @@ func (h *Handler) deleteMemory(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
+	fromDate := strings.TrimSpace(q.Get("from"))
+	toDate := strings.TrimSpace(q.Get("to"))
+	if err := validateWrongItemsDateFilters(fromDate, toDate); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	keyword := strings.TrimSpace(q.Get("keyword"))
+	if len([]rune(keyword)) > 100 {
+		httpapi.WriteError(w, r, httpapi.ValidationError(map[string]string{"keyword": "关键词不能超过 100 个字"}))
+		return
+	}
 	rows, nextCursor, err := h.store.WrongItems(r.Context(), ctxkeys.UserID(r.Context()),
-		q.Get("knowledgePointId"), q.Get("cursor"), limit)
+		q.Get("knowledgePointId"), fromDate, toDate, keyword, q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
@@ -214,6 +227,24 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 		out = append(out, items[id])
 	}
 	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"wrongItems": out, "nextCursor": nextCursor})
+}
+
+func validateWrongItemsDateFilters(fromDate, toDate string) error {
+	const layout = "2006-01-02"
+	if fromDate != "" {
+		if _, err := time.Parse(layout, fromDate); err != nil {
+			return httpapi.ValidationError(map[string]string{"from": "开始日期格式应为 YYYY-MM-DD"})
+		}
+	}
+	if toDate != "" {
+		if _, err := time.Parse(layout, toDate); err != nil {
+			return httpapi.ValidationError(map[string]string{"to": "结束日期格式应为 YYYY-MM-DD"})
+		}
+	}
+	if fromDate != "" && toDate != "" && fromDate > toDate {
+		return httpapi.ValidationError(map[string]string{"to": "结束日期不能早于开始日期"})
+	}
+	return nil
 }
 
 func (h *Handler) deleteWrongItem(w http.ResponseWriter, r *http.Request) {

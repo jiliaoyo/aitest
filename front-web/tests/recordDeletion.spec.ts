@@ -67,12 +67,37 @@ describe('历史与错题本软删除', () => {
     await router.isReady()
     const wrapper = mount(WrongItemsPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('練習問題です。'))
-    expect(wrapper.text()).toContain('你的答案：A. 甲 · 标准答案：B. 乙')
+    expect(wrapper.text()).toContain('你的答案：A. 甲')
+    expect(wrapper.text()).not.toContain('正确选项：B. 乙')
+
+    await wrapper.get('#show-correct-answer').setValue(true)
+    expect(wrapper.text()).toContain('正确选项：B. 乙')
 
     await wrapper.get('button.danger').trigger('click')
     await flushPromises()
 
     expect(requestMock).toHaveBeenCalledWith('/wrong-items/item-1', { method: 'DELETE' })
     expect(wrapper.text()).not.toContain('練習問題です。')
+  })
+
+  it('按日期和关键词筛选错题', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/wrong-items?')) return { wrongItems: [] }
+      if (path === '/knowledge-points') return { knowledgePoints: [] }
+      return undefined
+    })
+    const router = routerFor(WrongItemsPage)
+    await router.push('/wrong-items')
+    await router.isReady()
+    const wrapper = mount(WrongItemsPage, { global: { plugins: [router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('没有待复习的错题'))
+
+    await wrapper.get('#wrong-keyword').setValue('语法')
+    await wrapper.get('#wrong-from').setValue('2026-01-01')
+    await wrapper.get('#wrong-to').setValue('2026-01-31')
+    await wrapper.get('#apply-wrong-filters').trigger('click')
+    await flushPromises()
+
+    expect(requestMock.mock.calls.some(([path]) => path === '/wrong-items?limit=20&from=2026-01-01&to=2026-01-31&keyword=%E8%AF%AD%E6%B3%95')).toBe(true)
   })
 })

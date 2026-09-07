@@ -202,6 +202,9 @@ paths:
       summary: 错题本（每题取最近一次错误作答）
       parameters:
         - { name: knowledgePointId, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date }, description: 错误作答开始日期（含当天） }
+        - { name: to, in: query, schema: { type: string, format: date }, description: 错误作答结束日期（含当天） }
+        - { name: keyword, in: query, schema: { type: string, maxLength: 100 }, description: 搜索题干、选项、材料或知识点 }
         - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
         - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:

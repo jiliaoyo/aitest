@@ -522,8 +522,8 @@ type wrongItemRow struct {
 	GradedAt          string
 }
 
-// WrongItems 返回每个错题（最近一次错误作答）及其解析，支持按知识点筛选。
-func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, cursor string, limit int) ([]wrongItemRow, string, error) {
+// WrongItems 返回每个错题（最近一次错误作答）及其解析，支持知识点、日期和关键词筛选。
+func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDate, toDate, keyword, cursor string, limit int) ([]wrongItemRow, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
@@ -532,8 +532,31 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, cursor
 	if knowledgePointID != "" {
 		args = append(args, knowledgePointID)
 		where = ` AND EXISTS (SELECT 1 FROM question_version_knowledge_points qvkp2
-		     WHERE qvkp2.question_version_id = pi.question_version_id
+			   WHERE qvkp2.question_version_id = pi.question_version_id
 		       AND qvkp2.knowledge_point_id::text = $2)`
+	}
+	if fromDate != "" {
+		args = append(args, fromDate)
+		where += " AND gr.updated_at >= $" + strconv.Itoa(len(args)) + "::date"
+	}
+	if toDate != "" {
+		args = append(args, toDate)
+		where += " AND gr.updated_at < ($" + strconv.Itoa(len(args)) + "::date + INTERVAL '1 day')"
+	}
+	if keyword != "" {
+		args = append(args, "%"+keyword+"%")
+		keywordArg := "$" + strconv.Itoa(len(args))
+		where += ` AND (
+			v.stem ILIKE ` + keywordArg + `
+			OR coalesce(v.options::text, '') ILIKE ` + keywordArg + `
+			OR coalesce(mv.content, '') ILIKE ` + keywordArg + `
+			OR EXISTS (
+				SELECT 1 FROM question_version_knowledge_points qvkp3
+				JOIN knowledge_points kp3 ON kp3.id = qvkp3.knowledge_point_id
+				WHERE qvkp3.question_version_id = pi.question_version_id
+				  AND kp3.name ILIKE ` + keywordArg + `
+			)
+		)`
 	}
 	outerWhere := ""
 	if cursor != "" {
