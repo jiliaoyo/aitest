@@ -69,36 +69,42 @@ func TestChoiceStemHasBlank(t *testing.T) {
 	}
 }
 
-func TestRejectExistingGeneratedStems(t *testing.T) {
-	questions := []generatedQuestion{{Stem: "図書館＿＿＿日本語を勉強します。"}}
-	if err := rejectExistingGeneratedStems(questions, []string{"図書館 ＿＿＿ 日本語を勉強します。"}); err == nil {
-		t.Fatal("expected an existing normalized stem to be rejected")
-	}
-	if err := rejectExistingGeneratedStems(questions, []string{"駅＿＿＿本を読みます。"}); err != nil {
-		t.Fatalf("different stem should be accepted: %v", err)
+func generatedQuestionForReuseTest(stem, optionText string) generatedQuestion {
+	return generatedQuestion{
+		Type: "single_choice", Stem: stem, Difficulty: 3,
+		Options: []generatedOption{
+			{ID: "a", Label: "A", Text: optionText}, {ID: "b", Label: "B", Text: "二"},
+			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
+		},
+		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`),
 	}
 }
 
-func TestGeneratedStemDuplicatesReturnsOnlyMatchedStems(t *testing.T) {
+func TestGeneratedQuestionReuseKeyUsesFullQuestion(t *testing.T) {
+	first := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
+	spacingVariant := generatedQuestionForReuseTest("図書館 ＿＿＿ 日本語を勉強します。", "一")
+	differentOptions := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "へ")
+	if generatedQuestionReuseKey("level", "subject", first) != generatedQuestionReuseKey("level", "subject", spacingVariant) {
+		t.Fatal("whitespace-only stem changes should reuse the same key")
+	}
+	if generatedQuestionReuseKey("level", "subject", first) == generatedQuestionReuseKey("level", "subject", differentOptions) {
+		t.Fatal("different options must remain different questions")
+	}
+}
+
+func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) {
 	questions := []generatedQuestion{
-		{Stem: "図書館＿＿＿日本語を勉強します。"},
-		{Stem: "駅＿＿＿本を読みます。"},
-		{Stem: "図書館 ＿＿＿ 日本語を勉強します。"},
+		generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一"),
+		generatedQuestionForReuseTest("駅＿＿＿本を読みます。", "一"),
 	}
-	got := generatedStemDuplicates(questions, []string{
-		"図書館 ＿＿＿ 日本語を勉強します。",
-		"学校＿＿＿行きます。",
-	})
-	if len(got) != 1 || got[0] != "図書館 ＿＿＿ 日本語を勉強します。" {
-		t.Fatalf("unexpected duplicate stems: %v", got)
+	existing := generatedQuestionReuseKey("level", "subject", questions[0])
+	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, []string{existing})
+	if err != nil || len(filtered) != 1 || filtered[0].Stem != "駅＿＿＿本を読みます。" || len(duplicates) != 1 {
+		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v, error: %v", filtered, duplicates, err)
 	}
-	merged := appendUniqueGeneratedStems([]string{"駅＿＿＿本を読みます。"}, got)
+	merged := appendUniqueGeneratedStems([]string{"駅＿＿＿本を読みます。"}, duplicates)
 	if len(merged) != 2 {
 		t.Fatalf("unexpected merged stems: %v", merged)
-	}
-	filtered, filteredDuplicates := filterGeneratedStemDuplicates(questions[:2], []string{"図書館 ＿＿＿ 日本語を勉強します。"})
-	if len(filtered) != 1 || filtered[0].Stem != "駅＿＿＿本を読みます。" || len(filteredDuplicates) != 1 {
-		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v", filtered, filteredDuplicates)
 	}
 }
 

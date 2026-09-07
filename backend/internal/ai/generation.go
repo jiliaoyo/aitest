@@ -1,7 +1,9 @@
 package ai
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	cryptorand "crypto/rand"
 	_ "embed"
 	"encoding/hex"
@@ -10,6 +12,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/aishuati/backend/internal/content"
@@ -298,16 +301,28 @@ type generatedStemRow struct {
 	Stem string
 }
 
+type generatedQuestionHistoryRow struct {
+	LevelID    string
+	SubjectID  string
+	Type       string
+	Stem       string
+	Options    *string
+	Answer     *string
+	Difficulty int
+}
+
 func (s *Service) loadGeneratedStems(ctx context.Context, db store.DBTx, userID, levelID, subjectID string, limit int) ([]string, error) {
 	rows, err := store.CollectRows[generatedStemRow](ctx, db,
 		`SELECT v.stem
-		 FROM question_versions v
+		 FROM practice_items pi
+		 JOIN practice_sessions ps ON ps.id = pi.session_id
+		 JOIN question_versions v ON v.id = pi.question_version_id
 		 JOIN source_sections ss ON ss.id = v.source_section_id
 		 JOIN sources src ON src.id = ss.source_id
-		 WHERE src.kind = 'ai_generated' AND src.created_by = $1
+		 WHERE src.kind = 'ai_generated' AND ps.user_id = $1
 		   AND v.level_id::text = $2
 		   AND ($3 = '' OR v.subject_id::text = $3)
-		 ORDER BY src.created_at DESC, v.id DESC
+		 ORDER BY pi.created_at DESC, pi.id DESC
 		 LIMIT CASE WHEN $4 > 0 THEN $4 ELSE NULL END`, userID, levelID, subjectID, limit)
 	if err != nil {
 		return nil, err
@@ -327,6 +342,61 @@ func (s *Service) loadGeneratedStems(ctx context.Context, db store.DBTx, userID,
 		stems = append(stems, stem)
 	}
 	return stems, nil
+}
+
+func (s *Service) loadGeneratedQuestionKeys(ctx context.Context, db store.DBTx, userID, levelID, subjectID string) ([]string, error) {
+	rows, err := store.CollectRows[generatedQuestionHistoryRow](ctx, db,
+		`SELECT v.level_id::text, v.subject_id::text, v.type, v.stem, v.options::text, aga.value::text, v.difficulty
+		 FROM practice_items pi
+		 JOIN practice_sessions ps ON ps.id = pi.session_id
+		 JOIN question_versions v ON v.id = pi.question_version_id
+		 JOIN source_sections ss ON ss.id = v.source_section_id
+		 JOIN sources src ON src.id = ss.source_id
+		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
+		 WHERE src.kind = 'ai_generated' AND ps.user_id = $1
+		   AND v.level_id::text = $2
+		   AND ($3 = '' OR v.subject_id::text = $3)`, userID, levelID, subjectID)
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(rows))
+	for _, row := range rows {
+		question, err := generatedQuestionFromHistoryRow(row)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, generatedQuestionReuseKey(row.LevelID, row.SubjectID, question))
+	}
+	return uniqueGeneratedKeys(keys), nil
+}
+
+func generatedQuestionFromHistoryRow(row generatedQuestionHistoryRow) (generatedQuestion, error) {
+	question := generatedQuestion{Type: row.Type, Stem: row.Stem, Difficulty: row.Difficulty}
+	if row.Options != nil && strings.TrimSpace(*row.Options) != "" {
+		if err := json.Unmarshal([]byte(*row.Options), &question.Options); err != nil {
+			return generatedQuestion{}, fmt.Errorf("解析历史 AI 题目选项失败: %w", err)
+		}
+	}
+	if row.Answer != nil {
+		question.CorrectAnswer = json.RawMessage(*row.Answer)
+	}
+	return question, nil
+}
+
+func uniqueGeneratedKeys(keys []string) []string {
+	seen := make(map[string]struct{}, len(keys))
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, key)
+	}
+	return out
 }
 
 func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
@@ -405,12 +475,13 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取历史 AI 题干失败: %w", err))
 	}
-	// 全量题干只用于服务端精确去重，不放进提示词，避免历史增长后消耗大量 token。
-	existingStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, 0)
+	// 全量指纹只用于服务端精确去重，不放进提示词，避免历史增长后消耗大量 token。
+	existingKeys, err := s.loadGeneratedQuestionKeys(ctx, s.pool, row.UserID, row.LevelID, subjectID)
 	if err != nil {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取全部历史 AI 题干失败: %w", err))
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取全部历史 AI 题目失败: %w", err))
 	}
 	generatedQuestions := make([]generatedQuestion, 0, row.RequestedCount)
+	generatedQuestionPoints := memory.KnowledgePoints
 	lastPromptVersion := questionGenerationPromptVersion
 	var validationErr error
 	retryNote := ""
@@ -458,9 +529,16 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			retryNote = ""
 			continue
 		}
-		blockedStems := append([]string{}, existingStems...)
-		blockedStems = append(blockedStems, generatedQuestionStems(generatedQuestions)...)
-		uniqueQuestions, duplicates := filterGeneratedStemDuplicates(questions, blockedStems)
+		blockedKeys := append([]string{}, existingKeys...)
+		generatedKeys, err := generatedQuestionKeys(row.LevelID, subjectID, generatedQuestions, generatedQuestionPoints)
+		if err != nil {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+		}
+		blockedKeys = append(blockedKeys, generatedKeys...)
+		uniqueQuestions, duplicates, err := filterGeneratedQuestionDuplicates(questions, row.LevelID, subjectID, generatedQuestionPoints, blockedKeys)
+		if err != nil {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+		}
 		if len(duplicates) > 0 {
 			// 只把本轮实际命中的旧题干加入重试上下文，避免把全部历史题干发给模型。
 			avoidStems = appendUniqueGeneratedStems(avoidStems, duplicates)
@@ -569,39 +647,100 @@ func normalizeGeneratedStem(stem string) string {
 	return strings.Join(strings.Fields(stem), "")
 }
 
-func rejectExistingGeneratedStems(questions []generatedQuestion, existing []string) error {
-	if duplicates := generatedStemDuplicates(questions, existing); len(duplicates) > 0 {
-		return fmt.Errorf("AI 题目与历史 AI 题目重复：%s", strings.Join(duplicates, "；"))
+func generatedQuestionReuseKey(levelID, subjectID string, question generatedQuestion) string {
+	options := append([]generatedOption(nil), question.Options...)
+	sort.SliceStable(options, func(i, j int) bool {
+		return options[i].ID < options[j].ID
+	})
+	canonical := struct {
+		LevelID   string            `json:"levelId"`
+		SubjectID string            `json:"subjectId"`
+		Type      string            `json:"type"`
+		Stem      string            `json:"stem"`
+		Options   []generatedOption `json:"options"`
+		Answer    json.RawMessage   `json:"answer"`
+	}{
+		LevelID: levelID, SubjectID: subjectID, Type: question.Type,
+		Stem:    normalizeGeneratedStem(question.Stem),
+		Options: options, Answer: canonicalJSON(question.CorrectAnswer),
 	}
-	return nil
+	data, _ := json.Marshal(canonical)
+	sum := md5.Sum(data)
+	return hex.EncodeToString(sum[:])
 }
 
-func generatedStemDuplicates(questions []generatedQuestion, existing []string) []string {
-	if len(existing) == 0 || len(questions) == 0 {
-		return nil
+func canonicalJSON(raw json.RawMessage) json.RawMessage {
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return bytes.TrimSpace(raw)
 	}
-	historical := make(map[string]string, len(existing))
-	for _, stem := range existing {
-		stem = strings.TrimSpace(stem)
-		if key := normalizeGeneratedStem(stem); key != "" {
-			historical[key] = stem
+	data, err := json.Marshal(value)
+	if err != nil {
+		return bytes.TrimSpace(raw)
+	}
+	return data
+}
+
+func resolveGeneratedQuestionSubject(defaultSubject string, question generatedQuestion, points []learning.AIGenerationKnowledgePoint) (string, error) {
+	if defaultSubject != "" {
+		return defaultSubject, nil
+	}
+	pointSubjects := make(map[string]string, len(points))
+	allowedSubjects := make(map[string]struct{}, len(points))
+	for _, point := range points {
+		pointSubjects[point.ID] = point.SubjectID
+		allowedSubjects[point.SubjectID] = struct{}{}
+	}
+	for _, pointID := range question.KnowledgePointIDs {
+		if subjectID := pointSubjects[pointID]; subjectID != "" {
+			return subjectID, nil
 		}
 	}
-	seen := make(map[string]struct{})
-	duplicates := make([]string, 0)
+	if subjectID := strings.TrimSpace(question.SubjectID); subjectID != "" {
+		if _, ok := allowedSubjects[subjectID]; ok {
+			return subjectID, nil
+		}
+	}
+	return "", errors.New("AI 题目无法确定合法科目")
+}
+
+func generatedQuestionKeys(levelID, subjectID string, questions []generatedQuestion, points []learning.AIGenerationKnowledgePoint) ([]string, error) {
+	keys := make([]string, 0, len(questions))
 	for _, question := range questions {
-		key := normalizeGeneratedStem(question.Stem)
-		stem, ok := historical[key]
-		if !ok {
-			continue
+		questionSubjectID, err := resolveGeneratedQuestionSubject(subjectID, question, points)
+		if err != nil {
+			return nil, err
 		}
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		duplicates = append(duplicates, stem)
+		keys = append(keys, generatedQuestionReuseKey(levelID, questionSubjectID, question))
 	}
-	return duplicates
+	return keys, nil
+}
+
+func filterGeneratedQuestionDuplicates(questions []generatedQuestion, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, existingKeys []string) ([]generatedQuestion, []string, error) {
+	keys := make(map[string]struct{}, len(existingKeys))
+	for _, key := range existingKeys {
+		keys[key] = struct{}{}
+	}
+	filtered := make([]generatedQuestion, 0, len(questions))
+	duplicates := make([]string, 0)
+	seenDuplicates := make(map[string]struct{})
+	for _, question := range questions {
+		questionSubjectID, err := resolveGeneratedQuestionSubject(subjectID, question, points)
+		if err != nil {
+			return nil, nil, err
+		}
+		key := generatedQuestionReuseKey(levelID, questionSubjectID, question)
+		if _, ok := keys[key]; ok {
+			if _, seen := seenDuplicates[key]; !seen {
+				duplicates = append(duplicates, strings.TrimSpace(question.Stem))
+				seenDuplicates[key] = struct{}{}
+			}
+			continue
+		}
+		filtered = append(filtered, question)
+		keys[key] = struct{}{}
+	}
+	return filtered, duplicates, nil
 }
 
 func generatedQuestionStems(questions []generatedQuestion) []string {
@@ -610,25 +749,6 @@ func generatedQuestionStems(questions []generatedQuestion) []string {
 		stems = append(stems, question.Stem)
 	}
 	return stems
-}
-
-func filterGeneratedStemDuplicates(questions []generatedQuestion, existing []string) ([]generatedQuestion, []string) {
-	duplicates := generatedStemDuplicates(questions, existing)
-	if len(duplicates) == 0 {
-		return questions, nil
-	}
-	duplicateKeys := make(map[string]struct{}, len(duplicates))
-	for _, stem := range duplicates {
-		duplicateKeys[normalizeGeneratedStem(stem)] = struct{}{}
-	}
-	filtered := make([]generatedQuestion, 0, len(questions)-len(duplicates))
-	for _, question := range questions {
-		if _, ok := duplicateKeys[normalizeGeneratedStem(question.Stem)]; ok {
-			continue
-		}
-		filtered = append(filtered, question)
-	}
-	return filtered, duplicates
 }
 
 func appendUniqueGeneratedStems(stems, additions []string) []string {
@@ -647,6 +767,65 @@ func appendUniqueGeneratedStems(stems, additions []string) []string {
 		out = append(out, stem)
 	}
 	return out
+}
+
+type generatedReuseCandidateRow struct {
+	QuestionID string
+	VersionID  string
+	Type       string
+	Stem       string
+	Options    *string
+	Answer     *string
+	Difficulty int
+}
+
+func (s *Service) findOrAdoptGeneratedQuestion(ctx context.Context, tx pgx.Tx, key, levelID, subjectID string, question generatedQuestion) (questionID, versionID string, reused bool, err error) {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, key); err != nil {
+		return "", "", false, fmt.Errorf("锁定 AI 题目复用键失败: %w", err)
+	}
+	const keyedQuery = `SELECT q.id::text, v.id::text
+		FROM question_versions v
+		JOIN questions q ON q.id = v.question_id
+		JOIN source_sections ss ON ss.id = v.source_section_id
+		JOIN sources src ON src.id = ss.source_id
+		WHERE src.kind = 'ai_generated' AND v.ai_reuse_key = $1
+		LIMIT 1`
+	if err := tx.QueryRow(ctx, keyedQuery, key).Scan(&questionID, &versionID); err == nil {
+		return questionID, versionID, true, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return "", "", false, err
+	}
+
+	candidates, err := store.CollectRows[generatedReuseCandidateRow](ctx, tx,
+		`SELECT q.id::text, v.id::text, v.type, v.stem, v.options::text, aga.value::text, v.difficulty
+		 FROM question_versions v
+		 JOIN questions q ON q.id = v.question_id
+		 JOIN source_sections ss ON ss.id = v.source_section_id
+		 JOIN sources src ON src.id = ss.source_id
+		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
+		 WHERE src.kind = 'ai_generated' AND v.ai_reuse_key IS NULL
+		   AND v.level_id::text = $1 AND v.subject_id::text = $2 AND v.type = $3`, levelID, subjectID, question.Type)
+	if err != nil {
+		return "", "", false, fmt.Errorf("查找历史 AI 题目失败: %w", err)
+	}
+	for _, candidate := range candidates {
+		history, err := generatedQuestionFromHistoryRow(generatedQuestionHistoryRow{
+			LevelID: levelID, SubjectID: subjectID, Type: candidate.Type, Stem: candidate.Stem,
+			Options: candidate.Options, Answer: candidate.Answer, Difficulty: candidate.Difficulty,
+		})
+		if err != nil {
+			return "", "", false, err
+		}
+		if generatedQuestionReuseKey(levelID, subjectID, history) != key {
+			continue
+		}
+		if _, err := tx.Exec(ctx,
+			`UPDATE question_versions SET ai_reuse_key = $1 WHERE id = $2 AND ai_reuse_key IS NULL`, key, candidate.VersionID); err != nil {
+			return "", "", false, fmt.Errorf("登记历史 AI 题目复用键失败: %w", err)
+		}
+		return candidate.QuestionID, candidate.VersionID, true, nil
+	}
+	return "", "", false, nil
 }
 
 func choiceStemHasBlank(stem string) bool {
@@ -764,82 +943,79 @@ func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error
 
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode, promptVersion string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		existing, err := s.loadGeneratedStems(ctx, tx, userID, levelID, subjectID, 0)
+		existingKeys, err := s.loadGeneratedQuestionKeys(ctx, tx, userID, levelID, subjectID)
 		if err != nil {
 			return fmt.Errorf("检查历史 AI 题目失败: %w", err)
 		}
-		if err := rejectExistingGeneratedStems(questions, existing); err != nil {
+		if _, duplicates, err := filterGeneratedQuestionDuplicates(questions, levelID, subjectID, points, existingKeys); err != nil {
 			return err
-		}
-		pointSubjects := make(map[string]string, len(points))
-		allowedSubjects := make(map[string]bool, len(points))
-		for _, point := range points {
-			pointSubjects[point.ID] = point.SubjectID
-			allowedSubjects[point.SubjectID] = true
-		}
-		var sourceID, sectionID string
-		if err := tx.QueryRow(ctx,
-			`INSERT INTO sources (name, kind, author, internal_note, created_by)
-			 VALUES ('AI 个性化练习', 'ai_generated', 'AI', '账号私有生成题目，未经人工审核，不进入普通题库。', $1)
-			 RETURNING id::text`, userID).Scan(&sourceID); err != nil {
-			return err
+		} else if len(duplicates) > 0 {
+			return fmt.Errorf("AI 题目与历史完全重复：%s", strings.Join(duplicates, "；"))
 		}
 		sectionName := "根据全局记忆生成"
 		if generationMode == generationModeLevel {
 			sectionName = "根据当前级别生成"
 		}
-		if err := tx.QueryRow(ctx,
-			`INSERT INTO source_sections (source_id, name, sort_order) VALUES ($1, $2, 1) RETURNING id::text`, sourceID, sectionName).Scan(&sectionID); err != nil {
-			return err
+		var sourceID, sectionID string
+		ensureSourceSection := func() error {
+			if sectionID != "" {
+				return nil
+			}
+			if err := tx.QueryRow(ctx,
+				`INSERT INTO sources (name, kind, author, internal_note, created_by)
+				 VALUES ('AI 个性化练习', 'ai_generated', 'AI', '账号私有生成题目，未经人工审核，不进入普通题库。', $1)
+				 RETURNING id::text`, userID).Scan(&sourceID); err != nil {
+				return err
+			}
+			return tx.QueryRow(ctx,
+				`INSERT INTO source_sections (source_id, name, sort_order) VALUES ($1, $2, 1) RETURNING id::text`, sourceID, sectionName).Scan(&sectionID)
 		}
 		for i, question := range questions {
 			optionsJSON, err := json.Marshal(question.Options)
 			if err != nil {
 				return err
 			}
-			var questionID, versionID string
-			if err := tx.QueryRow(ctx,
-				`INSERT INTO questions (status, has_answer, created_by)
-				 VALUES ('draft', false, $1) RETURNING id::text`, userID).Scan(&questionID); err != nil {
+			questionSubjectID, err := resolveGeneratedQuestionSubject(subjectID, question, points)
+			if err != nil {
 				return err
 			}
-			questionSubjectID := subjectID
-			if questionSubjectID == "" {
-				for _, pointID := range question.KnowledgePointIDs {
-					if pointSubject := pointSubjects[pointID]; pointSubject != "" {
-						questionSubjectID = pointSubject
-						break
-					}
-				}
-			}
-			if questionSubjectID == "" {
-				questionSubjectID = strings.TrimSpace(question.SubjectID)
-				if !allowedSubjects[questionSubjectID] {
-					return errors.New("AI 题目无法确定合法科目")
-				}
-			}
-			if err := tx.QueryRow(ctx,
-				`INSERT INTO question_versions
-				 (question_id, version_no, type, stem, options, level_id, subject_id, source_section_id, difficulty, source_order, created_by)
-				 VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-				 RETURNING id::text`, questionID, question.Type, strings.TrimSpace(question.Stem), optionsJSON,
-				levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID).Scan(&versionID); err != nil {
+			key := generatedQuestionReuseKey(levelID, questionSubjectID, question)
+			questionID, versionID, reused, err := s.findOrAdoptGeneratedQuestion(ctx, tx, key, levelID, questionSubjectID, question)
+			if err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx,
-				`UPDATE questions SET current_version_id = $2, updated_at = now() WHERE id = $1`, questionID, versionID); err != nil {
-				return err
-			}
-			for _, pointID := range question.KnowledgePointIDs {
-				if _, err := tx.Exec(ctx,
-					`INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id) VALUES ($1, $2)`, versionID, pointID); err != nil {
+			if !reused {
+				if err := ensureSourceSection(); err != nil {
 					return err
 				}
-			}
-			if _, err := tx.Exec(ctx,
-				`INSERT INTO ai_generated_question_answers (question_version_id, value, explanation, prompt_version, model)
-				 VALUES ($1, $2, $3, $4, $5)`, versionID, question.CorrectAnswer, strings.TrimSpace(question.Explanation), promptVersion, s.client.cfg.Model); err != nil {
-				return err
+				if err := tx.QueryRow(ctx,
+					`INSERT INTO questions (status, has_answer, created_by)
+					 VALUES ('draft', false, $1) RETURNING id::text`, userID).Scan(&questionID); err != nil {
+					return err
+				}
+				if err := tx.QueryRow(ctx,
+					`INSERT INTO question_versions
+					 (question_id, version_no, type, stem, options, level_id, subject_id, source_section_id, difficulty, source_order, created_by, ai_reuse_key)
+					 VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+					 RETURNING id::text`, questionID, question.Type, strings.TrimSpace(question.Stem), optionsJSON,
+					levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID, key).Scan(&versionID); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx,
+					`UPDATE questions SET current_version_id = $2, updated_at = now() WHERE id = $1`, questionID, versionID); err != nil {
+					return err
+				}
+				for _, pointID := range question.KnowledgePointIDs {
+					if _, err := tx.Exec(ctx,
+						`INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id) VALUES ($1, $2)`, versionID, pointID); err != nil {
+						return err
+					}
+				}
+				if _, err := tx.Exec(ctx,
+					`INSERT INTO ai_generated_question_answers (question_version_id, value, explanation, prompt_version, model)
+					 VALUES ($1, $2, $3, $4, $5)`, versionID, question.CorrectAnswer, strings.TrimSpace(question.Explanation), promptVersion, s.client.cfg.Model); err != nil {
+					return err
+				}
 			}
 			if _, err := tx.Exec(ctx,
 				`INSERT INTO practice_items (session_id, question_id, question_version_id, position) VALUES ($1, $2, $3, $4)`,
