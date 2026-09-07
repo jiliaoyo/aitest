@@ -76,4 +76,20 @@ describe('结果分层展示', () => {
     expect(wrapper.text()).toContain('待 AI 判定')
     expect(wrapper.text()).not.toContain('に沿って')
   })
+
+  it('判定失败时展示出题时答案并保留仅供参考提示', () => {
+    const wrapper = mount(ResultItem, {
+      props: {
+        item: {
+          ...baseItem,
+          gradingSource: 'ai',
+          gradingStatus: 'failed',
+          explanation: { text: 'AI 无法可靠判定本题，已展示出题时生成的答案，仅供参考。', source: 'ai' },
+        },
+      },
+    })
+    expect(wrapper.text()).toContain('出题时答案（仅供参考）')
+    expect(wrapper.text()).toContain('C. に沿って')
+    expect(wrapper.text()).toContain('AI 无法可靠判定本题')
+  })
 })

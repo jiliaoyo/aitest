@@ -256,6 +256,24 @@ func (s *Service) cachedExplanation(row batchAnalysisRow) (string, bool) {
 	return strings.TrimSpace(*row.CachedExplanation), true
 }
 
+func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, bool) {
+	if row.GeneratedAnswer == nil {
+		return nil, "", false
+	}
+	answer := strings.TrimSpace(*row.GeneratedAnswer)
+	if answer == "" || !json.Valid([]byte(answer)) {
+		return nil, "", false
+	}
+	text := "AI 无法可靠判定本题，已展示出题时生成的答案，仅供参考；可重试本批失败题目。"
+	if row.GeneratedExplanation != nil && strings.TrimSpace(*row.GeneratedExplanation) != "" {
+		text += "\n出题时解析：" + strings.TrimSpace(*row.GeneratedExplanation)
+	}
+	if len([]rune(text)) > 2000 {
+		text = string([]rune(text)[:2000])
+	}
+	return json.RawMessage(answer), text, true
+}
+
 // v2/v3 只调整账号级建议，历史版本生成的题目解析仍然有效，避免无谓重算缓存。
 func validQuestionExplanationPrompt(version string) bool {
 	return version == batchAnalysisPromptVersion || version == previousBatchPromptVersion || version == legacyBatchPromptVersion
@@ -383,7 +401,9 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	allowedExplanations := map[string]bool{}
 	versionIDs := map[string]string{}
 	cachedExplanations := map[string]string{}
+	rowsByItem := make(map[string]batchAnalysisRow, len(rows))
 	for _, row := range rows {
+		rowsByItem[row.ItemID] = row
 		versionIDs[row.ItemID] = row.QuestionVersionID
 		allowedGrades[row.ItemID] = row.GradingSource == practice.SourceAI && row.GradingStatus == practice.StatusPending
 		allowedExplanations[row.ItemID] = s.needsExplanation(row)
@@ -454,14 +474,21 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 				status = practice.StatusIncorrect
 			}
 			explanation := strings.TrimSpace(grade.Explanation)
+			correctAnswer := nullableJSON(grade.CorrectAnswer)
 			if status == practice.StatusFailed {
-				explanation = "AI 无法可靠判定本题，已留待人工处理。"
+				correctAnswer = nil
+				if answer, fallbackText, ok := generatedAnswerFallback(rowsByItem[grade.ItemID]); ok {
+					correctAnswer = answer
+					explanation = fallbackText
+				} else {
+					explanation = "AI 无法可靠判定本题，已留待人工处理。"
+				}
 			}
 			if _, err := tx.Exec(ctx,
 				`UPDATE grading_results
 				 SET status = $3, correct_value = $4, explanation = $5, explanation_source = 'ai', updated_at = now()
 				 WHERE session_id = $1 AND item_id = $2 AND source = 'ai' AND status = 'pending'`,
-				req.SessionID, grade.ItemID, status, nullableJSON(grade.CorrectAnswer), explanation); err != nil {
+				req.SessionID, grade.ItemID, status, correctAnswer, explanation); err != nil {
 				return err
 			}
 		}
@@ -506,8 +533,20 @@ func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		message := "AI 批次分析失败，稍后可重试。" + shortError(cause)
 		if _, err := tx.Exec(ctx,
+			`UPDATE grading_results gr
+			 SET correct_value = aga.value,
+			     explanation = left('AI 批次分析失败，已展示出题时生成的答案，仅供参考；可重试本批失败题目。' ||
+			       CASE WHEN aga.explanation = '' THEN '' ELSE E'\n出题时解析：' || aga.explanation END, 2000),
+			     explanation_source = 'ai', updated_at = now()
+			 FROM practice_items pi
+			 JOIN ai_generated_question_answers aga ON aga.question_version_id = pi.question_version_id
+			 WHERE gr.item_id = pi.id AND gr.session_id = pi.session_id
+			   AND gr.session_id = $1 AND gr.source = 'ai' AND gr.status = 'pending'`, sessionID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx,
 			`UPDATE grading_results
-			 SET status = 'failed', explanation = $2, explanation_source = 'ai', updated_at = now()
+			 SET status = 'failed', explanation = COALESCE(NULLIF(explanation, ''), $2), explanation_source = 'ai', updated_at = now()
 			 WHERE session_id = $1 AND source = 'ai' AND status = 'pending'`, sessionID, message); err != nil {
 			return err
 		}

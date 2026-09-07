@@ -22,8 +22,10 @@ function answerText(answer: ResultItemDTO['userAnswer'], options: OptionDTO[]): 
 }
 
 const userText = computed(() => answerText(props.item.userAnswer, props.item.options))
+const hasGeneratedFallback = computed(() => props.item.gradingStatus === 'failed' && props.item.correctAnswer !== null)
+const correctLabel = computed(() => (hasGeneratedFallback.value ? '出题时答案（仅供参考）' : '标准答案'))
 const correctText = computed(() =>
-  props.item.gradingStatus === 'pending' || props.item.gradingStatus === 'failed'
+  props.item.gradingStatus === 'pending' || (props.item.gradingStatus === 'failed' && !hasGeneratedFallback.value)
     ? '待 AI 判定'
     : answerText(props.item.correctAnswer, props.item.options),
 )
@@ -64,7 +66,7 @@ const reportItemID = computed(() => props.item.id)
     <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px">
       <dt class="muted">你的答案</dt>
       <dd class="mono" style="margin: 0">{{ userText }}</dd>
-      <dt class="muted">标准答案</dt>
+      <dt class="muted">{{ correctLabel }}</dt>
       <dd class="mono" style="margin: 0">{{ correctText }}</dd>
       <template v-if="item.knowledgePoints.length">
         <dt class="muted">知识点</dt>
