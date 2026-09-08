@@ -518,7 +518,14 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 			return err
 		}
 		if refreshMemoryAdvice {
-			return learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", memoryAdvice)
+			if err := learning.NewStore(tx).WriteAIAdviceTx(ctx, tx, userID, resetAt, "completed", memoryAdvice); err != nil {
+				return err
+			}
+		}
+		for _, grade := range response.Grades {
+			if grade.Correctness == "correct" || grade.Correctness == "incorrect" {
+				return jobs.EnqueueTx(ctx, tx, "rebuild_user_knowledge_stats", map[string]string{"userId": userID})
+			}
 		}
 		return nil
 	})

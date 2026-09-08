@@ -821,8 +821,28 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			`SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, generated.ID) != 1 {
 			t.Fatalf("generated batch should use one AI analysis and no confirmed score: %+v", result)
 		}
+		rebuildJobsBefore := countRows(t, pool,
+			`SELECT count(*) FROM jobs WHERE kind = 'rebuild_user_knowledge_stats' AND payload->>'userId' = $1`,
+			dataUserID(t, pool, "learner-b@example.com"))
+		cachedAIAnswersBefore := countRows(t, pool,
+			`SELECT coalesce(sum(ai_answered), 0) FROM user_knowledge_stats WHERE user_id = $1`,
+			dataUserID(t, pool, "learner-b@example.com"))
 		if err := aiService.Handlers()["analyze_practice_session_ai"](context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err != nil {
 			t.Fatalf("generated batch analysis failed: %v", err)
+		}
+		if got := countRows(t, pool,
+			`SELECT count(*) FROM jobs WHERE kind = 'rebuild_user_knowledge_stats' AND payload->>'userId' = $1`,
+			dataUserID(t, pool, "learner-b@example.com")); got != rebuildJobsBefore+1 {
+			t.Fatalf("successful AI grading should enqueue one stats rebuild: before=%d after=%d", rebuildJobsBefore, got)
+		}
+		if err := learning.NewStore(pool).RebuildUserStats(context.Background(), pool,
+			dataUserID(t, pool, "learner-b@example.com")); err != nil {
+			t.Fatal(err)
+		}
+		if got := countRows(t, pool,
+			`SELECT coalesce(sum(ai_answered), 0) FROM user_knowledge_stats WHERE user_id = $1`,
+			dataUserID(t, pool, "learner-b@example.com")); got != cachedAIAnswersBefore+10 {
+			t.Fatalf("stats rebuild after AI grading: before=%d after=%d, want +10", cachedAIAnswersBefore, got)
 		}
 		if _, err := pool.Exec(context.Background(),
 			`UPDATE jobs SET status = 'succeeded' WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, generated.ID); err != nil {
@@ -851,6 +871,209 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		loginIntegration(t, newIntegrationClient(t), server.URL, "learner-a@example.com", "learner-new-pass-123")
 	})
 }
+
+func TestLearningStatsAccountingIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("设置 TEST_DATABASE_URL 后运行 PostgreSQL 集成测试")
+	}
+	ctx := context.Background()
+	pool, err := store.Open(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	assertIntegrationDatabase(t, pool)
+	resetIntegrationDatabase(t, pool)
+	data := seedIntegrationData(t, pool)
+	learningStore := learning.NewStore(pool)
+	baseTime := time.Date(2026, time.September, 1, 0, 0, 0, 0, time.UTC)
+
+	for caseIndex, tc := range []struct {
+		name     string
+		statuses []string
+		want     int
+	}{
+		{name: "末尾连续两次错误", statuses: []string{"incorrect", "correct", "incorrect", "incorrect"}, want: 2},
+		{name: "最新一次正确", statuses: []string{"incorrect", "incorrect", "correct"}, want: 0},
+		{name: "全部错误", statuses: []string{"incorrect", "unanswered", "incorrect"}, want: 3},
+		{name: "全部正确", statuses: []string{"correct", "correct"}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			userID := cloneIntegrationLearner(t, pool, fmt.Sprintf("stats-%d@example.com", caseIndex))
+			for i, status := range tc.statuses {
+				addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+					"deterministic", status, stringPtr("official"), baseTime.Add(time.Duration(i)*time.Minute))
+			}
+			if tc.name == "末尾连续两次错误" {
+				addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+					"ai", "correct", nil, baseTime.Add(10*time.Minute))
+			}
+			if err := learningStore.RebuildUserStats(ctx, pool, userID); err != nil {
+				t.Fatal(err)
+			}
+			var got int
+			if err := pool.QueryRow(ctx, `SELECT consecutive_wrong FROM user_knowledge_stats WHERE user_id = $1 AND knowledge_point_id = $2`,
+				userID, data.knowledgePoint1).Scan(&got); err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("consecutive_wrong=%d, want %d", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("同批次按题号稳定计算", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "same-batch@example.com")
+		questionRows, err := store.CollectRows[struct {
+			QuestionID string
+			VersionID  string
+		}](ctx, pool, `SELECT q.id::text, v.id::text
+			FROM questions q
+			JOIN question_versions v ON v.id = q.published_version_id
+			JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
+			WHERE qvkp.knowledge_point_id = $1 ORDER BY q.id LIMIT 2`, data.knowledgePoint1)
+		if err != nil || len(questionRows) != 2 {
+			t.Fatalf("load same-batch questions: %v, count=%d", err, len(questionRows))
+		}
+		var sessionID string
+		if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, requested_count, submitted_at, completed_at, created_at)
+			VALUES ($1, 'completed', $2, $3, 2, $4, $4, $4) RETURNING id::text`,
+			userID, data.levelID, data.subjectID, baseTime).Scan(&sessionID); err != nil {
+			t.Fatal(err)
+		}
+		for position, status := range []string{"correct", "incorrect"} {
+			var itemID string
+			if err := pool.QueryRow(ctx, `INSERT INTO practice_items
+				(session_id, question_id, question_version_id, position) VALUES ($1, $2, $3, $4) RETURNING id::text`,
+				sessionID, questionRows[position].QuestionID, questionRows[position].VersionID, position+1).Scan(&itemID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `INSERT INTO grading_results
+				(session_id, item_id, source, status, answer_authority) VALUES ($1, $2, 'deterministic', $3, 'official')`,
+				sessionID, itemID, status); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := learningStore.RebuildUserStats(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		var got int
+		if err := pool.QueryRow(ctx, `SELECT consecutive_wrong FROM user_knowledge_stats WHERE user_id = $1 AND knowledge_point_id = $2`,
+			userID, data.knowledgePoint1).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got != 1 {
+			t.Fatalf("same-batch consecutive_wrong=%d, want 1", got)
+		}
+	})
+
+	t.Run("账号总数按批次题目去重", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "account-totals@example.com")
+		multiVersionID := publishedVersionID(t, pool, data.keyQuestionID)
+		if _, err := pool.Exec(ctx, `INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id)
+			VALUES ($1, $2) ON CONFLICT DO NOTHING`, multiVersionID, data.knowledgePoint2); err != nil {
+			t.Fatal(err)
+		}
+		for i, status := range []string{"incorrect", "correct", "incorrect", "incorrect"} {
+			addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+				"deterministic", status, stringPtr("official"), baseTime.Add(time.Duration(i)*time.Minute))
+		}
+		var noKnowledgeQuestionID string
+		if err := pool.QueryRow(ctx, `SELECT id::text FROM questions WHERE id NOT IN ($1, $2) ORDER BY id LIMIT 1`,
+			data.keyQuestionID, data.noAnswerID).Scan(&noKnowledgeQuestionID); err != nil {
+			t.Fatal(err)
+		}
+		noKnowledgeVersionID := publishedVersionID(t, pool, noKnowledgeQuestionID)
+		if _, err := pool.Exec(ctx, `DELETE FROM question_version_knowledge_points WHERE question_version_id = $1`, noKnowledgeVersionID); err != nil {
+			t.Fatal(err)
+		}
+		itemID := addLearningResult(t, pool, userID, data.levelID, data.subjectID, noKnowledgeQuestionID,
+			"deterministic", "correct", stringPtr("official"), baseTime.Add(5*time.Minute))
+		if _, err := pool.Exec(ctx, `INSERT INTO grading_results (session_id, item_id, source, status)
+			SELECT session_id, id, 'ai', 'incorrect' FROM practice_items WHERE id = $1`, itemID); err != nil {
+			t.Fatal(err)
+		}
+		addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.noAnswerID,
+			"ai", "correct", nil, baseTime.Add(6*time.Minute))
+
+		if err := learningStore.RebuildUserStats(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		memory, err := learningStore.MemoryForUser(ctx, userID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if memory.ConfirmedAnswered != 5 || memory.ConfirmedCorrect != 2 || memory.AIAnswered != 1 || memory.AICorrect != 1 {
+			t.Fatalf("unexpected account totals: %+v", memory)
+		}
+		snapshot, err := learningStore.MemorySnapshotForAI(ctx, userID)
+		if err != nil || snapshot.ConfirmedAnswered != 5 || snapshot.ConfirmedCorrect != 2 {
+			t.Fatalf("unexpected AI memory totals: %+v, err=%v", snapshot, err)
+		}
+		generation, err := learningStore.GenerationMemoryForAI(ctx, userID, data.levelID, data.subjectID, nil, "memory")
+		if err != nil || generation.ConfirmedAnswered != 5 || generation.ConfirmedCorrect != 2 {
+			t.Fatalf("unexpected generation totals: %+v, err=%v", generation, err)
+		}
+		var kpCount int
+		if err := pool.QueryRow(ctx, `SELECT confirmed_answered FROM user_knowledge_stats WHERE user_id = $1 AND knowledge_point_id = $2`,
+			userID, data.knowledgePoint1).Scan(&kpCount); err != nil {
+			t.Fatal(err)
+		}
+		if kpCount != 4 {
+			t.Fatalf("knowledge-point count=%d, want 4", kpCount)
+		}
+	})
+}
+
+func cloneIntegrationLearner(t *testing.T, pool *pgxpool.Pool, email string) string {
+	t.Helper()
+	var id string
+	if err := pool.QueryRow(context.Background(), `INSERT INTO users (email, email_normalized, password_hash, role)
+		SELECT $1, $1, password_hash, 'learner' FROM users WHERE role = 'learner' ORDER BY created_at LIMIT 1
+		RETURNING id::text`, email).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func publishedVersionID(t *testing.T, pool *pgxpool.Pool, questionID string) string {
+	t.Helper()
+	var id string
+	if err := pool.QueryRow(context.Background(), `SELECT published_version_id::text FROM questions WHERE id = $1`, questionID).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func addLearningResult(t *testing.T, pool *pgxpool.Pool, userID, levelID, subjectID, questionID,
+	source, status string, authority *string, submittedAt time.Time) string {
+	t.Helper()
+	ctx := context.Background()
+	var sessionID string
+	if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+		(user_id, status, level_id, subject_id, requested_count, submitted_at, completed_at, created_at)
+		VALUES ($1, 'completed', $2, $3, 1, $4, $4, $4) RETURNING id::text`,
+		userID, levelID, subjectID, submittedAt).Scan(&sessionID); err != nil {
+		t.Fatal(err)
+	}
+	var itemID string
+	if err := pool.QueryRow(ctx, `INSERT INTO practice_items
+		(session_id, question_id, question_version_id, position)
+		VALUES ($1, $2, $3, 1) RETURNING id::text`,
+		sessionID, questionID, publishedVersionID(t, pool, questionID)).Scan(&itemID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO grading_results
+		(session_id, item_id, source, status, answer_authority) VALUES ($1, $2, $3, $4, $5)`,
+		sessionID, itemID, source, status, authority); err != nil {
+		t.Fatal(err)
+	}
+	return itemID
+}
+
+func stringPtr(value string) *string { return &value }
 
 func newIntegrationClient(t *testing.T) *http.Client {
 	t.Helper()

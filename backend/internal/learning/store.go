@@ -160,7 +160,7 @@ func (s *Store) KnowledgePointDetailForUser(ctx context.Context, userID, id stri
 	return d, nil
 }
 
-// MemoryForUser 返回账号级学习记忆。user_knowledge_stats 是可重算缓存，建议文本则由整批 AI 任务更新。
+// MemoryForUser 返回账号级学习记忆。总题数来自判分事实，知识点缓存时间和建议单独返回。
 func (s *Store) MemoryForUser(ctx context.Context, userID string) (LearningMemory, error) {
 	var memory LearningMemory
 	var adviceStatus, adviceText string
@@ -178,13 +178,14 @@ func (s *Store) MemoryForUser(ctx context.Context, userID string) (LearningMemor
 	if err != nil {
 		return memory, err
 	}
-	if err := s.db.QueryRow(ctx,
-		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0),
-		        coalesce(sum(ai_answered), 0), coalesce(sum(ai_correct), 0)
-		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
-	).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect, &memory.AIAnswered, &memory.AICorrect); err != nil {
+	totals, err := s.accountTotals(ctx, userID)
+	if err != nil {
 		return memory, err
 	}
+	memory.ConfirmedAnswered = totals.ConfirmedAnswered
+	memory.ConfirmedCorrect = totals.ConfirmedCorrect
+	memory.AIAnswered = totals.AIAnswered
+	memory.AICorrect = totals.AICorrect
 	if total := memory.ConfirmedAnswered + memory.AIAnswered; total > 0 {
 		accuracy := float64(memory.ConfirmedCorrect+memory.AICorrect) / float64(total)
 		memory.EstimatedAccuracy = &accuracy
@@ -211,12 +212,12 @@ func (s *Store) MemoryAdviceRefreshDue(ctx context.Context, userID string) (bool
 // MemorySnapshotForAI 只返回可解释的统计事实，不把账号身份或原始答案发送给模型。
 func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemorySnapshot, error) {
 	var snapshot AIMemorySnapshot
-	if err := s.db.QueryRow(ctx,
-		`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
-		 FROM user_knowledge_stats WHERE user_id = $1`, userID,
-	).Scan(&snapshot.ConfirmedAnswered, &snapshot.ConfirmedCorrect); err != nil {
+	totals, err := s.accountTotals(ctx, userID)
+	if err != nil {
 		return snapshot, err
 	}
+	snapshot.ConfirmedAnswered = totals.ConfirmedAnswered
+	snapshot.ConfirmedCorrect = totals.ConfirmedCorrect
 	rows, err := store.CollectRows[recommendationRow](ctx, s.db,
 		`SELECT kp.id::text, kp.name, st.recent_answered, st.recent_correct,
 		        st.consecutive_wrong, st.last_practiced_at::text
@@ -244,12 +245,12 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
 	var memory AIGenerationMemory
 	if generationMode == "memory" {
-		if err := s.db.QueryRow(ctx,
-			`SELECT coalesce(sum(confirmed_answered), 0), coalesce(sum(confirmed_correct), 0)
-			 FROM user_knowledge_stats WHERE user_id = $1`, userID,
-		).Scan(&memory.ConfirmedAnswered, &memory.ConfirmedCorrect); err != nil {
+		totals, err := s.accountTotals(ctx, userID)
+		if err != nil {
 			return memory, err
 		}
+		memory.ConfirmedAnswered = totals.ConfirmedAnswered
+		memory.ConfirmedCorrect = totals.ConfirmedCorrect
 	}
 	if knowledgePointIDs == nil {
 		knowledgePointIDs = []string{}
@@ -303,6 +304,43 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 	}
 	memory.KnowledgePoints = rows
 	return memory, nil
+}
+
+type accountTotals struct {
+	ConfirmedAnswered int
+	ConfirmedCorrect  int
+	AIAnswered        int
+	AICorrect         int
+}
+
+// accountTotals 以一次批次题目作答为单位统计，避免多知识点题被重复计数。
+func (s *Store) accountTotals(ctx context.Context, userID string) (accountTotals, error) {
+	var totals accountTotals
+	err := s.db.QueryRow(ctx, `
+WITH eligible AS (
+  SELECT pi.id AS item_id, gr.id AS result_id, gr.source, gr.status, gr.answer_authority, gr.updated_at
+  FROM grading_results gr
+  JOIN practice_items pi ON pi.id = gr.item_id
+  JOIN practice_sessions ps ON ps.id = pi.session_id
+  LEFT JOIN user_learning_memory mem ON mem.user_id = ps.user_id
+  WHERE ps.user_id = $1 AND ps.status IN ('grading', 'completed', 'analysis_failed')
+    AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
+    AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+          AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+      OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect')))
+), chosen AS (
+  SELECT DISTINCT ON (item_id) source, status
+  FROM eligible
+  ORDER BY item_id,
+           CASE WHEN source = 'deterministic' AND answer_authority IS NOT NULL THEN 0 ELSE 1 END,
+           updated_at DESC, result_id DESC
+)
+SELECT count(*) FILTER (WHERE source = 'deterministic'),
+       count(*) FILTER (WHERE source = 'deterministic' AND status = 'correct'),
+       count(*) FILTER (WHERE source = 'ai'),
+       count(*) FILTER (WHERE source = 'ai' AND status = 'correct')
+FROM chosen`, userID).Scan(&totals.ConfirmedAnswered, &totals.ConfirmedCorrect, &totals.AIAnswered, &totals.AICorrect)
+	return totals, err
 }
 
 // DeleteMemory 清除派生学习记忆并设置新的统计起点；练习历史和成绩仍保留。
@@ -437,7 +475,8 @@ func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string
 WITH joined AS (
   SELECT qvkp.knowledge_point_id AS kp_id,
          gr.status, gr.source, gr.answer_authority,
-         COALESCE(ps.submitted_at, ps.created_at) AS at_time
+         COALESCE(ps.submitted_at, ps.created_at) AS at_time,
+         pi.position AS item_position, gr.id AS result_id
   FROM grading_results gr
   JOIN practice_items pi ON pi.id = gr.item_id
   JOIN practice_sessions ps ON ps.id = pi.session_id
@@ -453,15 +492,15 @@ confirmed AS (
 ),
 ordered AS (
   SELECT kp_id, status, at_time,
-         ROW_NUMBER() OVER (PARTITION BY kp_id ORDER BY at_time DESC) AS rn
+         ROW_NUMBER() OVER (
+           PARTITION BY kp_id
+           ORDER BY at_time DESC, item_position DESC, result_id DESC
+         ) AS rn
   FROM confirmed
 ),
 streak AS (
   SELECT kp_id,
-         CASE WHEN MAX(CASE WHEN status = 'correct' THEN rn END) IS NULL
-              THEN COUNT(*)
-              ELSE COUNT(*) - MAX(CASE WHEN status = 'correct' THEN rn END)
-         END AS consecutive_wrong
+         COALESCE(MIN(rn) FILTER (WHERE status = 'correct') - 1, COUNT(*)) AS consecutive_wrong
   FROM ordered GROUP BY kp_id
 ),
 agg AS (
