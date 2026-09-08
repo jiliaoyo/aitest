@@ -201,6 +201,7 @@ paths:
       tags: [learning]
       summary: 错题本（按每题最近一次可判定作答区分待重练与已掌握）
       parameters:
+        - { name: levelId, in: query, schema: { type: string }, description: 限定当前可练级别 }
         - { name: knowledgePointId, in: query, schema: { type: string } }
         - { name: from, in: query, schema: { type: string, format: date }, description: 错误作答开始日期（含当天） }
         - { name: to, in: query, schema: { type: string, format: date }, description: 错误作答结束日期（含当天） }
@@ -259,6 +260,9 @@ paths:
         - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items] } }
         - { name: selectionOrder, in: query, schema: { type: string, enum: [source_order, random], default: source_order } }
         - { name: knowledgePointIds, in: query, schema: { type: string }, description: 逗号分隔 }
+        - { name: from, in: query, schema: { type: string, format: date }, description: 错题重练的作答开始日期 }
+        - { name: to, in: query, schema: { type: string, format: date }, description: 错题重练的作答结束日期 }
+        - { name: keyword, in: query, schema: { type: string, maxLength: 100 }, description: 错题重练关键词 }
         - { name: count, in: query, schema: { type: integer } }
       responses:
         '200':
@@ -943,6 +947,9 @@ components:
         sourceId: { type: string, description: 指定题目数据来源；不传表示全部题目 }
         sourceSectionId: { type: string, description: 指定来源章节 }
         knowledgePointIds: { type: array, items: { type: string } }
+        from: { type: string, format: date, description: 错题重练的作答开始日期 }
+        to: { type: string, format: date, description: 错题重练的作答结束日期 }
+        keyword: { type: string, maxLength: 100, description: 错题重练关键词 }
         count: { type: integer, enum: [10, 20, 30] }
     AIGeneratePracticeRequest:
       type: object

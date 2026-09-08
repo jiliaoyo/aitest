@@ -52,6 +52,9 @@ func (h *Handler) availability(w http.ResponseWriter, r *http.Request) {
 		SelectionOrder:  q.Get("selectionOrder"),
 		SourceID:        q.Get("sourceId"),
 		SourceSectionID: q.Get("sourceSectionId"),
+		FromDate:        q.Get("from"),
+		ToDate:          q.Get("to"),
+		Keyword:         q.Get("keyword"),
 		Count:           10,
 	}
 	req.KnowledgePointIDs = parseIDList(q.Get("knowledgePointIds"))

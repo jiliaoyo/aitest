@@ -567,12 +567,16 @@ type wrongItemRow struct {
 }
 
 // WrongItems 返回每个题目（默认只含最近一次错误作答）及其解析，支持知识点、日期和关键词筛选。
-func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDate, toDate, keyword string, includeCorrect bool, cursor string, limit int) ([]wrongItemRow, string, error) {
+func (s *Store) WrongItems(ctx context.Context, userID, levelID, knowledgePointID, fromDate, toDate, keyword string, includeCorrect bool, cursor string, limit int) ([]wrongItemRow, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
 	args := []any{userID, includeCorrect}
 	where := ""
+	if levelID != "" {
+		args = append(args, levelID)
+		where += " AND v.level_id::text = $" + strconv.Itoa(len(args))
+	}
 	if knowledgePointID != "" {
 		args = append(args, knowledgePointID)
 		where = ` AND EXISTS (SELECT 1 FROM question_version_knowledge_points qvkp2

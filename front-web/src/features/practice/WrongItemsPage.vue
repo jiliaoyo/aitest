@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
-import type { KnowledgePointItem, WrongItem } from '@/api/types'
+import type { Exam, KnowledgePointItem, Level, WrongItem } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { authorityText, formatAIText, formatAnswerValue, gradingStatusText } from '@/app/format'
@@ -13,6 +13,8 @@ const items = ref<WrongItem[]>([])
 const nextCursor = ref('')
 const loadingMore = ref(false)
 const kps = ref<KnowledgePointItem[]>([])
+const levels = ref<Level[]>([])
+const levelFilter = ref('')
 const kpFilter = ref('')
 const fromDate = ref('')
 const toDate = ref('')
@@ -30,6 +32,7 @@ async function load(append = false): Promise<void> {
   else state.value = 'loading'
   try {
     const params = new URLSearchParams({ limit: '20' })
+    if (levelFilter.value) params.set('levelId', levelFilter.value)
     if (kpFilter.value) params.set('knowledgePointId', kpFilter.value)
     if (fromDate.value) params.set('from', fromDate.value)
     if (toDate.value) params.set('to', toDate.value)
@@ -53,13 +56,34 @@ function applyFilters(): void {
   void load()
 }
 
-onMounted(async () => {
-  await load()
+async function loadKnowledgePoints(): Promise<void> {
   try {
-    const res = await request<{ knowledgePoints: KnowledgePointItem[] }>('/knowledge-points')
+    const params = new URLSearchParams({ limit: '100' })
+    if (levelFilter.value) params.set('levelId', levelFilter.value)
+    const res = await request<{ knowledgePoints: KnowledgePointItem[] }>(`/knowledge-points?${params}`)
     kps.value = res.knowledgePoints.filter((k) => (k.stats?.confirmedAnswered ?? 0) > 0)
   } catch {
     // 筛选列表加载失败不阻塞主列表
+  }
+}
+
+async function changeLevel(): Promise<void> {
+  kpFilter.value = ''
+  await Promise.all([load(), loadKnowledgePoints()])
+}
+
+onMounted(async () => {
+  try {
+    const [catalog, me] = await Promise.all([
+      request<{ exams: Exam[] }>('/catalog'),
+      request<{ user: { defaultLevelId: string | null } }>('/me'),
+    ])
+    levels.value = catalog.exams.flatMap((exam) => exam.levels)
+    levelFilter.value = me.user.defaultLevelId ?? levels.value[0]?.id ?? ''
+    await Promise.all([load(), loadKnowledgePoints()])
+  } catch (err) {
+    errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
+    state.value = 'error'
   }
 })
 
@@ -70,19 +94,26 @@ function correctLabel(item: WrongItem): string {
   return '标准答案'
 }
 
-const canRetrain = computed(() => items.value.some((item) => item.gradingStatus !== 'correct'))
+const canRetrain = computed(() => !!levelFilter.value && items.value.some((item) => item.gradingStatus !== 'correct'))
 
 async function retrain(): Promise<void> {
   creating.value = true
   try {
-    const me = await request<{ user: { defaultLevelId: string | null } }>('/me')
-    if (!me.user.defaultLevelId) {
+    if (!levelFilter.value) {
       await router.push('/practice/new')
       return
     }
     const session = await request<{ id: string }>('/practice-sessions', {
       method: 'POST',
-      body: { levelId: me.user.defaultLevelId, mode: 'wrong_items', count: 10 },
+      body: {
+        levelId: levelFilter.value,
+        mode: 'wrong_items',
+        knowledgePointIds: kpFilter.value ? [kpFilter.value] : [],
+        from: fromDate.value,
+        to: toDate.value,
+        keyword: keyword.value.trim(),
+        count: 10,
+      },
     })
     await router.push(`/practice/${session.id}`)
   } catch (err) {
@@ -120,6 +151,12 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
 
     <div class="card" style="display: grid; gap: 12px; margin-bottom: 18px">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end">
+        <div class="field" style="margin: 0">
+          <label for="wrong-level">级别</label>
+          <select id="wrong-level" v-model="levelFilter" @change="changeLevel">
+            <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.name }}</option>
+          </select>
+        </div>
         <div class="field" style="margin: 0">
           <label for="wrong-keyword">关键词</label>
           <input id="wrong-keyword" v-model="keyword" type="search" placeholder="题干、选项或材料" @keydown.enter.prevent="applyFilters" />

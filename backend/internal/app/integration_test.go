@@ -22,6 +22,7 @@ import (
 
 	"github.com/aishuati/backend/internal/ai"
 	"github.com/aishuati/backend/internal/config"
+	"github.com/aishuati/backend/internal/content"
 	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/practice"
@@ -1341,7 +1342,7 @@ func TestWrongItemStateIntegration(t *testing.T) {
 	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[3].ID,
 		"deterministic", "correct", stringPtr("official"), baseTime.Add(4*time.Minute))
 
-	rows, _, err := learning.NewStore(pool).WrongItems(ctx, userID, "", "", "", "", false, "", 20)
+	rows, _, err := learning.NewStore(pool).WrongItems(ctx, userID, data.levelID, "", "", "", "", false, "", 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1352,7 +1353,7 @@ func TestWrongItemStateIntegration(t *testing.T) {
 	if defaultIDs[questions[0].ID] || !defaultIDs[questions[1].ID] || !defaultIDs[questions[2].ID] || defaultIDs[questions[3].ID] {
 		t.Fatalf("unexpected current wrong questions: %+v", defaultIDs)
 	}
-	rows, _, err = learning.NewStore(pool).WrongItems(ctx, userID, "", "", "", "", true, "", 20)
+	rows, _, err = learning.NewStore(pool).WrongItems(ctx, userID, data.levelID, "", "", "", "", true, "", 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1363,7 +1364,9 @@ func TestWrongItemStateIntegration(t *testing.T) {
 	if !allIDs[questions[0].ID] || !allIDs[questions[1].ID] || !allIDs[questions[2].ID] || allIDs[questions[3].ID] {
 		t.Fatalf("unexpected wrong and mastered questions: %+v", allIDs)
 	}
-	ids, err := practice.NewStore(pool).WrongQuestionIDs(ctx, userID, 20)
+	ids, err := practice.NewStore(pool).WrongQuestionIDs(ctx, practice.WrongQuestionFilter{
+		UserID: userID, LevelID: data.levelID,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1373,6 +1376,12 @@ func TestWrongItemStateIntegration(t *testing.T) {
 	}
 	if retrainIDs[questions[0].ID] || !retrainIDs[questions[1].ID] || !retrainIDs[questions[2].ID] || retrainIDs[questions[3].ID] {
 		t.Fatalf("unexpected retrain questions: %+v", retrainIDs)
+	}
+	available, err := practice.NewService(pool, content.NewStore(pool)).Availability(ctx, userID, practice.CreateRequest{
+		LevelID: data.levelID, Mode: "wrong_items", Count: 10,
+	})
+	if err != nil || available != 2 {
+		t.Fatalf("wrong-item availability=%d err=%v, want 2", available, err)
 	}
 }
 

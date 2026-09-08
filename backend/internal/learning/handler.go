@@ -184,7 +184,7 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 		includeCorrect = parsed
 	}
 	rows, nextCursor, err := h.store.WrongItems(r.Context(), ctxkeys.UserID(r.Context()),
-		q.Get("knowledgePointId"), fromDate, toDate, keyword, includeCorrect, q.Get("cursor"), limit)
+		q.Get("levelId"), q.Get("knowledgePointId"), fromDate, toDate, keyword, includeCorrect, q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

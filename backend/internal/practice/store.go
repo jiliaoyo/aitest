@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/store"
@@ -422,8 +423,44 @@ func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string,
 	return out, next, nil
 }
 
-// WrongQuestionIDs 返回用户最近一次可判定作答仍为错误的题目 ID。
-func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) ([]string, error) {
+type WrongQuestionFilter struct {
+	UserID            string
+	LevelID           string
+	SubjectID         string
+	SourceID          string
+	SourceSectionID   string
+	KnowledgePointIDs []string
+	FromDate          string
+	ToDate            string
+	Keyword           string
+}
+
+// WrongQuestionIDs 先应用当前可练范围，再返回最近一次可判定作答仍为错误的题目 ID。
+func (s *Store) WrongQuestionIDs(ctx context.Context, f WrongQuestionFilter) ([]string, error) {
+	args := []any{f.UserID, f.LevelID, f.SubjectID, f.SourceID, f.SourceSectionID}
+	kpIDs := f.KnowledgePointIDs
+	if kpIDs == nil {
+		kpIDs = []string{}
+	}
+	args = append(args, kpIDs)
+	where := ""
+	if f.FromDate != "" {
+		args = append(args, f.FromDate)
+		where += " AND r.at_time >= $" + strconv.Itoa(len(args)) + "::date"
+	}
+	if f.ToDate != "" {
+		args = append(args, f.ToDate)
+		where += " AND r.at_time < ($" + strconv.Itoa(len(args)) + "::date + interval '1 day')"
+	}
+	if f.Keyword != "" {
+		args = append(args, "%"+f.Keyword+"%")
+		p := "$" + strconv.Itoa(len(args))
+		where += ` AND (v.stem ILIKE ` + p + ` OR coalesce(v.options::text, '') ILIKE ` + p + `
+		  OR coalesce(mv.content, '') ILIKE ` + p + ` OR EXISTS (
+		    SELECT 1 FROM question_version_knowledge_points qvkp2
+		    JOIN knowledge_points kp2 ON kp2.id = qvkp2.knowledge_point_id
+		    WHERE qvkp2.question_version_id = v.id AND kp2.name ILIKE ` + p + `))`
+	}
 	rows, err := store.CollectRows[struct{ ID string }](ctx, s.db,
 		`WITH eligible AS (
 		   SELECT pi.question_id, pi.position, gr.id AS result_id, gr.status,
@@ -442,10 +479,22 @@ func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) 
 		          row_number() OVER (PARTITION BY question_id ORDER BY at_time DESC, position DESC, result_id DESC) AS rn
 		   FROM eligible
 		 )
-		 SELECT question_id::text FROM ranked
-		 WHERE rn = 1 AND status IN ('incorrect', 'unanswered')
-		 ORDER BY at_time DESC, question_id DESC
-		 LIMIT $2`, userID, limit)
+		 SELECT r.question_id::text FROM ranked r
+		 JOIN questions q ON q.id = r.question_id
+		 JOIN question_versions v ON v.id = q.published_version_id
+		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
+		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+		 LEFT JOIN sources src ON src.id = ss.source_id
+		 WHERE r.rn = 1 AND r.status IN ('incorrect', 'unanswered')
+		   AND q.retired_at IS NULL AND coalesce(src.kind, '') <> 'ai_generated'
+		   AND v.level_id::text = $2
+		   AND ($3 = '' OR v.subject_id::text = $3)
+		   AND ($4 = '' OR ss.source_id::text = $4)
+		   AND ($5 = '' OR v.source_section_id::text = $5)
+		   AND ($6::uuid[] = '{}' OR EXISTS (
+		     SELECT 1 FROM question_version_knowledge_points qvkp
+		     WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($6::uuid[])))`+where+`
+		 ORDER BY r.at_time DESC, r.question_id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}

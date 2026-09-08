@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/aishuati/backend/internal/content"
 	"github.com/aishuati/backend/internal/httpapi"
@@ -33,6 +34,9 @@ type CreateRequest struct {
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
 	SourceID          string   `json:"sourceId"`
 	SourceSectionID   string   `json:"sourceSectionId"`
+	FromDate          string   `json:"from"`
+	ToDate            string   `json:"to"`
+	Keyword           string   `json:"keyword"`
 	Count             int      `json:"count"`
 }
 
@@ -99,7 +103,15 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 		if req.LevelID == "" {
 			return f, httpapi.ValidationError(map[string]string{"levelId": "请选择级别"})
 		}
-		ids, err := s.store.WrongQuestionIDs(ctx, userID, req.Count)
+		if err := validateWrongFilters(req.FromDate, req.ToDate, req.Keyword); err != nil {
+			return f, err
+		}
+		ids, err := s.store.WrongQuestionIDs(ctx, WrongQuestionFilter{
+			UserID: userID, LevelID: req.LevelID, SubjectID: req.SubjectID,
+			SourceID: req.SourceID, SourceSectionID: req.SourceSectionID,
+			KnowledgePointIDs: req.KnowledgePointIDs,
+			FromDate:          req.FromDate, ToDate: req.ToDate, Keyword: req.Keyword,
+		})
 		if err != nil {
 			return f, err
 		}
@@ -141,6 +153,9 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 			"sourceId":          req.SourceID,
 			"sourceSectionId":   req.SourceSectionID,
 			"knowledgePointIds": req.KnowledgePointIDs,
+			"from":              req.FromDate,
+			"to":                req.ToDate,
+			"keyword":           req.Keyword,
 		})
 		var subjectIDPtr *string
 		if req.SubjectID != "" {
@@ -160,6 +175,30 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 		return PreSubmitSession{}, err
 	}
 	return s.GetPreSubmit(ctx, userID, sessionID)
+}
+
+func validateWrongFilters(fromDate, toDate, keyword string) error {
+	if len([]rune(keyword)) > 100 {
+		return httpapi.ValidationError(map[string]string{"keyword": "关键词不能超过 100 个字"})
+	}
+	var from, to time.Time
+	var err error
+	if fromDate != "" {
+		from, err = time.Parse("2006-01-02", fromDate)
+		if err != nil {
+			return httpapi.ValidationError(map[string]string{"from": "开始日期格式不正确"})
+		}
+	}
+	if toDate != "" {
+		to, err = time.Parse("2006-01-02", toDate)
+		if err != nil {
+			return httpapi.ValidationError(map[string]string{"to": "结束日期格式不正确"})
+		}
+	}
+	if !from.IsZero() && !to.IsZero() && from.After(to) {
+		return httpapi.ValidationError(map[string]string{"to": "结束日期不能早于开始日期"})
+	}
+	return nil
 }
 
 // ---------- 读取批次 ----------
