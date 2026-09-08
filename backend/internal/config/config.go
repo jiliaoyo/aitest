@@ -25,10 +25,11 @@ type Config struct {
 	WorkerID          string
 	WorkerConcurrency int
 
-	AIBaseURL string
-	AIAPIKey  string
-	AIModel   string
-	AITimeout time.Duration
+	AIBaseURL              string
+	AIAPIKey               string
+	AIModel                string
+	AITimeout              time.Duration
+	AIGenerationDailyLimit int
 	// 费用按美元/百万 token 配置，并在每次调用审计时固化，避免模型价格变化污染历史统计。
 	AIInputPricePerMillion  float64
 	AIOutputPricePerMillion float64
@@ -83,6 +84,11 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("AI_TIMEOUT 无效: %w", err)
 	}
 	c.AITimeout = aiTimeout
+	dailyGenerationLimit, err := strconv.Atoi(getenv("AI_GENERATION_DAILY_LIMIT", "10"))
+	if err != nil || dailyGenerationLimit < 0 {
+		return c, fmt.Errorf("AI_GENERATION_DAILY_LIMIT 无效: 请输入非负整数")
+	}
+	c.AIGenerationDailyLimit = dailyGenerationLimit
 	inputPrice, err := parsePrice("AI_INPUT_PRICE_PER_MILLION")
 	if err != nil {
 		return c, err

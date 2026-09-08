@@ -36,13 +36,21 @@ var explainPrompt string
 var batchAnalysisPrompt string
 
 type Service struct {
-	pool   *pgxpool.Pool
-	client *Client
-	logger *slog.Logger
+	pool                 *pgxpool.Pool
+	client               *Client
+	logger               *slog.Logger
+	generationDailyLimit int
 }
 
-func NewService(pool *pgxpool.Pool, client *Client, logger *slog.Logger) *Service {
-	return &Service{pool: pool, client: client, logger: logger}
+const defaultAIGenerationDailyLimit = 10
+
+// NewService 的可选配额参数保持旧的测试和工具调用兼容；正式进程由配置传入。
+func NewService(pool *pgxpool.Pool, client *Client, logger *slog.Logger, dailyLimit ...int) *Service {
+	limit := defaultAIGenerationDailyLimit
+	if len(dailyLimit) > 0 {
+		limit = dailyLimit[0]
+	}
+	return &Service{pool: pool, client: client, logger: logger, generationDailyLimit: limit}
 }
 
 func (s *Service) markBusinessSuccess(ctx context.Context, runID string) {

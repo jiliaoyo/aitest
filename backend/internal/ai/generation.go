@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aishuati/backend/internal/content"
 	"github.com/aishuati/backend/internal/httpapi"
@@ -133,6 +134,7 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 	if len(req.KnowledgePointIDs) > 10 {
 		return AIGeneratedSession{}, httpapi.ValidationError(map[string]string{"knowledgePointIds": "一次最多选择 10 个知识点"})
 	}
+	req.KnowledgePointIDs = normalizeKnowledgePointIDs(req.KnowledgePointIDs)
 	if req.LevelID == "" {
 		if err := s.pool.QueryRow(ctx, `SELECT coalesce(default_level_id::text, '') FROM users WHERE id::text = $1`, userID).Scan(&req.LevelID); err != nil {
 			return AIGeneratedSession{}, err
@@ -156,6 +158,48 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 	})
 	var out AIGeneratedSession
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		// 用户行锁把“已有生成批次”和“今日配额”检查与创建串成一个原子边界。
+		var lockedUserID string
+		if err := tx.QueryRow(ctx, `SELECT id::text FROM users WHERE id::text = $1 FOR UPDATE`, userID).Scan(&lockedUserID); err != nil {
+			return err
+		}
+		var existingID, existingScope string
+		var sameScope bool
+		err := tx.QueryRow(ctx,
+			`SELECT id::text, scope::text, scope = $2::jsonb
+			 FROM practice_sessions
+			 WHERE user_id = $1 AND status = 'generating'
+			 ORDER BY created_at DESC, id DESC
+			 LIMIT 1 FOR UPDATE`, userID, string(scope),
+		).Scan(&existingID, &existingScope, &sameScope)
+		if err == nil {
+			if sameScope {
+				out = AIGeneratedSession{ID: existingID, Status: "generating"}
+				return nil
+			}
+			return httpapi.E(http.StatusConflict, "ai_generation_in_progress", "已有一批 AI 题目正在生成，请等待完成后再开始。")
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		var used int
+		var resetAt time.Time
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*)::int,
+			        (date_trunc('day', now() AT TIME ZONE 'UTC') + INTERVAL '1 day') AT TIME ZONE 'UTC'
+			 FROM practice_sessions
+			 WHERE user_id = $1 AND scope->>'mode' = 'ai_generated'
+			   AND created_at >= (date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`, userID,
+		).Scan(&used, &resetAt); err != nil {
+			return err
+		}
+		if s.generationDailyLimit > 0 && used >= s.generationDailyLimit {
+			resetText := resetAt.UTC().Format(time.RFC3339)
+			return httpapi.WithDetails(
+				httpapi.E(http.StatusTooManyRequests, "ai_generation_daily_limit", fmt.Sprintf("今日 AI 出题次数已用完，配额将在 %s（UTC）重置。", resetText)),
+				map[string]any{"dailyLimit": s.generationDailyLimit, "used": used, "resetAt": resetText},
+			)
+		}
 		var subjectID any
 		if req.SubjectID != "" {
 			subjectID = req.SubjectID
@@ -173,6 +217,23 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 }
 
 func validGeneratedCount(count int) bool { return count == 10 || count == 20 || count == 30 }
+
+func normalizeKnowledgePointIDs(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
 
 func validGeneratedDifficulty(difficulty string) bool {
 	return difficulty == generatedDifficultyEasy || difficulty == generatedDifficultyNormal || difficulty == generatedDifficultyHard || difficulty == generatedDifficultyMixed

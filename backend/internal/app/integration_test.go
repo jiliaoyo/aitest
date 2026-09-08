@@ -23,6 +23,7 @@ import (
 	"github.com/aishuati/backend/internal/ai"
 	"github.com/aishuati/backend/internal/config"
 	"github.com/aishuati/backend/internal/content"
+	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/practice"
@@ -262,6 +263,57 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 		if httpStatus == nil || *httpStatus != http.StatusOK || businessStatus != "failed" || failureKind != "business_semantic" || auditError != "summary invalid" {
 			t.Fatalf("unexpected staged audit: http=%v business=%q failure=%q error=%q", httpStatus, businessStatus, failureKind, auditError)
+		}
+	})
+
+	t.Run("AI 生成账号准入与每日配额", func(t *testing.T) {
+		// 使用管理员账号隔离这个准入回归，避免改变后续学习者批次的固定排序。
+		userID := data.adminID
+		client := ai.NewClient(ai.Config{BaseURL: "http://127.0.0.1:1", APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		service := ai.NewService(pool, client, logger, 1)
+		request := ai.AIGenerateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, KnowledgePointIDs: []string{data.knowledgePoint2, data.knowledgePoint1}, Count: 10,
+		}
+		first, err := service.CreateGeneratedSession(context.Background(), userID, request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM jobs WHERE payload->>'sessionId' = $1`, first.ID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM practice_sessions WHERE id = $1`, first.ID)
+		})
+		request.KnowledgePointIDs = []string{data.knowledgePoint1, data.knowledgePoint2}
+		reused, err := service.CreateGeneratedSession(context.Background(), userID, request)
+		if err != nil || reused.ID != first.ID {
+			t.Fatalf("same generation scope should reuse the active batch: first=%+v reused=%+v err=%v", first, reused, err)
+		}
+		different := request
+		different.Category = "grammar_case_particle"
+		if _, err := service.CreateGeneratedSession(context.Background(), userID, different); err == nil {
+			t.Fatal("different generation scope should be rejected while a batch is active")
+		} else {
+			var apiErr *httpapi.APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != "ai_generation_in_progress" || apiErr.Status != http.StatusConflict {
+				t.Fatalf("unexpected active-batch error: %v", err)
+			}
+		}
+		if _, err := pool.Exec(context.Background(), `UPDATE practice_sessions SET status = 'generation_failed' WHERE id = $1`, first.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(context.Background(), `DELETE FROM jobs WHERE payload->>'sessionId' = $1`, first.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.CreateGeneratedSession(context.Background(), userID, different); err == nil {
+			t.Fatal("a failed generation should still consume the daily quota")
+		} else {
+			var apiErr *httpapi.APIError
+			if !errors.As(err, &apiErr) || apiErr.Code != "ai_generation_daily_limit" || apiErr.Status != http.StatusTooManyRequests {
+				t.Fatalf("unexpected daily-limit error: %v", err)
+			}
+			details, ok := apiErr.Details.(map[string]any)
+			if !ok || details["used"] != 1 || details["dailyLimit"] != 1 || details["resetAt"] == "" {
+				t.Fatalf("daily-limit details should include usage and reset time: %#v", apiErr.Details)
+			}
 		}
 	})
 

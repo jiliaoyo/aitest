@@ -337,7 +337,7 @@ paths:
             schema: { $ref: '#/components/schemas/AIGeneratePracticeRequest' }
       responses:
         '202':
-          description: 已加入生成队列
+          description: 已加入生成队列；相同范围的进行中批次会复用原批次
           content:
             application/json:
               schema:
@@ -345,7 +345,8 @@ paths:
                 properties:
                   id: { type: string }
                   status: { type: string, enum: [generating] }
-        '409': { description: no_knowledge_points }
+        '409': { description: ai_generation_in_progress 或 no_knowledge_points }
+        '429': { description: ai_generation_daily_limit；details 包含 dailyLimit、used、resetAt }
         '503': { description: ai_unavailable }
   /practice-sessions/{id}:
     get:
