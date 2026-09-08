@@ -183,6 +183,12 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		}
 		return err
 	}
+	if err := validateAICorrectAnswer(item.Type, item.Options, resp.CorrectAnswer, resp.Correctness); err != nil {
+		if attempts >= maxAttempts {
+			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
+		}
+		return err
+	}
 	if status == practice.StatusFailed {
 		explanation = "AI 无法可靠判定本题，已留待人工处理。"
 	}
@@ -418,6 +424,12 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	for _, grade := range response.Grades {
 		if !allowedGrades[grade.ItemID] || seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || strings.TrimSpace(grade.Explanation) == "" || len([]rune(grade.Explanation)) > 2000 {
 			err := errors.New("AI 批次判定包含无效题目或结论")
+			if attempts >= maxAttempts {
+				return s.failBatchAnalysis(ctx, req.SessionID, err)
+			}
+			return err
+		}
+		if err := validateAICorrectAnswer(rowsByItem[grade.ItemID].Type, rowsByItem[grade.ItemID].Options, grade.CorrectAnswer, grade.Correctness); err != nil {
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}

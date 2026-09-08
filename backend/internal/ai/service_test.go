@@ -2,6 +2,25 @@ package ai
 
 import "testing"
 
+func TestValidateAICorrectAnswer(t *testing.T) {
+	options := stringPtr(`[ {"id":"a","label":"A","text":"甲"}, {"id":"b","label":"B","text":"乙"} ]`)
+	if err := validateAICorrectAnswer("single_choice", options, []byte(`{"optionIds":["a"]}`), "correct"); err != nil {
+		t.Fatalf("valid choice rejected: %v", err)
+	}
+	if err := validateAICorrectAnswer("single_choice", options, []byte(`{"optionIds":["x"]}`), "incorrect"); err == nil {
+		t.Fatal("unknown option accepted")
+	}
+	if err := validateAICorrectAnswer("fill_blank", nil, []byte(`{"text":"に"}`), "correct"); err != nil {
+		t.Fatalf("valid text answer rejected: %v", err)
+	}
+	if err := validateAICorrectAnswer("short_answer", nil, []byte(`{"reference":"参考"}`), "correct"); err == nil {
+		t.Fatal("reference-shaped AI answer accepted instead of text protocol")
+	}
+	if err := validateAICorrectAnswer("short_answer", nil, nil, "cannot_determine"); err != nil {
+		t.Fatalf("cannot_determine should permit missing answer: %v", err)
+	}
+}
+
 func TestGeneratedAnswerFallbackKeepsCandidateAnswer(t *testing.T) {
 	answer, explanation, ok := generatedAnswerFallback(batchAnalysisRow{
 		GeneratedAnswer:      stringPtr(`{"optionIds":["a"]}`),
