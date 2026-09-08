@@ -35,7 +35,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 func (h *Handler) sources(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	sources, err := h.service.PracticeSources(r.Context(), q.Get("levelId"), q.Get("subjectId"))
+	sources, err := h.service.PracticeSources(r.Context(), ctxkeys.UserID(r.Context()), q.Get("levelId"), q.Get("subjectId"))
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

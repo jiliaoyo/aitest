@@ -43,6 +43,7 @@ type CreateRequest struct {
 const (
 	SelectionOrderSource = "source_order"
 	SelectionOrderRandom = "random"
+	SelectionOrderUnseen = "unseen_first"
 )
 
 // Availability 返回当前筛选下可用于练习的题目数量。
@@ -54,11 +55,11 @@ func (s *Service) Availability(ctx context.Context, userID string, req CreateReq
 	return s.contentStore.CountPublishedVersions(ctx, f)
 }
 
-func (s *Service) PracticeSources(ctx context.Context, levelID, subjectID string) ([]content.PracticeSource, error) {
+func (s *Service) PracticeSources(ctx context.Context, userID, levelID, subjectID string) ([]content.PracticeSource, error) {
 	if levelID == "" {
 		return nil, httpapi.ValidationError(map[string]string{"levelId": "请选择级别"})
 	}
-	return s.contentStore.ListPracticeSources(ctx, levelID, subjectID)
+	return s.contentStore.ListPracticeSources(ctx, levelID, subjectID, userID)
 }
 
 func (s *Service) selectionFilter(ctx context.Context, userID string, req CreateRequest) (content.SelectionFilter, error) {
@@ -71,7 +72,7 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 	if req.SelectionOrder == "" {
 		req.SelectionOrder = SelectionOrderSource
 	}
-	if req.SelectionOrder != SelectionOrderSource && req.SelectionOrder != SelectionOrderRandom {
+	if req.SelectionOrder != SelectionOrderSource && req.SelectionOrder != SelectionOrderRandom && req.SelectionOrder != SelectionOrderUnseen {
 		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"selectionOrder": "出题顺序不合法"})
 	}
 	f := content.SelectionFilter{
@@ -83,6 +84,7 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 		SelectionOrder:  req.SelectionOrder,
 		Limit:           req.Count,
 		ExcludeRecent:   req.Mode == "comprehensive" || req.Mode == "knowledge",
+		UnseenOnly:      req.SelectionOrder == SelectionOrderUnseen,
 	}
 	switch req.Mode {
 	case "comprehensive":

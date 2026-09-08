@@ -32,6 +32,13 @@ func TestSelectionOrderDefaultsToSourceOrder(t *testing.T) {
 	}
 }
 
+func TestSelectionOrderUnseenFirst(t *testing.T) {
+	f, err := (&Service{}).selectionFilter(context.Background(), "user", CreateRequest{LevelID: "n5", Count: 10, SelectionOrder: SelectionOrderUnseen})
+	if err != nil || !f.UnseenOnly || f.SelectionOrder != SelectionOrderUnseen {
+		t.Fatalf("unseen selection should be explicit: filter=%+v err=%v", f, err)
+	}
+}
+
 func TestSelectionFilterKeepsSource(t *testing.T) {
 	f, err := (&Service{}).selectionFilter(context.Background(), "user", CreateRequest{
 		LevelID: "n5", Count: 10, SourceID: "source-1",

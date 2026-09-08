@@ -40,6 +40,8 @@ export interface PracticeSource {
   id: string
   name: string
   questionCount: number
+  practicedCount: number
+  remainingCount: number
   sections: PracticeSourceSection[]
 }
 
@@ -47,6 +49,8 @@ export interface PracticeSourceSection {
   id: string
   name: string
   questionCount: number
+  practicedCount: number
+  remainingCount: number
 }
 
 // ---- knowledge ----

@@ -21,7 +21,7 @@ const subjectId = ref('')
 const sourceId = ref('')
 const sourceSectionId = ref('')
 const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items'>('comprehensive')
-const selectionOrder = ref<'source_order' | 'random'>('source_order')
+const selectionOrder = ref<'source_order' | 'random' | 'unseen_first'>('source_order')
 const knowledgePointIds = ref<string[]>([])
 const count = ref(20)
 const aiCount = ref<10 | 20 | 30>(20)
@@ -306,7 +306,7 @@ async function generateAIPractice(): Promise<void> {
           <select id="source" v-model="sourceId" :disabled="sourcesLoading">
             <option value="">全部题目</option>
             <option v-for="source in sources" :key="source.id" :value="source.id">
-              {{ source.name }}（{{ source.questionCount }}题）
+              {{ source.name }}（{{ source.questionCount }}题，剩余 {{ source.remainingCount }}）
             </option>
           </select>
           <p v-if="sourcesLoading" class="muted">加载数据来源…</p>
@@ -319,7 +319,7 @@ async function generateAIPractice(): Promise<void> {
           <select id="source-section" v-model="sourceSectionId">
             <option value="">该来源全部章节</option>
             <option v-for="section in sources.find((source) => source.id === sourceId)?.sections ?? []" :key="section.id" :value="section.id">
-              {{ section.name }}（{{ section.questionCount }}题）
+              {{ section.name }}（{{ section.questionCount }}题，剩余 {{ section.remainingCount }}）
             </option>
           </select>
         </div>
@@ -352,6 +352,10 @@ async function generateAIPractice(): Promise<void> {
             <label class="option-row" style="margin-bottom: 0">
               <input v-model="selectionOrder" type="radio" name="selectionOrder" value="random" />
               <span>随机</span>
+            </label>
+            <label class="option-row" style="margin-bottom: 0">
+              <input v-model="selectionOrder" type="radio" name="selectionOrder" value="unseen_first" />
+              <span>继续未练题目</span>
             </label>
           </div>
         </fieldset>
@@ -392,6 +396,9 @@ async function generateAIPractice(): Promise<void> {
 
         <p v-if="insufficient" class="error-summary" role="alert">
           该范围只有 {{ availability }} 题，不足 {{ count }} 题。系统不会自动放宽级别或科目，请调整范围或选择较小题量。
+        </p>
+        <p v-if="selectionOrder === 'unseen_first' && availability === 0" class="muted" role="status">
+          当前范围已全部练过；可切换到章节顺序或随机模式进行复习。
         </p>
         <p v-if="createError" class="error-summary" role="alert">{{ createError }}</p>
 

@@ -317,6 +317,58 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("按章节顺序优先选择未练题目", func(t *testing.T) {
+		userID := data.adminID
+		service := practice.NewService(pool, content.NewStore(pool))
+		request := practice.CreateRequest{LevelID: data.levelID, SubjectID: data.subjectID, Count: 10, SelectionOrder: practice.SelectionOrderUnseen}
+		var sessions []string
+		for i := 0; i < 3; i++ {
+			created, err := service.CreateSession(context.Background(), userID, request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sessions = append(sessions, created.ID)
+			if _, err := pool.Exec(context.Background(),
+				`UPDATE practice_sessions SET status = 'completed', submitted_at = now(), completed_at = now() WHERE id = $1`, created.ID); err != nil {
+				t.Fatal(err)
+			}
+		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM practice_sessions WHERE user_id = $1`, userID)
+		})
+		seen := map[string]struct{}{}
+		for _, sessionID := range sessions {
+			rows, err := pool.Query(context.Background(), `SELECT question_id::text FROM practice_items WHERE session_id = $1`, sessionID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for rows.Next() {
+				var questionID string
+				if err := rows.Scan(&questionID); err != nil {
+					rows.Close()
+					t.Fatal(err)
+				}
+				seen[questionID] = struct{}{}
+			}
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				t.Fatal(err)
+			}
+			rows.Close()
+		}
+		if len(seen) != 30 {
+			t.Fatalf("three unseen batches should cover 30 different questions, got %d", len(seen))
+		}
+		available, err := service.Availability(context.Background(), userID, request)
+		if err != nil || available != 0 {
+			t.Fatalf("unseen availability should be exhausted: available=%d err=%v", available, err)
+		}
+		sources, err := service.PracticeSources(context.Background(), userID, data.levelID, data.subjectID)
+		if err != nil || len(sources) != 1 || len(sources[0].Sections) != 1 || sources[0].Sections[0].PracticedCount != 30 || sources[0].Sections[0].RemainingCount != 0 {
+			t.Fatalf("source progress should reflect distinct submitted questions: %+v err=%v", sources, err)
+		}
+	})
+
 	t.Run("管理概览质量入口与题目筛选", func(t *testing.T) {
 		var overview struct {
 			PublishedNoKnowledge int `json:"publishedNoKnowledge"`

@@ -32,16 +32,20 @@ type SourceSection struct {
 }
 
 type PracticeSource struct {
-	ID            string                  `json:"id"`
-	Name          string                  `json:"name"`
-	QuestionCount int                     `json:"questionCount"`
-	Sections      []PracticeSourceSection `json:"sections"`
+	ID             string                  `json:"id"`
+	Name           string                  `json:"name"`
+	QuestionCount  int                     `json:"questionCount"`
+	PracticedCount int                     `json:"practicedCount"`
+	RemainingCount int                     `json:"remainingCount"`
+	Sections       []PracticeSourceSection `json:"sections"`
 }
 
 type PracticeSourceSection struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	QuestionCount int    `json:"questionCount"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	QuestionCount  int    `json:"questionCount"`
+	PracticedCount int    `json:"practicedCount"`
+	RemainingCount int    `json:"remainingCount"`
 }
 
 type Option struct {

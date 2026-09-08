@@ -49,8 +49,12 @@ func (s *Store) CountPublishedVersions(ctx context.Context, f SelectionFilter) (
 		   AND ($5::uuid[] = '{}' OR q.id = ANY($5::uuid[]))
 		   AND ($6::uuid[] = '{}' OR EXISTS (
 		     SELECT 1 FROM question_version_knowledge_points qvkp
-		     WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($6::uuid[])))`,
-		f.LevelID, f.SubjectID, f.SourceSectionID, f.SourceID, qIDs, kpAny).Scan(&n)
+		     WHERE qvkp.question_version_id = v.id AND qvkp.knowledge_point_id = ANY($6::uuid[])))
+		   AND (NOT $7::boolean OR NOT EXISTS (
+		     SELECT 1 FROM practice_items pi
+		     JOIN practice_sessions ps ON ps.id = pi.session_id
+		     WHERE pi.question_id = q.id AND ps.user_id = $8 AND ps.submitted_at IS NOT NULL))`,
+		f.LevelID, f.SubjectID, f.SourceSectionID, f.SourceID, qIDs, kpAny, f.UnseenOnly, f.UserID).Scan(&n)
 	return n, err
 }
 
@@ -126,15 +130,20 @@ func (s *Store) ListSources(ctx context.Context, cursor string, limit int) ([]So
 	return out, next, nil
 }
 
-func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID string) ([]PracticeSource, error) {
+func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID, userID string) ([]PracticeSource, error) {
 	rows, err := store.CollectRows[struct {
-		SourceID      string
-		SourceName    string
-		SectionID     string
-		SectionName   string
-		QuestionCount int
+		SourceID       string
+		SourceName     string
+		SectionID      string
+		SectionName    string
+		QuestionCount  int
+		PracticedCount int
 	}](ctx, s.db,
-		`SELECT src.id::text, src.name, ss.id::text, ss.name, count(q.id)::int
+		`SELECT src.id::text, src.name, ss.id::text, ss.name, count(DISTINCT q.id)::int,
+		        count(DISTINCT q.id) FILTER (WHERE EXISTS (
+		          SELECT 1 FROM practice_items pi
+		          JOIN practice_sessions ps ON ps.id = pi.session_id
+		          WHERE pi.question_id = q.id AND ps.user_id = $3 AND ps.submitted_at IS NOT NULL))::int
 		 FROM source_sections ss
 		 JOIN sources src ON src.id = ss.source_id
 		 JOIN question_versions v ON v.source_section_id = ss.id
@@ -143,7 +152,7 @@ func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID stri
 		 JOIN questions q ON q.published_version_id = v.id AND q.retired_at IS NULL
 		 WHERE src.kind <> 'ai_generated'
 		 GROUP BY src.id, src.name, src.created_at, src.kind, ss.id, ss.name, ss.sort_order
-		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id, ss.sort_order`, levelID, subjectID)
+		 ORDER BY CASE WHEN src.kind = 'book' THEN 0 ELSE 1 END, src.created_at, src.id, ss.sort_order`, levelID, subjectID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +166,9 @@ func (s *Store) ListPracticeSources(ctx context.Context, levelID, subjectID stri
 			i = len(out) - 1
 		}
 		out[i].QuestionCount += r.QuestionCount
-		out[i].Sections = append(out[i].Sections, PracticeSourceSection{ID: r.SectionID, Name: r.SectionName, QuestionCount: r.QuestionCount})
+		out[i].PracticedCount += r.PracticedCount
+		out[i].RemainingCount = out[i].QuestionCount - out[i].PracticedCount
+		out[i].Sections = append(out[i].Sections, PracticeSourceSection{ID: r.SectionID, Name: r.SectionName, QuestionCount: r.QuestionCount, PracticedCount: r.PracticedCount, RemainingCount: r.QuestionCount - r.PracticedCount})
 	}
 	return out, nil
 }
@@ -624,6 +635,7 @@ type SelectionFilter struct {
 	QuestionIDs       []string // 限定候选题目（错题重练）
 	Limit             int
 	ExcludeRecent     bool // 排除用户最近 3 个已提交批次中出现过的题
+	UnseenOnly        bool // 只取该用户从未在已提交批次中作答过的题
 }
 
 func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f SelectionFilter) ([]SelectedQuestion, error) {
@@ -667,7 +679,12 @@ func (s *Store) SelectPublishedVersions(ctx context.Context, tx store.DBTx, f Se
 	}
 
 	exclude := ""
-	if f.ExcludeRecent {
+	if f.UnseenOnly {
+		exclude = `AND NOT EXISTS (
+	      SELECT 1 FROM practice_items pi
+	      JOIN practice_sessions ps ON ps.id = pi.session_id
+	      WHERE pi.question_id = q.id AND ps.user_id = $8 AND ps.submitted_at IS NOT NULL)`
+	} else if f.ExcludeRecent {
 		exclude = `AND NOT EXISTS (
 	      SELECT 1 FROM practice_items pi
 	      WHERE pi.question_id = q.id
