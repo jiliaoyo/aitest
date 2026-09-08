@@ -116,6 +116,21 @@ func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) 
 	}
 }
 
+func TestGeneratedQuestionDeduplicationKeepsValidQuestions(t *testing.T) {
+	first := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
+	variant := generatedQuestionForReuseTest(first.Stem, "五")
+	first.Explanation, variant.Explanation = "这是第一题解析。", "这是第二题解析。"
+	questions := []generatedQuestion{first, variant, first}
+
+	if err := validateGeneratedQuestions(questions, 3, generatedDifficultyNormal, generatedQuestionTypeMixed, nil); err != nil {
+		t.Fatalf("valid questions with a repeated stem should reach full-question deduplication: %v", err)
+	}
+	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, nil)
+	if err != nil || len(filtered) != 2 || len(duplicates) != 1 {
+		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v, error: %v", filtered, duplicates, err)
+	}
+}
+
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
 		Type: "single_choice", Stem: "これは＿＿＿知識点なしの練習問題です。", Difficulty: 3,

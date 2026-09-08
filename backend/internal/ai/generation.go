@@ -590,17 +590,11 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 	for _, point := range points {
 		allowed[point.ID] = true
 	}
-	seenStems := map[string]bool{}
 	for i, question := range questions {
 		if !questionTypeMatches(questionType, question.Type) || len([]rune(strings.TrimSpace(question.Stem))) < 2 {
 			return fmt.Errorf("AI 第 %d 题题型或题干不合法", i+1)
 		}
 		stem := strings.TrimSpace(question.Stem)
-		stemKey := normalizeGeneratedStem(stem)
-		if seenStems[stemKey] {
-			return fmt.Errorf("AI 第 %d 题与其他题目重复", i+1)
-		}
-		seenStems[stemKey] = true
 		options := make([]content.Option, 0, len(question.Options))
 		if content.IsChoiceType(question.Type) {
 			if !choiceStemHasBlank(stem) {
