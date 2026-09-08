@@ -136,6 +136,10 @@ func (s *Service) convertJSONItem(ctx context.Context, raw jsonItem) (Item, erro
 	if err := s.validateReferences(ctx, draft); err != nil {
 		return Item{}, err
 	}
+	duplicateAnomalies, err := s.duplicateAnomalies(ctx, draft)
+	if err != nil {
+		return Item{}, err
+	}
 	rawExcerpt := strings.TrimSpace(raw.RawExcerpt)
 	if rawExcerpt == "" {
 		rawExcerpt = truncateRunes(draft.Stem, 500)
@@ -149,7 +153,34 @@ func (s *Service) convertJSONItem(ctx context.Context, raw jsonItem) (Item, erro
 	}
 	anomalies = append(anomalies, kpAnomalies...)
 	anomalies = append(anomalies, normalizedAnomalies...)
+	anomalies = append(anomalies, duplicateAnomalies...)
 	return Item{RawExcerpt: rawExcerpt, Draft: &draft, Anomalies: anomalies}, nil
+}
+
+func (s *Service) duplicateAnomalies(ctx context.Context, draft Draft) ([]string, error) {
+	rows, err := store.CollectRows[struct {
+		ID         string
+		SourceName string
+	}](ctx, s.pool, `
+		SELECT q.id::text, coalesce(src.name, '未关联来源')
+		FROM questions q
+		JOIN question_versions v ON v.id = q.published_version_id
+		LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+		LEFT JOIN sources src ON src.id = ss.source_id
+		WHERE q.status = 'published' AND q.retired_at IS NULL
+		  AND coalesce(src.kind, '') <> 'ai_generated'
+		  AND v.level_id = $1 AND v.subject_id = $2 AND v.type = $3
+		  AND btrim(v.stem) = btrim($4)
+		ORDER BY q.id
+		LIMIT 5`, draft.LevelID, draft.SubjectID, draft.Type, draft.Stem)
+	if err != nil {
+		return nil, err
+	}
+	anomalies := make([]string, 0, len(rows))
+	for _, row := range rows {
+		anomalies = append(anomalies, fmt.Sprintf("疑似与已有题目重复：%s（来源：%s），请人工比较选项、材料和答案；不会自动合并。", row.ID, row.SourceName))
+	}
+	return anomalies, nil
 }
 
 func (s *Service) resolveCode(ctx context.Context, query, code string) (string, error) {

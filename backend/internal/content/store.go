@@ -619,6 +619,7 @@ type LearningMetrics struct {
 	FirstSubmitUsersReturned  int      `json:"firstSubmitUsersReturned"`
 	SevenDayRepracticeRate    *float64 `json:"sevenDayRepracticeRate"`
 	AIGenerationFailed        int      `json:"aiGenerationFailed"`
+	UpdatedAt                 string   `json:"updatedAt"`
 }
 
 type coverageRow struct {
@@ -746,6 +747,7 @@ ORDER BY l.sort_order, s.sort_order, l.id, s.id`)
 
 func (s *Store) LearningMetrics(ctx context.Context) (LearningMetrics, error) {
 	var started, submitted, observed, returned, aiFailed int
+	var updatedAt string
 	err := s.db.QueryRow(ctx, `
 WITH ordinary AS (
   SELECT id, user_id, created_at, submitted_at
@@ -777,9 +779,9 @@ WITH ordinary AS (
   FROM practice_sessions
   WHERE scope->>'mode' = 'ai_generated'
 )
-SELECT st.started, st.submitted, (SELECT count(*) FROM eligible)::int,
-       (SELECT count(*) FROM returned_users)::int, (SELECT * FROM ai_failures)
-	FROM session_totals st`).Scan(&started, &submitted, &observed, &returned, &aiFailed)
+	SELECT st.started, st.submitted, (SELECT count(*) FROM eligible)::int,
+	       (SELECT count(*) FROM returned_users)::int, (SELECT * FROM ai_failures), now()::text
+	FROM session_totals st`).Scan(&started, &submitted, &observed, &returned, &aiFailed, &updatedAt)
 	if err != nil {
 		return LearningMetrics{}, err
 	}
@@ -787,7 +789,7 @@ SELECT st.started, st.submitted, (SELECT count(*) FROM eligible)::int,
 		OrdinarySessionsStarted: started, OrdinarySessionsSubmitted: submitted,
 		OrdinarySubmissionRate:   percentRate(submitted, started),
 		FirstSubmitUsersObserved: observed, FirstSubmitUsersReturned: returned,
-		SevenDayRepracticeRate: percentRate(returned, observed), AIGenerationFailed: aiFailed,
+		SevenDayRepracticeRate: percentRate(returned, observed), AIGenerationFailed: aiFailed, UpdatedAt: updatedAt,
 	}, nil
 }
 

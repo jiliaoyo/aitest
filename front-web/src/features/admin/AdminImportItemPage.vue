@@ -93,17 +93,32 @@ function applyDraft(draft: ImportDraftDTO): void {
   form.referenceText = typeof draft.answer?.value.reference === 'string' ? draft.answer.value.reference : ''
 }
 
+async function loadNavigation(jobID: string): Promise<ImportItemDTO[]> {
+  const result: ImportItemDTO[] = []
+  let cursor = ''
+  do {
+    const params = new URLSearchParams({ limit: '100' })
+    if (cursor) params.set('cursor', cursor)
+    const page = await request<{ items: ImportItemDTO[]; nextCursor?: string }>(`/admin/import-jobs/${jobID}?${params}`)
+    result.push(...page.items)
+    const next = page.nextCursor ?? ''
+    if (next === cursor) break
+    cursor = next
+  } while (cursor)
+  return result
+}
+
 async function load(): Promise<void> {
   state.value = 'loading'
   try {
     const itemRes = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID.value}`)
-    const [catalogRes, sourceRes, jobRes] = await Promise.all([
+    const [catalogRes, sourceRes, jobItems] = await Promise.all([
       request<{ exams: Exam[] }>('/catalog'),
       request<{ sources: SourceDTO[] }>('/admin/sources'),
-      request<{ items: ImportItemDTO[] }>(`/admin/import-jobs/${itemRes.item.jobId}?limit=100`),
+      loadNavigation(itemRes.item.jobId),
     ])
     item.value = itemRes.item
-    navigationItems.value = jobRes.items
+    navigationItems.value = jobItems
     exams.value = catalogRes.exams
     sources.value = sourceRes.sources
     if (item.value.draft) applyDraft(item.value.draft)

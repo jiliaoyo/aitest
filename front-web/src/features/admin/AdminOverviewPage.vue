@@ -4,6 +4,7 @@ import { request, ApiError } from '@/api/client'
 import type { OverviewDTO } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
+import { formatDateTime } from '@/app/format'
 
 const overview = ref<OverviewDTO | null>(null)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
@@ -111,7 +112,7 @@ onMounted(load)
       </section>
       <section class="card" style="margin-top: 18px">
         <h2 style="font-size: 18px; margin-top: 0">学习闭环指标</h2>
-        <p class="muted">按现有全部历史事实计算；7 日再练只纳入首次提交已满 7 天的用户，数据不足时不展示比例。</p>
+        <p class="muted">按现有全部历史事实计算；7 日再练只纳入首次提交已满 7 天的用户，数据不足时不展示比例。更新于 {{ formatDateTime(overview.learningMetrics.updatedAt) }}。</p>
         <div class="metrics">
           <div class="metric"><p class="value">{{ percent(overview.learningMetrics.ordinarySubmissionRate) }}</p><p class="label">普通练习提交率（{{ overview.learningMetrics.ordinarySessionsSubmitted }}/{{ overview.learningMetrics.ordinarySessionsStarted }}）</p></div>
           <div class="metric"><p class="value">{{ percent(overview.learningMetrics.sevenDayRepracticeRate) }}</p><p class="label">首次提交用户 7 日再练（{{ overview.learningMetrics.firstSubmitUsersReturned }}/{{ overview.learningMetrics.firstSubmitUsersObserved }}）</p></div>

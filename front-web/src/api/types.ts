@@ -413,6 +413,7 @@ export interface OverviewDTO {
     firstSubmitUsersReturned: number
     sevenDayRepracticeRate: number | null
     aiGenerationFailed: number
+    updatedAt: string
   }
 }
 

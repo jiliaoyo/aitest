@@ -145,6 +145,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				FirstSubmitUsersObserved  int      `json:"firstSubmitUsersObserved"`
 				SevenDayRepracticeRate    *float64 `json:"sevenDayRepracticeRate"`
 				AIGenerationFailed        int      `json:"aiGenerationFailed"`
+				UpdatedAt                 string   `json:"updatedAt"`
 			} `json:"learningMetrics"`
 		}
 		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/overview", nil, ""), &page)
@@ -400,6 +401,49 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			t.Fatalf("explicit duplicate import should create a separate job: %d %s", third.StatusCode, readResponse(t, third))
 		}
 		_ = readResponse(t, third)
+	})
+
+	t.Run("相同题干导入项提示疑似重复但不自动合并", func(t *testing.T) {
+		payload := []byte(`{"items":[{"type":"single_choice","stem":"第 1 题旧题干。","options":[{"id":"a","label":"A","text":"甲"},{"id":"b","label":"B","text":"乙"}],"levelCode":"n5","subjectCode":"grammar","difficulty":3,"knowledgePointNames":[],"sourceAnswer":{"value":{"optionIds":["a"]},"authority":"official"}}]}`)
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		part, err := writer.CreateFormFile("file", "suspected-duplicate.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/admin/import-jobs?allowDuplicate=true", &body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp, err := data.admin.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var created struct {
+			Job struct {
+				ID string `json:"id"`
+			} `json:"job"`
+		}
+		decodeResponse(t, resp, &created)
+		var detail struct {
+			Items []struct {
+				PublishedID *string  `json:"publishedQuestionId"`
+				Anomalies   []string `json:"anomalies"`
+			} `json:"items"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/import-jobs/"+created.Job.ID, nil, ""), &detail)
+		if len(detail.Items) != 1 || detail.Items[0].PublishedID != nil || len(detail.Items[0].Anomalies) == 0 ||
+			!strings.Contains(strings.Join(detail.Items[0].Anomalies, "\n"), data.keyQuestionID) {
+			t.Fatalf("same-stem import should remain a draft with a duplicate hint: %+v", detail.Items)
+		}
 	})
 
 	t.Run("按章节顺序优先选择未练题目", func(t *testing.T) {
@@ -1283,7 +1327,7 @@ func TestAdminLearningMetricsIntegration(t *testing.T) {
 	}
 	if metrics.OrdinarySessionsStarted != 4 || metrics.OrdinarySessionsSubmitted != 2 || metrics.OrdinarySubmissionRate == nil ||
 		*metrics.OrdinarySubmissionRate != 50 || metrics.FirstSubmitUsersObserved != 1 || metrics.FirstSubmitUsersReturned != 1 ||
-		metrics.SevenDayRepracticeRate == nil || *metrics.SevenDayRepracticeRate != 100 || metrics.AIGenerationFailed != 1 {
+		metrics.SevenDayRepracticeRate == nil || *metrics.SevenDayRepracticeRate != 100 || metrics.AIGenerationFailed != 1 || metrics.UpdatedAt == "" {
 		t.Fatalf("unexpected learning metrics: %+v", metrics)
 	}
 }

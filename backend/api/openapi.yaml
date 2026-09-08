@@ -832,6 +832,7 @@ components:
         firstSubmitUsersReturned: { type: integer }
         sevenDayRepracticeRate: { type: number, format: double, nullable: true }
         aiGenerationFailed: { type: integer }
+        updatedAt: { type: string }
     ErrorResponse:
       type: object
       properties:
