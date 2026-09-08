@@ -265,6 +265,8 @@ export interface RecentSessionDTO {
 export interface Recommendation {
   type: 'knowledge' | 'comprehensive'
   knowledgePointId?: string | null
+  levelId?: string
+  subjectId?: string
   name: string
   recentAnswered: number
   recentWrongCount: number

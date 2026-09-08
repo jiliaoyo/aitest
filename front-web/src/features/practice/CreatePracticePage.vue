@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
 import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationCategory, AIGenerationDifficulty, AIGenerationMode, AIGenerationQuestionType, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
@@ -9,6 +9,7 @@ import { sessionUser } from '@/app/session'
 import { aiCategoryGroupsForSubject } from '@/app/aiGeneration'
 
 const router = useRouter()
+const route = useRoute()
 
 const exams = ref<Exam[]>([])
 const loadState = ref<'loading' | 'ready' | 'error'>('loading')
@@ -63,7 +64,18 @@ async function loadCatalog(): Promise<void> {
   try {
     const res = await request<{ exams: Exam[] }>('/catalog')
     exams.value = res.exams
-    levelId.value = sessionUser()?.defaultLevelId ?? res.exams[0]?.levels[0]?.id ?? ''
+    const queryLevel = typeof route.query.levelId === 'string' ? route.query.levelId : ''
+    const querySubject = typeof route.query.subjectId === 'string' ? route.query.subjectId : ''
+    levelId.value = levels.value.some((level) => level.id === queryLevel)
+      ? queryLevel
+      : sessionUser()?.defaultLevelId ?? res.exams[0]?.levels[0]?.id ?? ''
+    subjectId.value = querySubject
+    if (route.query.mode === 'knowledge') mode.value = 'knowledge'
+    if (typeof route.query.knowledgePointIds === 'string') {
+      knowledgePointIds.value = route.query.knowledgePointIds.split(',').filter(Boolean)
+    }
+    const recommendedCount = Number(route.query.recommendedCount)
+    if (Number.isInteger(recommendedCount) && recommendedCount >= 1 && recommendedCount <= 30) count.value = recommendedCount
     aiLevelId.value = levelId.value
     loadState.value = 'ready'
   } catch (err) {

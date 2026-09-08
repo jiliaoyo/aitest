@@ -195,6 +195,17 @@ const retryButtonLabel = computed(() => {
       <section aria-label="逐题解析" style="display: flex; flex-direction: column; gap: 18px">
         <ResultItem v-for="item in result.items" :key="item.id" :item="item" />
       </section>
+
+      <section class="card" aria-labelledby="next-practice-title">
+        <h2 id="next-practice-title" style="font-size: 18px; margin-top: 0">继续练习</h2>
+        <p class="muted">可以从本批知识点继续专项练习，或打开错题本复习当前账号的待重练题目。</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <RouterLink v-for="knowledgePoint in [...new Map(result.items.flatMap((item) => item.knowledgePoints).map((item) => [item.id, item])).values()]" :key="knowledgePoint.id" class="tag" :to="`/knowledge/${knowledgePoint.id}`">
+            巩固{{ knowledgePoint.name }}
+          </RouterLink>
+          <RouterLink class="tag" to="/wrong-items">查看错题本</RouterLink>
+        </div>
+      </section>
     </template>
   </AppShell>
 </template>

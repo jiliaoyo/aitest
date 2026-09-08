@@ -62,7 +62,11 @@ const reportItemID = computed(() => props.item.id)
       <dd class="mono" style="margin: 0">{{ correctText }}</dd>
       <template v-if="item.knowledgePoints.length">
         <dt class="muted">知识点</dt>
-        <dd style="margin: 0">{{ item.knowledgePoints.map((k) => k.name).join('、') }}</dd>
+        <dd style="margin: 0; display: flex; gap: 8px; flex-wrap: wrap">
+          <RouterLink v-for="knowledgePoint in item.knowledgePoints" :key="knowledgePoint.id" :to="`/knowledge/${knowledgePoint.id}`">
+            {{ knowledgePoint.name }}
+          </RouterLink>
+        </dd>
       </template>
     </dl>
 

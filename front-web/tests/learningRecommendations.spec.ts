@@ -43,6 +43,7 @@ describe('学习推荐闭环', () => {
           ...emptyRecent,
           recommendations: [{
             type: 'knowledge', knowledgePointId: 'kp-1', knowledgePointIds: ['kp-1'], name: '助词与格关系',
+            levelId: 'n5', subjectId: 'grammar',
             recentAnswered: 9, recentWrongCount: 5, accuracy: 4 / 9, consecutiveWrong: 3, suggestedCount: 10,
             reason: '最近 30 天错了 5 题。',
           }],

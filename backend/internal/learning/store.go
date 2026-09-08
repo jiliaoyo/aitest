@@ -220,7 +220,8 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 	snapshot.ConfirmedAnswered = totals.ConfirmedAnswered
 	snapshot.ConfirmedCorrect = totals.ConfirmedCorrect
 	rows, err := store.CollectRows[recommendationRow](ctx, s.db,
-		`SELECT kp.id::text, kp.name, st.recent_answered, st.recent_correct,
+		`SELECT kp.id::text, kp.name, kp.level_id::text, kp.subject_id::text,
+		        st.recent_answered, st.recent_correct,
 		        st.consecutive_wrong, st.last_practiced_at::text
 		 FROM user_knowledge_stats st
 		 JOIN knowledge_points kp ON kp.id = st.knowledge_point_id
@@ -427,6 +428,8 @@ func (s *Store) RecentSessions(ctx context.Context, userID string, limit int) ([
 type recommendationRow struct {
 	ID               string
 	Name             string
+	LevelID          string
+	SubjectID        string
 	RecentAnswered   int
 	RecentCorrect    int
 	ConsecutiveWrong int
@@ -437,7 +440,7 @@ type recommendationRow struct {
 // 近 30 天已确认作答 ≥ 5 题 → 近期正确率升序 → 连续错误降序 → 最近练习时间升序。
 func (s *Store) WeakKnowledgePoints(ctx context.Context, userID string, limit int) ([]recommendationRow, error) {
 	return store.CollectRows[recommendationRow](ctx, s.db,
-		`SELECT kp.id::text, kp.name, st.recent_answered, st.recent_correct,
+		`SELECT kp.id::text, kp.name, kp.level_id::text, kp.subject_id::text, st.recent_answered, st.recent_correct,
 		        st.consecutive_wrong, st.last_practiced_at::text
 		 FROM user_knowledge_stats st
 			JOIN knowledge_points kp ON kp.id = st.knowledge_point_id

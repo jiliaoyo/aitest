@@ -118,6 +118,7 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 	for _, w := range weak {
 		rec := Recommendation{
 			Type: "knowledge", KnowledgePointID: &w.ID, Name: w.Name,
+			LevelID: w.LevelID, SubjectID: w.SubjectID,
 			RecentAnswered:    w.RecentAnswered,
 			RecentWrongCount:  w.RecentAnswered - w.RecentCorrect,
 			ConsecutiveWrong:  w.ConsecutiveWrong,

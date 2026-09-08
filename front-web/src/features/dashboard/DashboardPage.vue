@@ -26,9 +26,8 @@ async function load(): Promise<void> {
 
 onMounted(load)
 
-async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: number }): Promise<void> {
-  const me = await request<{ user: { defaultLevelId: string | null } }>('/me')
-  if (!me.user.defaultLevelId) {
+async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: number; levelId?: string; subjectId?: string }): Promise<void> {
+  if (!rec.levelId) {
     await router.push('/practice/new')
     return
   }
@@ -36,7 +35,8 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
     const session = await request<{ id: string }>('/practice-sessions', {
       method: 'POST',
       body: {
-        levelId: me.user.defaultLevelId,
+        levelId: rec.levelId,
+        subjectId: rec.subjectId,
         mode: 'knowledge',
         knowledgePointIds: rec.knowledgePointIds,
         count: rec.suggestedCount,
@@ -45,7 +45,14 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
     await router.push(`/practice/${session.id}`)
   } catch (err) {
     // 题量不足等情况下进入创建页让用户确认
-    await router.push('/practice/new')
+    const params = new URLSearchParams({
+      levelId: rec.levelId ?? '',
+      subjectId: rec.subjectId ?? '',
+      mode: 'knowledge',
+      knowledgePointIds: rec.knowledgePointIds.join(','),
+      recommendedCount: String(rec.suggestedCount),
+    })
+    await router.push(`/practice/new?${params}`)
     void err
   }
 }

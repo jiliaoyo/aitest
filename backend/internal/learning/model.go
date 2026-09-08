@@ -35,6 +35,8 @@ type KnowledgePointDetail struct {
 type Recommendation struct {
 	Type              string   `json:"type"` // knowledge | comprehensive
 	KnowledgePointID  *string  `json:"knowledgePointId,omitempty"`
+	LevelID           string   `json:"levelId,omitempty"`
+	SubjectID         string   `json:"subjectId,omitempty"`
 	Name              string   `json:"name"`
 	RecentAnswered    int      `json:"recentAnswered"`
 	RecentWrongCount  int      `json:"recentWrongCount"`
