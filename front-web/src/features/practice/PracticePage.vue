@@ -31,6 +31,8 @@ const autosave = useAnswerAutosave(sessionID)
 const currentEntry = computed(() => autosave.entryOf(currentItem.value?.id ?? ''))
 let generationTimer: ReturnType<typeof setInterval> | null = null
 let loadSequence = 0
+let memorySubmitKey = ''
+let memorySubmitSessionID = ''
 
 const currentItem = computed<PreSubmitItem | null>(() => {
   const item = session.value?.items[currentIndex.value]
@@ -67,7 +69,7 @@ async function load(silent = false): Promise<void> {
     const data = await request<PreSubmitSession>(`/practice-sessions/${sessionID.value}`)
     if (sequence !== loadSequence) return
     session.value = data
-    showLocalDraftNote.value = autosave.init(data.items)
+    showLocalDraftNote.value = autosave.init(data.items, data.status === 'active')
     pageState.value = 'ready'
     scheduleGenerationPolling()
   } catch (err) {
@@ -130,22 +132,39 @@ function materialCollapsed(): boolean {
 // ---- 批次提交 ----
 
 function submitKey(): string {
+  const currentSessionID = sessionID.value
   const storageKey = `practice-submit-key:${sessionID.value}`
-  let key = localStorage.getItem(storageKey)
-  if (!key) {
-    key = crypto.randomUUID()
-    localStorage.setItem(storageKey, key)
+  if (memorySubmitSessionID !== currentSessionID) {
+    memorySubmitSessionID = currentSessionID
+    memorySubmitKey = ''
   }
-  return key
+  try {
+    memorySubmitKey = localStorage.getItem(storageKey) ?? memorySubmitKey
+  } catch {
+    // 存储不可用时，本页面内仍复用同一个幂等键。
+  }
+  if (!memorySubmitKey) memorySubmitKey = crypto.randomUUID()
+  try {
+    localStorage.setItem(storageKey, memorySubmitKey)
+  } catch {
+    // 跨刷新恢复不可用不应阻止本次提交。
+  }
+  return memorySubmitKey
 }
 
 function clearSubmitKey(): void {
-  localStorage.removeItem(`practice-submit-key:${sessionID.value}`)
+  try {
+    localStorage.removeItem(`practice-submit-key:${sessionID.value}`)
+  } catch {
+    // 忽略
+  }
+  memorySubmitKey = ''
+  memorySubmitSessionID = ''
 }
 
-async function openConfirm(): Promise<void> {
-  // 停止新的 debounce 并尽力冲刷未保存修改；提交请求会携带全部最终答案
-  await autosave.flushPending(session.value?.items ?? [])
+function openConfirm(): void {
+  // 提交请求携带全部最终答案，不等待后台自动保存完成。
+  autosave.flushPending(session.value?.items ?? [])
   submitError.value = ''
   confirmOpen.value = true
 }
@@ -183,9 +202,7 @@ onBeforeUnmount(() => {
   loadSequence++
   if (generationTimer) clearInterval(generationTimer)
   document.removeEventListener('visibilitychange', onVisibilityChange)
-  for (const entry of autosave.entries.values()) {
-    if (entry.timer) clearTimeout(entry.timer)
-  }
+  autosave.dispose()
 })
 </script>
 
