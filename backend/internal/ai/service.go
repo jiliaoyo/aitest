@@ -187,6 +187,9 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		explanation = "AI 无法可靠判定本题，已留待人工处理。"
 	}
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx,
 			`UPDATE grading_results
 			 SET status = $3, correct_value = $4, explanation = $5, explanation_source = 'ai', updated_at = now()
@@ -454,6 +457,9 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	}
 
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
 		for _, row := range rows {
 			if explanation, ok := cachedExplanations[row.ItemID]; ok {
 				if _, err := tx.Exec(ctx,
@@ -538,6 +544,9 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 
 func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause error) error {
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
 		message := "AI 批次分析失败，稍后可重试。" + shortError(cause)
 		if _, err := tx.Exec(ctx,
 			`UPDATE grading_results gr
@@ -606,6 +615,9 @@ func jsonValueString(value *string) string {
 // failGrading 把 pending 的 AI 判定标为 failed 并推进批次状态；确定性成绩不受影响。
 func (s *Service) failGrading(ctx context.Context, sessionID, itemID string, cause error) error {
 	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx,
 			`UPDATE grading_results SET status = 'failed', explanation = $3, explanation_source = 'ai', updated_at = now()
 			 WHERE item_id = $1 AND session_id = $2 AND source = 'ai' AND status = 'pending'`,
@@ -654,11 +666,17 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 	if explanation == "" || len([]rune(explanation)) > 2000 {
 		return errors.New("AI 解析文本缺失或超长")
 	}
-	_, err = s.pool.Exec(ctx,
-		`UPDATE grading_results
-		 SET explanation = $3, explanation_source = 'ai', updated_at = now()
-		 WHERE item_id = $1 AND session_id = $2 AND source = 'deterministic' AND (explanation IS NULL OR explanation = '')`,
-		item.ItemID, item.SessionID, explanation)
+	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`UPDATE grading_results
+			 SET explanation = $3, explanation_source = 'ai', updated_at = now()
+			 WHERE item_id = $1 AND session_id = $2 AND source = 'deterministic' AND (explanation IS NULL OR explanation = '')`,
+			item.ItemID, item.SessionID, explanation)
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("写回 AI 解析失败: %w", err)
 	}

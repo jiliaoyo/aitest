@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 const lease = 10 * time.Minute
 const reapInterval = time.Minute
+const finalizeTimeout = 5 * time.Second
 
 // Worker 周期领取任务并按 kind 调度；首版用一个明确的 switch/map，不做插件注册框架。
 type Worker struct {
@@ -79,7 +81,9 @@ func (w *Worker) runJob(ctx context.Context, job Job) {
 	handler, ok := w.handlers[job.Kind]
 	if !ok {
 		logger.Error("unknown_job_kind")
-		_ = Fail(ctx, w.pool, job, errUnknownKind(job.Kind))
+		finishCtx, cancel := context.WithTimeout(context.Background(), finalizeTimeout)
+		defer cancel()
+		_ = Fail(finishCtx, w.pool, job, w.id, errUnknownKind(job.Kind))
 		return
 	}
 	err := func() (err error) {
@@ -89,16 +93,29 @@ func (w *Worker) runJob(ctx context.Context, job Job) {
 				err = errPanic
 			}
 		}()
-		jobCtx, cancel := context.WithTimeout(ctx, lease)
+		jobCtx, cancel := context.WithTimeout(ctx, lease-finalizeTimeout)
 		defer cancel()
+		jobCtx = withLease(jobCtx, job.ID, w.id, job.Attempts)
 		return handler(jobCtx, job.Attempts, job.MaxAttempts, job.Payload)
 	}()
+	finishCtx, cancel := context.WithTimeout(context.Background(), finalizeTimeout)
+	defer cancel()
 	if err != nil {
+		if errors.Is(err, ErrLeaseLost) {
+			logger.Warn("job_lease_lost", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
 		logger.Error("job_failed", "error", err, "duration_ms", time.Since(start).Milliseconds())
-		_ = Fail(ctx, w.pool, job, err)
+		if failErr := Fail(finishCtx, w.pool, job, w.id, err); failErr != nil && !errors.Is(failErr, ErrLeaseLost) {
+			logger.Error("fail_update_failed", "error", failErr)
+		}
 		return
 	}
-	if err := Complete(ctx, w.pool, job.ID); err != nil {
+	if err := Complete(finishCtx, w.pool, job, w.id); err != nil {
+		if errors.Is(err, ErrLeaseLost) {
+			logger.Warn("job_lease_lost", "duration_ms", time.Since(start).Milliseconds())
+			return
+		}
 		logger.Error("complete_failed", "error", err)
 		return
 	}

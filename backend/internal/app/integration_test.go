@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,6 +25,7 @@ import (
 	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/store"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -1041,6 +1043,7 @@ func TestWorkerRecoveryIntegration(t *testing.T) {
 	t.Cleanup(pool.Close)
 	assertIntegrationDatabase(t, pool)
 	resetIntegrationDatabase(t, pool)
+	data := seedIntegrationData(t, pool)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	t.Run("空闲启动也回收过期任务", func(t *testing.T) {
@@ -1091,6 +1094,87 @@ func TestWorkerRecoveryIntegration(t *testing.T) {
 		if status != "failed" {
 			t.Fatalf("expired final attempt status=%q, want failed", status)
 		}
+
+		userID := dataUserID(t, pool, "learner-b@example.com")
+		var generationSessionID string
+		if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, requested_count)
+			VALUES ($1, 'generating', $2, $3, 10) RETURNING id::text`,
+			userID, data.levelID, data.subjectID).Scan(&generationSessionID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs
+			(kind, payload, status, attempts, max_attempts, locked_by, locked_until)
+			VALUES ('generate_ai_practice_session', jsonb_build_object('sessionId', $1::text),
+			'running', 3, 3, 'dead-worker', now() - interval '1 minute')`, generationSessionID); err != nil {
+			t.Fatal(err)
+		}
+
+		var analysisSessionID, analysisItemID string
+		if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, requested_count, submitted_at)
+			VALUES ($1, 'grading', $2, $3, 1, now()) RETURNING id::text`,
+			userID, data.levelID, data.subjectID).Scan(&analysisSessionID); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `INSERT INTO practice_items
+			(session_id, question_id, question_version_id, position)
+			VALUES ($1, $2, $3, 1) RETURNING id::text`, analysisSessionID, data.noAnswerID,
+			publishedVersionID(t, pool, data.noAnswerID)).Scan(&analysisItemID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO grading_results
+			(session_id, item_id, source, status) VALUES ($1, $2, 'ai', 'pending')`,
+			analysisSessionID, analysisItemID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs
+			(kind, payload, status, attempts, max_attempts, locked_by, locked_until)
+			VALUES ('analyze_practice_session_ai', jsonb_build_object('sessionId', $1::text),
+			'running', 3, 3, 'dead-worker', now() - interval '1 minute')`, analysisSessionID); err != nil {
+			t.Fatal(err)
+		}
+		if err := jobs.ReleaseExpired(ctx, pool); err != nil {
+			t.Fatal(err)
+		}
+		var generationStatus, analysisStatus, gradingStatus string
+		if err := pool.QueryRow(ctx, `SELECT status FROM practice_sessions WHERE id = $1`, generationSessionID).Scan(&generationStatus); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT status FROM practice_sessions WHERE id = $1`, analysisSessionID).Scan(&analysisStatus); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT status FROM grading_results WHERE item_id = $1`, analysisItemID).Scan(&gradingStatus); err != nil {
+			t.Fatal(err)
+		}
+		if generationStatus != "generation_failed" || analysisStatus != "analysis_failed" || gradingStatus != "failed" {
+			t.Fatalf("expired business states: generation=%s analysis=%s grading=%s", generationStatus, analysisStatus, gradingStatus)
+		}
+
+		var failedSessionID, failedJobID string
+		if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, requested_count)
+			VALUES ($1, 'generating', $2, $3, 10) RETURNING id::text`,
+			userID, data.levelID, data.subjectID).Scan(&failedSessionID); err != nil {
+			t.Fatal(err)
+		}
+		failedPayload := json.RawMessage(`{"sessionId":"` + failedSessionID + `"}`)
+		if err := pool.QueryRow(ctx, `INSERT INTO jobs
+			(kind, payload, status, attempts, max_attempts, locked_by, locked_until)
+			VALUES ('generate_ai_practice_session', $1, 'running', 3, 3, 'current-worker', now() + interval '1 minute')
+			RETURNING id::text`, failedPayload).Scan(&failedJobID); err != nil {
+			t.Fatal(err)
+		}
+		if err := jobs.Fail(ctx, pool, jobs.Job{ID: failedJobID, Kind: "generate_ai_practice_session", Payload: failedPayload,
+			Attempts: 3, MaxAttempts: 3}, "current-worker", errors.New("generation failed")); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `SELECT status FROM practice_sessions WHERE id = $1`, failedSessionID).Scan(&generationStatus); err != nil {
+			t.Fatal(err)
+		}
+		if generationStatus != "generation_failed" {
+			t.Fatalf("final handler failure left generation status=%q", generationStatus)
+		}
 	})
 
 	t.Run("并发槽满时不提前领取下一条", func(t *testing.T) {
@@ -1138,6 +1222,83 @@ func TestWorkerRecoveryIntegration(t *testing.T) {
 		case <-done:
 		case <-time.After(2 * time.Second):
 			t.Fatal("worker did not stop after cancellation")
+		}
+	})
+
+	t.Run("旧租约不能完成任务或写回业务数据", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `DELETE FROM jobs`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs (kind, payload) VALUES ('integration_stale', '{}')`); err != nil {
+			t.Fatal(err)
+		}
+		started := make(chan struct{})
+		release := make(chan struct{})
+		writeResult := make(chan error, 1)
+		workerCtx, cancel := context.WithCancel(ctx)
+		worker := jobs.NewWorker(pool, "worker-a", 1, map[string]jobs.Handler{
+			"integration_stale": func(jobCtx context.Context, _ int, _ int, _ json.RawMessage) error {
+				close(started)
+				<-release
+				err := store.WithTx(jobCtx, pool, func(tx pgx.Tx) error {
+					if err := jobs.GuardLease(jobCtx, tx); err != nil {
+						return err
+					}
+					return jobs.EnqueueTx(jobCtx, tx, "integration_stale_write", map[string]bool{"written": true})
+				})
+				writeResult <- err
+				return err
+			},
+		}, logger)
+		done := make(chan struct{})
+		go func() {
+			worker.Run(workerCtx)
+			close(done)
+		}()
+		select {
+		case <-started:
+		case <-time.After(2 * time.Second):
+			t.Fatal("stale-owner test job did not start")
+		}
+		var jobID string
+		if err := pool.QueryRow(ctx, `UPDATE jobs SET locked_until = now() - interval '1 second'
+			WHERE kind = 'integration_stale' RETURNING id::text`).Scan(&jobID); err != nil {
+			t.Fatal(err)
+		}
+		if err := jobs.ReleaseExpired(ctx, pool); err != nil {
+			t.Fatal(err)
+		}
+		claimedByB, err := jobs.Claim(ctx, pool, "worker-b", time.Minute)
+		if err != nil || claimedByB.ID != jobID || claimedByB.Attempts != 2 {
+			t.Fatalf("worker-b reclaim: job=%+v err=%v", claimedByB, err)
+		}
+		staleJob := jobs.Job{ID: jobID, Attempts: 1, MaxAttempts: 3}
+		if err := jobs.Complete(ctx, pool, staleJob, "worker-a"); !errors.Is(err, jobs.ErrLeaseLost) {
+			t.Fatalf("stale Complete error=%v, want ErrLeaseLost", err)
+		}
+		if err := jobs.Fail(ctx, pool, staleJob, "worker-a", errors.New("late failure")); !errors.Is(err, jobs.ErrLeaseLost) {
+			t.Fatalf("stale Fail error=%v, want ErrLeaseLost", err)
+		}
+		close(release)
+		select {
+		case err := <-writeResult:
+			if !errors.Is(err, jobs.ErrLeaseLost) {
+				t.Fatalf("stale business write error=%v, want ErrLeaseLost", err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("stale business write did not finish")
+		}
+		if countRows(t, pool, `SELECT count(*) FROM jobs WHERE kind = 'integration_stale_write'`) != 0 {
+			t.Fatal("stale handler wrote business data")
+		}
+		if err := jobs.Complete(ctx, pool, claimedByB, "worker-b"); err != nil {
+			t.Fatalf("current owner could not complete job: %v", err)
+		}
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after stale-owner test")
 		}
 	})
 }

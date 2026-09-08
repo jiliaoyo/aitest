@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aishuati/backend/internal/httpapi"
+	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -457,6 +458,9 @@ func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID
 }
 
 func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string) error {
+	if err := jobs.GuardLease(ctx, tx); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx,
 		`INSERT INTO user_learning_memory (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID); err != nil {
 		return err

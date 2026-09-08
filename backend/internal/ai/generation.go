@@ -961,6 +961,9 @@ func remapGeneratedChoiceOptions(question *generatedQuestion, order []int) error
 
 func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, userID, levelID, subjectID, generationMode, promptVersion string, points []learning.AIGenerationKnowledgePoint, questions []generatedQuestion) error {
 	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
 		existingKeys, err := s.loadGeneratedQuestionKeys(ctx, tx, userID, levelID, subjectID)
 		if err != nil {
 			return fmt.Errorf("检查历史 AI 题目失败: %w", err)
@@ -1067,9 +1070,14 @@ func (s *Service) markGenerationFailed(ctx context.Context, sessionID string, ca
 	if cause != nil {
 		message += shortError(cause)
 	}
-	_, err := s.pool.Exec(ctx,
-		`UPDATE practice_sessions
-		 SET status = 'generation_failed', ai_summary_status = 'failed', ai_summary = $2, updated_at = now()
-		 WHERE id = $1 AND status = 'generating'`, sessionID, message)
-	return err
+	return store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`UPDATE practice_sessions
+			 SET status = 'generation_failed', ai_summary_status = 'failed', ai_summary = $2, updated_at = now()
+			 WHERE id = $1 AND status = 'generating'`, sessionID, message)
+		return err
+	})
 }
