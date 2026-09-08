@@ -390,6 +390,30 @@ export interface OverviewDTO {
   publishedNoSource: number
   publishedNoAnswer: number
   openIssues: number
+  coverage: Array<{
+    levelId: string
+    levelCode: string
+    levelName: string
+    subjectId: string
+    subjectCode: string
+    subjectName: string
+    publishedQuestions: number
+    authorityAnsweredQuestions: number
+    authorityAnswerRate: number | null
+    knowledgePointsWithQuestion: number
+    knowledgePointsWithFiveQuestions: number
+    knowledgePointsWithoutQuestions: number
+    openIssues: number
+  }>
+  learningMetrics: {
+    ordinarySessionsStarted: number
+    ordinarySessionsSubmitted: number
+    ordinarySubmissionRate: number | null
+    firstSubmitUsersObserved: number
+    firstSubmitUsersReturned: number
+    sevenDayRepracticeRate: number | null
+    aiGenerationFailed: number
+  }
 }
 
 export interface AdminAIUsage {

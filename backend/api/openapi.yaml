@@ -457,6 +457,8 @@ paths:
                   publishedNoSource: { type: integer }
                   publishedNoAnswer: { type: integer }
                   openIssues: { type: integer }
+                  coverage: { type: array, items: { $ref: '#/components/schemas/ContentCoverageRow' } }
+                  learningMetrics: { $ref: '#/components/schemas/LearningMetrics' }
   /admin/users:
     get:
       tags: [admin]
@@ -804,6 +806,32 @@ components:
       description: rate_limited
       content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
   schemas:
+    ContentCoverageRow:
+      type: object
+      properties:
+        levelId: { type: string }
+        levelCode: { type: string }
+        levelName: { type: string }
+        subjectId: { type: string }
+        subjectCode: { type: string }
+        subjectName: { type: string }
+        publishedQuestions: { type: integer }
+        authorityAnsweredQuestions: { type: integer }
+        authorityAnswerRate: { type: number, format: double, nullable: true }
+        knowledgePointsWithQuestion: { type: integer }
+        knowledgePointsWithFiveQuestions: { type: integer }
+        knowledgePointsWithoutQuestions: { type: integer }
+        openIssues: { type: integer }
+    LearningMetrics:
+      type: object
+      properties:
+        ordinarySessionsStarted: { type: integer }
+        ordinarySessionsSubmitted: { type: integer }
+        ordinarySubmissionRate: { type: number, format: double, nullable: true }
+        firstSubmitUsersObserved: { type: integer }
+        firstSubmitUsersReturned: { type: integer }
+        sevenDayRepracticeRate: { type: number, format: double, nullable: true }
+        aiGenerationFailed: { type: integer }
     ErrorResponse:
       type: object
       properties:

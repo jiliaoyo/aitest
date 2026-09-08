@@ -583,14 +583,77 @@ func joinAnd(conds []string) string {
 // ---------- 概览统计 ----------
 
 type Overview struct {
-	Draft                int `json:"draft"`
-	InReview             int `json:"inReview"`
-	Published            int `json:"published"`
-	Retired              int `json:"retired"`
-	PublishedNoKnowledge int `json:"publishedNoKnowledge"`
-	PublishedNoSource    int `json:"publishedNoSource"`
-	PublishedNoAnswer    int `json:"publishedNoAnswer"`
-	OpenIssues           int `json:"openIssues"`
+	Draft                int             `json:"draft"`
+	InReview             int             `json:"inReview"`
+	Published            int             `json:"published"`
+	Retired              int             `json:"retired"`
+	PublishedNoKnowledge int             `json:"publishedNoKnowledge"`
+	PublishedNoSource    int             `json:"publishedNoSource"`
+	PublishedNoAnswer    int             `json:"publishedNoAnswer"`
+	OpenIssues           int             `json:"openIssues"`
+	Coverage             []CoverageRow   `json:"coverage"`
+	LearningMetrics      LearningMetrics `json:"learningMetrics"`
+}
+
+type CoverageRow struct {
+	LevelID                          string   `json:"levelId"`
+	LevelCode                        string   `json:"levelCode"`
+	LevelName                        string   `json:"levelName"`
+	SubjectID                        string   `json:"subjectId"`
+	SubjectCode                      string   `json:"subjectCode"`
+	SubjectName                      string   `json:"subjectName"`
+	PublishedQuestions               int      `json:"publishedQuestions"`
+	AuthorityAnsweredQuestions       int      `json:"authorityAnsweredQuestions"`
+	AuthorityAnswerRate              *float64 `json:"authorityAnswerRate"`
+	KnowledgePointsWithQuestion      int      `json:"knowledgePointsWithQuestion"`
+	KnowledgePointsWithFiveQuestions int      `json:"knowledgePointsWithFiveQuestions"`
+	KnowledgePointsWithoutQuestions  int      `json:"knowledgePointsWithoutQuestions"`
+	OpenIssues                       int      `json:"openIssues"`
+}
+
+type LearningMetrics struct {
+	OrdinarySessionsStarted   int      `json:"ordinarySessionsStarted"`
+	OrdinarySessionsSubmitted int      `json:"ordinarySessionsSubmitted"`
+	OrdinarySubmissionRate    *float64 `json:"ordinarySubmissionRate"`
+	FirstSubmitUsersObserved  int      `json:"firstSubmitUsersObserved"`
+	FirstSubmitUsersReturned  int      `json:"firstSubmitUsersReturned"`
+	SevenDayRepracticeRate    *float64 `json:"sevenDayRepracticeRate"`
+	AIGenerationFailed        int      `json:"aiGenerationFailed"`
+}
+
+type coverageRow struct {
+	LevelID                          string
+	LevelCode                        string
+	LevelName                        string
+	SubjectID                        string
+	SubjectCode                      string
+	SubjectName                      string
+	PublishedQuestions               int
+	AuthorityAnsweredQuestions       int
+	KnowledgePointsWithQuestion      int
+	KnowledgePointsWithFiveQuestions int
+	KnowledgePointsWithoutQuestions  int
+	OpenIssues                       int
+}
+
+func percentRate(numerator, denominator int) *float64 {
+	if denominator == 0 {
+		return nil
+	}
+	rate := float64(numerator) * 100 / float64(denominator)
+	return &rate
+}
+
+func (r coverageRow) coverage() CoverageRow {
+	return CoverageRow{
+		LevelID: r.LevelID, LevelCode: r.LevelCode, LevelName: r.LevelName,
+		SubjectID: r.SubjectID, SubjectCode: r.SubjectCode, SubjectName: r.SubjectName,
+		PublishedQuestions: r.PublishedQuestions, AuthorityAnsweredQuestions: r.AuthorityAnsweredQuestions,
+		AuthorityAnswerRate:              percentRate(r.AuthorityAnsweredQuestions, r.PublishedQuestions),
+		KnowledgePointsWithQuestion:      r.KnowledgePointsWithQuestion,
+		KnowledgePointsWithFiveQuestions: r.KnowledgePointsWithFiveQuestions,
+		KnowledgePointsWithoutQuestions:  r.KnowledgePointsWithoutQuestions, OpenIssues: r.OpenIssues,
+	}
 }
 
 func (s *Store) Overview(ctx context.Context) (Overview, error) {
@@ -609,7 +672,123 @@ func (s *Store) Overview(ctx context.Context) (Overview, error) {
 		   (SELECT count(*) FROM issue_reports WHERE status = 'open')
 		 FROM questions q`).Scan(
 		&o.Draft, &o.InReview, &o.Published, &o.Retired, &o.PublishedNoKnowledge, &o.PublishedNoSource, &o.PublishedNoAnswer, &o.OpenIssues)
+	if err != nil {
+		return Overview{}, err
+	}
+	o.Coverage, err = s.Coverage(ctx)
+	if err != nil {
+		return Overview{}, err
+	}
+	o.LearningMetrics, err = s.LearningMetrics(ctx)
 	return o, err
+}
+
+func (s *Store) Coverage(ctx context.Context) ([]CoverageRow, error) {
+	rows, err := store.CollectRows[coverageRow](ctx, s.db, `
+WITH public_questions AS (
+  SELECT q.id AS question_id, v.id AS version_id, v.level_id, v.subject_id,
+         EXISTS (SELECT 1 FROM answer_keys ak WHERE ak.question_version_id = v.id
+                 AND ak.authority IN ('official', 'human_verified')) AS has_authority
+  FROM questions q
+  JOIN question_versions v ON v.id = q.published_version_id
+  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+  LEFT JOIN sources src ON src.id = ss.source_id
+  WHERE q.status = 'published' AND q.retired_at IS NULL
+    AND coalesce(src.kind, '') <> 'ai_generated'
+), question_stats AS (
+  SELECT level_id, subject_id, count(*)::int AS published_questions,
+         count(*) FILTER (WHERE has_authority)::int AS authority_answered_questions
+  FROM public_questions
+  GROUP BY level_id, subject_id
+), knowledge_question_counts AS (
+  SELECT pq.level_id, pq.subject_id, qvkp.knowledge_point_id,
+         count(DISTINCT pq.question_id)::int AS question_count
+  FROM public_questions pq
+  JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = pq.version_id
+  GROUP BY pq.level_id, pq.subject_id, qvkp.knowledge_point_id
+), knowledge_stats AS (
+  SELECT kp.level_id, kp.subject_id,
+         count(*) FILTER (WHERE coalesce(kqc.question_count, 0) >= 1)::int AS with_question,
+         count(*) FILTER (WHERE coalesce(kqc.question_count, 0) >= 5)::int AS with_five_questions,
+         count(*) FILTER (WHERE coalesce(kqc.question_count, 0) = 0)::int AS without_questions
+  FROM knowledge_points kp
+  LEFT JOIN knowledge_question_counts kqc
+    ON kqc.knowledge_point_id = kp.id AND kqc.level_id = kp.level_id AND kqc.subject_id = kp.subject_id
+  WHERE kp.status = 'published'
+  GROUP BY kp.level_id, kp.subject_id
+), issue_stats AS (
+  SELECT v.level_id, v.subject_id, count(*)::int AS open_issues
+  FROM issue_reports ir
+  JOIN questions q ON q.id = ir.question_id AND q.published_version_id = ir.question_version_id
+  JOIN question_versions v ON v.id = q.published_version_id
+  WHERE ir.status = 'open' AND q.status = 'published' AND q.retired_at IS NULL
+  GROUP BY v.level_id, v.subject_id
+)
+SELECT l.id::text, l.code, l.name, s.id::text, s.code, s.name,
+       coalesce(qs.published_questions, 0), coalesce(qs.authority_answered_questions, 0),
+       coalesce(ks.with_question, 0), coalesce(ks.with_five_questions, 0),
+       coalesce(ks.without_questions, 0), coalesce(isu.open_issues, 0)
+FROM exam_levels l
+JOIN subjects s ON s.exam_id = l.exam_id
+LEFT JOIN question_stats qs ON qs.level_id = l.id AND qs.subject_id = s.id
+LEFT JOIN knowledge_stats ks ON ks.level_id = l.id AND ks.subject_id = s.id
+LEFT JOIN issue_stats isu ON isu.level_id = l.id AND isu.subject_id = s.id
+ORDER BY l.sort_order, s.sort_order, l.id, s.id`)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CoverageRow, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, row.coverage())
+	}
+	return out, nil
+}
+
+func (s *Store) LearningMetrics(ctx context.Context) (LearningMetrics, error) {
+	var started, submitted, observed, returned, aiFailed int
+	err := s.db.QueryRow(ctx, `
+WITH ordinary AS (
+  SELECT id, user_id, created_at, submitted_at
+  FROM practice_sessions
+  WHERE coalesce(scope->>'mode', '') <> 'ai_generated'
+), session_totals AS (
+  SELECT count(*)::int AS started, count(*) FILTER (WHERE submitted_at IS NOT NULL)::int AS submitted
+  FROM ordinary
+), first_submissions AS (
+  SELECT user_id, min(submitted_at) AS first_submitted_at
+  FROM ordinary
+  WHERE submitted_at IS NOT NULL
+  GROUP BY user_id
+), eligible AS (
+  SELECT user_id, first_submitted_at
+  FROM first_submissions
+  WHERE first_submitted_at <= now() - interval '7 days'
+), returned_users AS (
+  SELECT e.user_id
+  FROM eligible e
+  WHERE EXISTS (
+    SELECT 1 FROM ordinary o
+    WHERE o.user_id = e.user_id
+      AND o.created_at > e.first_submitted_at
+      AND o.created_at <= e.first_submitted_at + interval '7 days'
+  )
+), ai_failures AS (
+  SELECT count(*) FILTER (WHERE status = 'generation_failed')::int
+  FROM practice_sessions
+  WHERE scope->>'mode' = 'ai_generated'
+)
+SELECT st.started, st.submitted, (SELECT count(*) FROM eligible)::int,
+       (SELECT count(*) FROM returned_users)::int, (SELECT * FROM ai_failures)
+	FROM session_totals st`).Scan(&started, &submitted, &observed, &returned, &aiFailed)
+	if err != nil {
+		return LearningMetrics{}, err
+	}
+	return LearningMetrics{
+		OrdinarySessionsStarted: started, OrdinarySessionsSubmitted: submitted,
+		OrdinarySubmissionRate:   percentRate(submitted, started),
+		FirstSubmitUsersObserved: observed, FirstSubmitUsersReturned: returned,
+		SevenDayRepracticeRate: percentRate(returned, observed), AIGenerationFailed: aiFailed,
+	}, nil
 }
 
 // ---------- 练习选题 ----------

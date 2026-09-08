@@ -127,6 +127,43 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 	loginIntegration(t, data.learnerA, server.URL, "learner-a@example.com", "learner-pass-123")
 	loginIntegration(t, data.learnerB, server.URL, "learner-b@example.com", "learner-pass-123")
 
+	t.Run("内容覆盖与学习闭环指标", func(t *testing.T) {
+		var page struct {
+			Coverage []struct {
+				PublishedQuestions               int      `json:"publishedQuestions"`
+				AuthorityAnsweredQuestions       int      `json:"authorityAnsweredQuestions"`
+				AuthorityAnswerRate              *float64 `json:"authorityAnswerRate"`
+				KnowledgePointsWithQuestion      int      `json:"knowledgePointsWithQuestion"`
+				KnowledgePointsWithFiveQuestions int      `json:"knowledgePointsWithFiveQuestions"`
+				KnowledgePointsWithoutQuestions  int      `json:"knowledgePointsWithoutQuestions"`
+				OpenIssues                       int      `json:"openIssues"`
+			} `json:"coverage"`
+			LearningMetrics struct {
+				OrdinarySessionsStarted   int      `json:"ordinarySessionsStarted"`
+				OrdinarySessionsSubmitted int      `json:"ordinarySessionsSubmitted"`
+				OrdinarySubmissionRate    *float64 `json:"ordinarySubmissionRate"`
+				FirstSubmitUsersObserved  int      `json:"firstSubmitUsersObserved"`
+				SevenDayRepracticeRate    *float64 `json:"sevenDayRepracticeRate"`
+				AIGenerationFailed        int      `json:"aiGenerationFailed"`
+			} `json:"learningMetrics"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/overview", nil, ""), &page)
+		if len(page.Coverage) != 1 {
+			t.Fatalf("expected one level/subject coverage row, got %+v", page.Coverage)
+		}
+		row := page.Coverage[0]
+		if row.PublishedQuestions != 30 || row.AuthorityAnsweredQuestions != 29 || row.AuthorityAnswerRate == nil ||
+			*row.AuthorityAnswerRate < 96.6 || row.KnowledgePointsWithQuestion != 2 ||
+			row.KnowledgePointsWithFiveQuestions != 1 || row.KnowledgePointsWithoutQuestions != 0 || row.OpenIssues != 0 {
+			t.Fatalf("unexpected coverage row: %+v", row)
+		}
+		metrics := page.LearningMetrics
+		if metrics.OrdinarySessionsStarted != 0 || metrics.OrdinarySessionsSubmitted != 0 || metrics.OrdinarySubmissionRate != nil ||
+			metrics.FirstSubmitUsersObserved != 0 || metrics.SevenDayRepracticeRate != nil || metrics.AIGenerationFailed != 0 {
+			t.Fatalf("empty learning metrics should be explicit: %+v", metrics)
+		}
+	})
+
 	t.Run("管理端用户用量接口", func(t *testing.T) {
 		learnerID := dataUserID(t, pool, "learner-a@example.com")
 		if _, err := pool.Exec(context.Background(), `
@@ -1204,6 +1241,51 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestAdminLearningMetricsIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("设置 TEST_DATABASE_URL 后运行 PostgreSQL 集成测试")
+	}
+	ctx := context.Background()
+	pool, err := store.Open(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	assertIntegrationDatabase(t, pool)
+	resetIntegrationDatabase(t, pool)
+	data := seedIntegrationData(t, pool)
+	learnerA := dataUserID(t, pool, "learner-a@example.com")
+	learnerB := dataUserID(t, pool, "learner-b@example.com")
+	now := time.Now().UTC()
+	insert := func(userID, status, scope string, createdAt time.Time, submittedAt *time.Time) {
+		t.Helper()
+		if _, err := pool.Exec(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, scope, requested_count, created_at, updated_at, submitted_at)
+			VALUES ($1, $2, $3, $4, $5::jsonb, 1, $6, $6, $7)`,
+			userID, status, data.levelID, data.subjectID, scope, createdAt, submittedAt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	firstSubmitted := now.Add(-8 * 24 * time.Hour)
+	insert(learnerA, "completed", `{}`, firstSubmitted, &firstSubmitted)
+	insert(learnerA, "active", `{}`, now.Add(-5*24*time.Hour), nil)
+	recentSubmitted := now.Add(-2 * 24 * time.Hour)
+	insert(learnerB, "completed", `{}`, recentSubmitted, &recentSubmitted)
+	insert(learnerB, "active", `{}`, now.Add(-24*time.Hour), nil)
+	insert(learnerA, "generation_failed", `{"mode":"ai_generated"}`, now.Add(-3*24*time.Hour), nil)
+
+	metrics, err := content.NewStore(pool).LearningMetrics(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metrics.OrdinarySessionsStarted != 4 || metrics.OrdinarySessionsSubmitted != 2 || metrics.OrdinarySubmissionRate == nil ||
+		*metrics.OrdinarySubmissionRate != 50 || metrics.FirstSubmitUsersObserved != 1 || metrics.FirstSubmitUsersReturned != 1 ||
+		metrics.SevenDayRepracticeRate == nil || *metrics.SevenDayRepracticeRate != 100 || metrics.AIGenerationFailed != 1 {
+		t.Fatalf("unexpected learning metrics: %+v", metrics)
+	}
 }
 
 func TestLearningStatsAccountingIntegration(t *testing.T) {

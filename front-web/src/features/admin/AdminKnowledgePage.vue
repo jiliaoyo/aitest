@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { request, ApiError, fieldErrors } from '@/api/client'
 import type { AdminKnowledgePoint, Exam } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
@@ -10,7 +11,8 @@ const kps = ref<AdminKnowledgePoint[]>([])
 const nextCursor = ref('')
 const loadingMore = ref(false)
 const exams = ref<Exam[]>([])
-const levelFilter = ref('')
+const route = useRoute()
+const levelFilter = ref((route.query.levelId as string | undefined) ?? '')
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
 const requestID = ref('')
