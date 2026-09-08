@@ -134,14 +134,14 @@ describe('历史与错题本软删除', () => {
     await wrapper.get('#wrong-keyword').setValue('助词')
     await wrapper.get('#wrong-from').setValue('2026-01-01')
     await wrapper.get('#kp-filter').setValue('kp-1')
-    await wrapper.findAll('button').find((button) => button.text() === '错题重练 10 题')!.trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === '错题重练 1 题')!.trigger('click')
     await flushPromises()
 
     expect(requestMock).toHaveBeenCalledWith('/practice-sessions', {
       method: 'POST',
       body: {
         levelId: 'level-1', mode: 'wrong_items', knowledgePointIds: ['kp-1'],
-        from: '2026-01-01', to: '', keyword: '助词', count: 10,
+        from: '2026-01-01', to: '', keyword: '助词', count: 1,
       },
     })
     expect(router.currentRoute.value.path).toBe('/practice/new-session')

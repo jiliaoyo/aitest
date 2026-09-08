@@ -95,6 +95,7 @@ function correctLabel(item: WrongItem): string {
 }
 
 const canRetrain = computed(() => !!levelFilter.value && items.value.some((item) => item.gradingStatus !== 'correct'))
+const retrainCount = computed(() => Math.min(10, items.value.filter((item) => item.gradingStatus !== 'correct').length))
 
 async function retrain(): Promise<void> {
   creating.value = true
@@ -112,7 +113,7 @@ async function retrain(): Promise<void> {
         from: fromDate.value,
         to: toDate.value,
         keyword: keyword.value.trim(),
-        count: 10,
+        count: retrainCount.value,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -145,7 +146,7 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
     <div class="page-header">
       <h1 style="font-size: 24px; margin: 0">错题本</h1>
       <button class="primary" :disabled="!canRetrain || creating" @click="retrain">
-        {{ creating ? '创建中…' : '错题重练 10 题' }}
+        {{ creating ? '创建中…' : `错题重练 ${retrainCount} 题` }}
       </button>
     </div>
 

@@ -23,6 +23,7 @@ const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items'>('comprehensive')
 const selectionOrder = ref<'source_order' | 'random'>('source_order')
 const knowledgePointIds = ref<string[]>([])
 const count = ref(20)
+const aiCount = ref<10 | 20 | 30>(20)
 
 const availability = ref<number | null>(null)
 const availabilityLoading = ref(false)
@@ -167,6 +168,7 @@ async function loadKnowledgePoints(append = false): Promise<void> {
 }
 
 const insufficient = computed(() => availability.value !== null && availability.value < count.value)
+const canUseAvailable = computed(() => !!levelId.value && availability.value !== null && availability.value > 0 && !availabilityLoading.value)
 const canCreate = computed(
   () =>
     !!levelId.value &&
@@ -176,7 +178,7 @@ const canCreate = computed(
     !availabilityLoading.value,
 )
 
-async function create(): Promise<void> {
+async function create(requestedCount = count.value): Promise<void> {
   creating.value = true
   createError.value = ''
   try {
@@ -190,7 +192,7 @@ async function create(): Promise<void> {
         mode: mode.value,
         selectionOrder: selectionOrder.value,
         knowledgePointIds: knowledgePointIds.value,
-        count: count.value,
+        count: requestedCount,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -214,7 +216,7 @@ async function generateAIPractice(): Promise<void> {
       levelId: targetLevelId,
       subjectId: aiSubjectId.value,
       knowledgePointIds: aiGenerationMode.value === 'memory' && (!aiSubjectId.value || aiSubjectId.value === subjectId.value) ? knowledgePointIds.value : [],
-      count: count.value as 10 | 20 | 30,
+      count: aiCount.value,
       difficulty: aiDifficulty.value,
       generationMode: aiGenerationMode.value,
       questionType: aiQuestionType.value,
@@ -242,7 +244,7 @@ async function generateAIPractice(): Promise<void> {
       <h1>创建练习</h1>
       <p class="muted">系统只从已发布题目中选题；答题过程中不显示答案，整批提交后统一判分。</p>
 
-      <form class="card" @submit.prevent="create">
+      <form class="card" @submit.prevent="create()">
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">级别</legend>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
@@ -336,8 +338,8 @@ async function generateAIPractice(): Promise<void> {
 
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">题量</legend>
-          <div style="display: flex; gap: 10px">
-            <label v-for="c in [10, 20, 30]" :key="c" class="option-row" style="margin-bottom: 0">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label v-for="c in [5, 10, 20, 30]" :key="c" class="option-row" style="margin-bottom: 0">
               <input v-model.number="count" type="radio" name="count" :value="c" />
               <span class="mono">{{ c }} 题</span>
             </label>
@@ -358,6 +360,15 @@ async function generateAIPractice(): Promise<void> {
         <button class="primary" type="submit" :disabled="!canCreate || creating">
           {{ creating ? '创建中…' : '开始练习' }}
         </button>
+        <button
+          v-if="insufficient && canUseAvailable"
+          class="ghost"
+          type="button"
+          :disabled="creating"
+          @click="create(availability ?? count)"
+        >
+          练习现有 {{ availability }} 题
+        </button>
       </form>
 
       <section class="card" aria-labelledby="ai-practice-title">
@@ -366,7 +377,7 @@ async function generateAIPractice(): Promise<void> {
           AI 会
           <template v-if="aiGenerationMode === 'memory'">结合薄弱点、重复错误、复习间隔和低样本知识点</template>
           <template v-else>根据指定的 {{ selectedLevelName }} 级别</template>
-          生成 {{ count }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。
+          生成 {{ aiCount }} 道新题。题目仅用于本次账号练习，不会自动进入公共题库。
         </p>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">生成依据</legend>
@@ -381,6 +392,14 @@ async function generateAIPractice(): Promise<void> {
           <label for="ai-level">生成级别</label>
           <select id="ai-level" v-model="aiLevelId" :disabled="generatingAI">
             <option v-for="level in levels" :key="level.id" :value="level.id">{{ level.name }}</option>
+          </select>
+        </div>
+        <div class="field" style="max-width: 280px">
+          <label for="ai-count">AI 题量</label>
+          <select id="ai-count" v-model.number="aiCount" :disabled="generatingAI">
+            <option :value="10">10 题</option>
+            <option :value="20">20 题</option>
+            <option :value="30">30 题</option>
           </select>
         </div>
         <div class="field" style="max-width: 280px">

@@ -43,3 +43,17 @@ func TestSelectionFilterKeepsSource(t *testing.T) {
 		t.Fatalf("source = %q, want source-1", f.SourceID)
 	}
 }
+
+func TestSelectionFilterAcceptsShortBatches(t *testing.T) {
+	service := &Service{}
+	for _, count := range []int{1, 3, 7, 10, 30} {
+		if _, err := service.selectionFilter(context.Background(), "user", CreateRequest{LevelID: "n5", Count: count}); err != nil {
+			t.Fatalf("count %d rejected: %v", count, err)
+		}
+	}
+	for _, count := range []int{0, -1, 31} {
+		if _, err := service.selectionFilter(context.Background(), "user", CreateRequest{LevelID: "n5", Count: count}); err == nil {
+			t.Fatalf("count %d unexpectedly accepted", count)
+		}
+	}
+}

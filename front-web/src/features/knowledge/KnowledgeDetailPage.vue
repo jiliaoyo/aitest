@@ -62,6 +62,8 @@ const accuracy = computed(() => {
   return s.confirmedCorrect / s.confirmedAnswered
 })
 
+const practiceCount = computed(() => Math.min(10, detail.value?.questionCount ?? 0))
+
 async function startPractice(): Promise<void> {
   if (!detail.value) return
   creating.value = true
@@ -73,7 +75,7 @@ async function startPractice(): Promise<void> {
         subjectId: detail.value.subjectId,
         mode: 'knowledge',
         knowledgePointIds: [detail.value.id],
-        count: 10,
+        count: practiceCount.value,
       },
     })
     await router.push(`/practice/${session.id}`)
@@ -123,7 +125,7 @@ async function generateAIPractice(): Promise<void> {
           <p class="muted">{{ detail.levelCode }} · {{ detail.subjectName }} · 相关题目 {{ detail.questionCount }} 题</p>
         </div>
         <button class="primary" :disabled="creating || detail.questionCount === 0" @click="startPractice">
-          {{ creating ? '创建中…' : '专项练习 10 题' }}
+          {{ creating ? '创建中…' : `专项练习 ${practiceCount} 题` }}
         </button>
       </div>
 

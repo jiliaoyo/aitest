@@ -40,8 +40,6 @@ type CreateRequest struct {
 	Count             int      `json:"count"`
 }
 
-var validCounts = map[int]bool{10: true, 20: true, 30: true}
-
 const (
 	SelectionOrderSource = "source_order"
 	SelectionOrderRandom = "random"
@@ -64,8 +62,8 @@ func (s *Service) PracticeSources(ctx context.Context, levelID, subjectID string
 }
 
 func (s *Service) selectionFilter(ctx context.Context, userID string, req CreateRequest) (content.SelectionFilter, error) {
-	if !validCounts[req.Count] {
-		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"count": "题量只能是 10、20 或 30"})
+	if req.Count < 1 || req.Count > 30 {
+		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"count": "题量必须是 1 到 30"})
 	}
 	if req.Mode == "" {
 		req.Mode = "comprehensive"
