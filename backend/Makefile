@@ -1,7 +1,7 @@
 PG_URL ?= postgres://$(USER)@localhost:5432/ai_shuati_dev?sslmode=disable
 export DATABASE_URL = $(PG_URL)
 
-.PHONY: help migrate seed backfill-knowledge import-ai-knowledge server worker dev test test-integration build tidy
+.PHONY: help migrate seed backfill-knowledge import-ai-knowledge ai-eval server worker dev test test-integration build tidy
 
 help:
 	@echo "migrate  - 应用数据库迁移"
@@ -24,6 +24,9 @@ backfill-knowledge:
 
 import-ai-knowledge:
 	DATABASE_URL="$(PG_URL)" go run ./cmd/import-ai-knowledge
+
+ai-eval:
+	go run ./cmd/ai-eval
 
 server:
 	DATABASE_URL="$(PG_URL)" go run ./cmd/server
