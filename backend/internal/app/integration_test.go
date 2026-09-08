@@ -1114,6 +1114,96 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		assertStatus(t, jsonRequest(t, data.learnerA, server.URL, http.MethodGet, "/api/v1/me", nil, ""), http.StatusUnauthorized)
 		loginIntegration(t, newIntegrationClient(t), server.URL, "learner-a@example.com", "learner-new-pass-123")
 	})
+
+	t.Run("批量发布只处理已审核项并返回逐条结果", func(t *testing.T) {
+		payload := []byte(`{"items":[
+			{"type":"single_choice","stem":"批量发布已审核题一＿＿＿。","options":[{"id":"a","label":"A","text":"甲"},{"id":"b","label":"B","text":"乙"}],"levelCode":"n5","subjectCode":"grammar","difficulty":3,"knowledgePointNames":[],"sourceAnswer":{"value":{"optionIds":["a"]},"authority":"official"}},
+			{"type":"single_choice","stem":"批量发布未审核题二＿＿＿。","options":[{"id":"a","label":"A","text":"甲"},{"id":"b","label":"B","text":"乙"}],"levelCode":"n5","subjectCode":"grammar","difficulty":3,"knowledgePointNames":[],"sourceAnswer":{"value":{"optionIds":["a"]},"authority":"official"}}
+		]}`)
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+		part, err := writer.CreateFormFile("file", "batch-publish.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := part.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		req, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/admin/import-jobs", &body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		createdResp, err := data.admin.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var created struct {
+			Job struct {
+				ID string `json:"id"`
+			} `json:"job"`
+		}
+		decodeResponse(t, createdResp, &created)
+
+		var detail struct {
+			Items []struct {
+				ID           string  `json:"id"`
+				ReviewStatus string  `json:"reviewStatus"`
+				PublishedID  *string `json:"publishedQuestionId"`
+			} `json:"items"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/import-jobs/"+created.Job.ID, nil, ""), &detail)
+		if len(detail.Items) != 2 {
+			t.Fatalf("expected two import items, got %d", len(detail.Items))
+		}
+		firstID, secondID := detail.Items[0].ID, detail.Items[1].ID
+		assertStatus(t, jsonRequest(t, data.admin, server.URL, http.MethodPost,
+			"/api/v1/admin/import-items/"+firstID+"/approve", nil, ""), http.StatusOK)
+
+		var result struct {
+			SuccessCount int `json:"successCount"`
+			FailureCount int `json:"failureCount"`
+			Results      []struct {
+				ItemID string `json:"itemId"`
+				Status string `json:"status"`
+			} `json:"results"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodPost,
+			"/api/v1/admin/import-jobs/"+created.Job.ID+"/publish-approved",
+			map[string]any{"itemIds": []string{firstID, secondID}}, ""), &result)
+		if result.SuccessCount != 1 || result.FailureCount != 1 || len(result.Results) != 2 {
+			t.Fatalf("unexpected batch publish result: %+v", result)
+		}
+		if result.Results[0].ItemID != firstID || result.Results[0].Status != "published" ||
+			result.Results[1].ItemID != secondID || result.Results[1].Status != "failed" {
+			t.Fatalf("batch result should preserve per-item outcome: %+v", result.Results)
+		}
+		var after struct {
+			Items []struct {
+				ID           string  `json:"id"`
+				ReviewStatus string  `json:"reviewStatus"`
+				PublishedID  *string `json:"publishedQuestionId"`
+			} `json:"items"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/admin/import-jobs/"+created.Job.ID, nil, ""), &after)
+		for _, item := range after.Items {
+			switch item.ID {
+			case firstID:
+				if item.ReviewStatus != "published" || item.PublishedID == nil {
+					t.Fatalf("approved item was not published: %+v", item)
+				}
+			case secondID:
+				if item.ReviewStatus == "published" || item.PublishedID != nil {
+					t.Fatalf("unapproved item bypassed review: %+v", item)
+				}
+			}
+		}
+	})
 }
 
 func TestLearningStatsAccountingIntegration(t *testing.T) {
@@ -1588,6 +1678,7 @@ func TestWorkerRecoveryIntegration(t *testing.T) {
 			t.Fatal("worker did not stop after stale-owner test")
 		}
 	})
+
 }
 
 func TestWrongItemStateIntegration(t *testing.T) {

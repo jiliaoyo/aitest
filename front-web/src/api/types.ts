@@ -607,3 +607,9 @@ export interface ImportItemDTO {
   createdAt: string
   updatedAt: string
 }
+
+export interface BatchPublishResponse {
+  successCount: number
+  failureCount: number
+  results: Array<{ itemId: string; status: 'published' | 'failed'; message?: string }>
+}

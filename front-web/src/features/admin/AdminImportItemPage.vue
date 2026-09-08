@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { request, ApiError, fieldErrors } from '@/api/client'
 import type { AdminKnowledgePoint, Exam, ImportAnswerDTO, ImportDraftDTO, ImportItemDTO, ImportSuggestionDTO, OptionDTO, SourceDTO } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
@@ -10,8 +10,9 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import { questionTypeText } from '@/app/format'
 
 const route = useRoute()
-const itemID = route.params.importItemId as string
+const itemID = computed(() => String(route.params.importItemId ?? ''))
 const item = ref<ImportItemDTO | null>(null)
+const navigationItems = ref<ImportItemDTO[]>([])
 const exams = ref<Exam[]>([])
 const sources = ref<SourceDTO[]>([])
 const kps = ref<AdminKnowledgePoint[]>([])
@@ -27,6 +28,7 @@ const approving = ref(false)
 const publishing = ref(false)
 const confirmPublish = ref(false)
 const fieldErr = reactive<Record<string, string>>({})
+const savedDraftJSON = ref('')
 
 const form = reactive({
   materialKey: '',
@@ -53,6 +55,9 @@ const aiSuggestedAnswer = ref<ImportSuggestionDTO | undefined>()
 const isChoice = computed(() => form.type === 'single_choice' || form.type === 'multiple_choice')
 const sections = computed(() => sources.value.flatMap((source) => source.sections.map((section) => ({ ...section, sourceName: source.name }))))
 const suggestionText = computed(() => aiSuggestedAnswer.value ? JSON.stringify(aiSuggestedAnswer.value.value) : '')
+const currentIndex = computed(() => navigationItems.value.findIndex((candidate) => candidate.id === itemID.value))
+const previousItem = computed(() => currentIndex.value > 0 ? navigationItems.value[currentIndex.value - 1] : null)
+const nextItem = computed(() => currentIndex.value >= 0 && currentIndex.value < navigationItems.value.length - 1 ? navigationItems.value[currentIndex.value + 1] : null)
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
@@ -91,15 +96,18 @@ function applyDraft(draft: ImportDraftDTO): void {
 async function load(): Promise<void> {
   state.value = 'loading'
   try {
-    const [itemRes, catalogRes, sourceRes] = await Promise.all([
-      request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID}`),
+    const itemRes = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID.value}`)
+    const [catalogRes, sourceRes, jobRes] = await Promise.all([
       request<{ exams: Exam[] }>('/catalog'),
       request<{ sources: SourceDTO[] }>('/admin/sources'),
+      request<{ items: ImportItemDTO[] }>(`/admin/import-jobs/${itemRes.item.jobId}?limit=100`),
     ])
     item.value = itemRes.item
+    navigationItems.value = jobRes.items
     exams.value = catalogRes.exams
     sources.value = sourceRes.sources
     if (item.value.draft) applyDraft(item.value.draft)
+    savedDraftJSON.value = JSON.stringify(buildDraft())
     await loadKPs()
     state.value = 'ready'
   } catch (err) {
@@ -180,8 +188,10 @@ async function save(): Promise<void> {
   info.value = ''
   for (const key of Object.keys(fieldErr)) delete fieldErr[key]
   try {
-    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID}`, { method: 'PATCH', body: { draft: buildDraft() } })
+    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID.value}`, { method: 'PATCH', body: { draft: buildDraft() } })
     item.value = res.item
+    if (res.item.draft) applyDraft(res.item.draft)
+    savedDraftJSON.value = JSON.stringify(buildDraft())
     info.value = '草稿已保存；保存后需要重新审核。'
   } catch (err) {
     const fields = fieldErrors(err)
@@ -196,7 +206,7 @@ async function approve(): Promise<void> {
   approving.value = true
   topError.value = ''
   try {
-    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID}/approve`, { method: 'POST' })
+    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID.value}/approve`, { method: 'POST' })
     item.value = res.item
     info.value = '已审核，可以发布。'
   } catch (err) {
@@ -214,7 +224,7 @@ async function publish(): Promise<void> {
   publishing.value = true
   topError.value = ''
   try {
-    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID}/publish`, { method: 'POST' })
+    const res = await request<{ item: ImportItemDTO }>(`/admin/import-items/${itemID.value}/publish`, { method: 'POST' })
     item.value = res.item
     info.value = '已发布到题库；题目后续编辑仍会创建新版本。'
   } catch (err) {
@@ -225,7 +235,22 @@ async function publish(): Promise<void> {
   }
 }
 
-onMounted(() => void load())
+const dirty = computed(() => savedDraftJSON.value !== '' && savedDraftJSON.value !== JSON.stringify(buildDraft()))
+
+function beforeUnload(event: BeforeUnloadEvent): void {
+  if (dirty.value) {
+    event.preventDefault()
+    event.returnValue = ''
+  }
+}
+
+onBeforeRouteLeave(() => !dirty.value || window.confirm('有未保存修改，确定离开吗？'))
+watch(() => route.params.importItemId, () => void load())
+onMounted(() => {
+  window.addEventListener('beforeunload', beforeUnload)
+  void load()
+})
+onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 </script>
 
 <template>
@@ -236,9 +261,13 @@ onMounted(() => void load())
       <div class="page-header">
         <div>
           <p class="muted" style="margin: 0 0 4px"><RouterLink :to="`/admin/imports/${item.jobId}`">导入任务</RouterLink> / 第 {{ item.position }} 题</p>
-          <h1 style="font-size: 24px; margin: 0">原文对照审核</h1>
+        <h1 style="font-size: 24px; margin: 0">原文对照审核</h1>
         </div>
-        <StatusBadge :value="item.reviewStatus" />
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">
+          <RouterLink v-if="previousItem" class="tag" :to="`/admin/import-items/${previousItem.id}`">上一题</RouterLink>
+          <RouterLink v-if="nextItem" class="tag" :to="`/admin/import-items/${nextItem.id}`">下一题</RouterLink>
+          <StatusBadge :value="item.reviewStatus" />
+        </div>
       </div>
       <p v-if="info" class="tag" data-tone="success" role="status">{{ info }}</p>
       <p v-if="topError" class="error-summary" role="alert">{{ topError }}</p>

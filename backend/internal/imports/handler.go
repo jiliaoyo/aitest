@@ -26,6 +26,7 @@ func (h *Handler) RegisterRoutes(adminMux *http.ServeMux) {
 	adminMux.HandleFunc("PATCH /api/v1/admin/import-items/{id}", h.updateItem)
 	adminMux.HandleFunc("POST /api/v1/admin/import-items/{id}/approve", h.approveItem)
 	adminMux.HandleFunc("POST /api/v1/admin/import-items/{id}/publish", h.publishItem)
+	adminMux.HandleFunc("POST /api/v1/admin/import-jobs/{id}/publish-approved", h.publishApproved)
 }
 
 func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
@@ -111,4 +112,20 @@ func (h *Handler) publishItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"item": item})
+}
+
+func (h *Handler) publishApproved(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ItemIDs []string `json:"itemIds"`
+	}
+	if err := httpapi.DecodeJSON(w, r, &req); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	result, err := h.service.PublishApproved(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("id"), req.ItemIDs)
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, result)
 }

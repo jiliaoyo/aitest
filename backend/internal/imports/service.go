@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -211,6 +212,51 @@ func (s *Service) PublishItem(ctx context.Context, adminID, id string) (Item, er
 		return Item{}, err
 	}
 	return s.store.ItemByID(ctx, id)
+}
+
+func (s *Service) PublishApproved(ctx context.Context, adminID, jobID string, itemIDs []string) (BatchPublishResponse, error) {
+	if len(itemIDs) < 1 || len(itemIDs) > 50 {
+		return BatchPublishResponse{}, httpapi.ValidationError(map[string]string{"itemIds": "一次请选择 1 到 50 个导入项"})
+	}
+	seen := map[string]bool{}
+	results := make([]BatchPublishResult, 0, len(itemIDs))
+	for _, itemID := range itemIDs {
+		if seen[itemID] {
+			continue
+		}
+		seen[itemID] = true
+		item, err := s.store.ItemByID(ctx, itemID)
+		if err != nil {
+			results = append(results, BatchPublishResult{ItemID: itemID, Status: "failed", Message: "导入项不存在"})
+			continue
+		}
+		if item.JobID != jobID {
+			results = append(results, BatchPublishResult{ItemID: itemID, Status: "failed", Message: "导入项不属于当前任务"})
+			continue
+		}
+		if _, err := s.PublishItem(ctx, adminID, itemID); err != nil {
+			results = append(results, BatchPublishResult{ItemID: itemID, Status: "failed", Message: batchPublishMessage(err)})
+			continue
+		}
+		results = append(results, BatchPublishResult{ItemID: itemID, Status: "published"})
+	}
+	response := BatchPublishResponse{Results: results}
+	for _, result := range results {
+		if result.Status == "published" {
+			response.SuccessCount++
+		} else {
+			response.FailureCount++
+		}
+	}
+	return response, nil
+}
+
+func batchPublishMessage(err error) string {
+	var apiErr *httpapi.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Message
+	}
+	return "发布失败，请重试"
 }
 
 func questionInput(d Draft, materialID *string) content.QuestionInput {

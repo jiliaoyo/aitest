@@ -730,6 +730,22 @@ paths:
                   items: { type: array, items: { $ref: '#/components/schemas/ImportItem' } }
                   nextCursor: { type: string }
         '404': { $ref: '#/components/responses/NotFound' }
+  /admin/import-jobs/{id}/publish-approved:
+    post:
+      tags: [admin]
+      summary: 顺序发布已明确审核通过的导入项
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemIds]
+              properties:
+                itemIds: { type: array, minItems: 1, maxItems: 50, items: { type: string } }
+      responses:
+        '200': { description: 返回逐条发布结果, content: { application/json: { schema: { $ref: '#/components/schemas/BatchPublishResponse' } } } }
+        '400': { $ref: '#/components/responses/ValidationError' }
   /admin/import-items/{id}:
     get:
       tags: [admin]
@@ -1361,3 +1377,16 @@ components:
         jobStatus: { type: string }
         createdAt: { type: string }
         updatedAt: { type: string }
+    BatchPublishResponse:
+      type: object
+      properties:
+        successCount: { type: integer }
+        failureCount: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string }
+              status: { type: string, enum: [published, failed] }
+              message: { type: string }

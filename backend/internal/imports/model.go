@@ -71,3 +71,15 @@ type Item struct {
 type UpdateItemRequest struct {
 	Draft Draft `json:"draft"`
 }
+
+type BatchPublishResult struct {
+	ItemID  string `json:"itemId"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
+type BatchPublishResponse struct {
+	SuccessCount int                  `json:"successCount"`
+	FailureCount int                  `json:"failureCount"`
+	Results      []BatchPublishResult `json:"results"`
+}
