@@ -120,6 +120,14 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
         </div>
       </section>
 
+      <section v-if="dashboard.reviewDueCount > 0" aria-labelledby="review-title">
+        <h2 id="review-title" style="font-size: 17px">到期复习</h2>
+        <div class="card">
+          <p class="muted">有 {{ dashboard.reviewDueCount }} 道权威错题或未答题到期，按当前级别安排复习。</p>
+          <button class="primary" @click="router.push('/practice/new?mode=review')">复习到期题</button>
+        </div>
+      </section>
+
       <section v-if="dashboard.memory" aria-labelledby="memory-title">
         <h2 id="memory-title" style="font-size: 17px">全局做题记忆</h2>
         <div class="card">

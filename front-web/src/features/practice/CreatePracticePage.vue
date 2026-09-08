@@ -20,7 +20,7 @@ const aiLevelId = ref('')
 const subjectId = ref('')
 const sourceId = ref('')
 const sourceSectionId = ref('')
-const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items'>('comprehensive')
+const mode = ref<'comprehensive' | 'knowledge' | 'wrong_items' | 'review'>('comprehensive')
 const selectionOrder = ref<'source_order' | 'random' | 'unseen_first'>('source_order')
 const knowledgePointIds = ref<string[]>([])
 const count = ref(20)
@@ -71,6 +71,7 @@ async function loadCatalog(): Promise<void> {
       : sessionUser()?.defaultLevelId ?? res.exams[0]?.levels[0]?.id ?? ''
     subjectId.value = querySubject
     if (route.query.mode === 'knowledge') mode.value = 'knowledge'
+    if (route.query.mode === 'review') mode.value = 'review'
     if (typeof route.query.knowledgePointIds === 'string') {
       knowledgePointIds.value = route.query.knowledgePointIds.split(',').filter(Boolean)
     }
@@ -338,6 +339,10 @@ async function generateAIPractice(): Promise<void> {
             <label class="option-row" style="margin-bottom: 0">
               <input v-model="mode" type="radio" name="mode" value="wrong_items" />
               <span>错题重练</span>
+            </label>
+            <label class="option-row" style="margin-bottom: 0">
+              <input v-model="mode" type="radio" name="mode" value="review" />
+              <span>到期复习</span>
             </label>
           </div>
         </fieldset>

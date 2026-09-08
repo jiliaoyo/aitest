@@ -60,6 +60,7 @@ type Dashboard struct {
 	Recommendations []Recommendation `json:"recommendations"`
 	Comprehensive   *Recommendation  `json:"comprehensive,omitempty"`
 	StatsEmpty      bool             `json:"statsEmpty"`
+	ReviewDueCount  int              `json:"reviewDueCount"`
 	Memory          LearningMemory   `json:"memory"`
 }
 

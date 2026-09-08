@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/jobs"
@@ -458,6 +459,65 @@ func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
 		return s.RebuildUserStatsTx(ctx, tx, userID)
 	})
+}
+
+type reviewEventRow struct {
+	ResultID   string
+	QuestionID string
+	At         time.Time
+	Status     string
+}
+
+// RebuildQuestionReviews 从确定性作答事实重建复习计划；重复任务只会得到同一结果。
+func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, userID string) error {
+	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		rows, err := store.CollectRows[reviewEventRow](ctx, tx, `
+			SELECT gr.id::text, pi.question_id::text, ps.submitted_at, gr.status
+			FROM grading_results gr
+			JOIN practice_items pi ON pi.id = gr.item_id
+			JOIN practice_sessions ps ON ps.id = pi.session_id
+			LEFT JOIN user_learning_memory mem ON mem.user_id = $1
+			WHERE ps.user_id = $1 AND ps.submitted_at IS NOT NULL
+			  AND ps.status IN ('grading', 'completed', 'analysis_failed')
+			  AND gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+			  AND gr.status IN ('correct', 'incorrect', 'unanswered')
+			  AND (mem.reset_at IS NULL OR ps.submitted_at > mem.reset_at)
+			ORDER BY pi.question_id, ps.submitted_at, pi.position, gr.id`, userID)
+		if err != nil {
+			return err
+		}
+		events := make([]reviewEvent, 0, len(rows))
+		for _, row := range rows {
+			events = append(events, reviewEvent{ResultID: row.ResultID, QuestionID: row.QuestionID, At: row.At, Status: row.Status})
+		}
+		plans := buildReviewPlans(events)
+		if _, err := tx.Exec(ctx, `DELETE FROM user_question_reviews WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+		for _, plan := range plans {
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO user_question_reviews
+				  (user_id, question_id, stage, next_review_at, last_grading_result_id, last_status)
+				VALUES ($1, $2, $3, $4, $5, $6)`, userID, plan.QuestionID, plan.Stage, plan.NextReviewAt, plan.LastResultID, plan.LastStatus); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) {
+	var count int
+	err := s.db.QueryRow(ctx, `
+		SELECT count(*)::int
+		FROM user_question_reviews r
+		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
+		JOIN question_versions v ON v.id = q.published_version_id
+		WHERE r.user_id = $1 AND r.next_review_at <= now()`, userID).Scan(&count)
+	return count, err
 }
 
 func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string) error {

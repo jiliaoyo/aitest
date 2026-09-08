@@ -29,7 +29,7 @@ func NewService(pool *pgxpool.Pool, contentStore *content.Store) *Service {
 type CreateRequest struct {
 	LevelID           string   `json:"levelId"`
 	SubjectID         string   `json:"subjectId"`
-	Mode              string   `json:"mode"`           // comprehensive | knowledge | wrong_items
+	Mode              string   `json:"mode"`           // comprehensive | knowledge | wrong_items | review
 	SelectionOrder    string   `json:"selectionOrder"` // source_order | random
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
 	SourceID          string   `json:"sourceId"`
@@ -117,6 +117,19 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 		}
 		if len(ids) == 0 {
 			return f, httpapi.E(http.StatusConflict, "no_wrong_items", "当前没有可重练的错题")
+		}
+		f.QuestionIDs = ids
+		f.ExcludeRecent = false
+	case "review":
+		if req.LevelID == "" {
+			return f, httpapi.ValidationError(map[string]string{"levelId": "请选择级别"})
+		}
+		ids, err := s.store.ReviewQuestionIDs(ctx, userID, req.LevelID, req.SubjectID)
+		if err != nil {
+			return f, err
+		}
+		if len(ids) == 0 {
+			return f, httpapi.E(http.StatusConflict, "no_due_reviews", "当前没有到期复习题")
 		}
 		f.QuestionIDs = ids
 		f.ExcludeRecent = false

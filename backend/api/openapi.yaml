@@ -257,7 +257,7 @@ paths:
         - { name: subjectId, in: query, schema: { type: string } }
         - { name: sourceId, in: query, schema: { type: string }, description: 指定题目数据来源 }
         - { name: sourceSectionId, in: query, schema: { type: string }, description: 指定来源章节 }
-        - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items] } }
+        - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items, review] } }
         - { name: selectionOrder, in: query, schema: { type: string, enum: [source_order, random, unseen_first], default: source_order } }
         - { name: knowledgePointIds, in: query, schema: { type: string }, description: 逗号分隔 }
         - { name: from, in: query, schema: { type: string, format: date }, description: 错题重练的作答开始日期 }
@@ -946,7 +946,7 @@ components:
       properties:
         levelId: { type: string }
         subjectId: { type: string }
-        mode: { type: string, enum: [comprehensive, knowledge, wrong_items], default: comprehensive }
+        mode: { type: string, enum: [comprehensive, knowledge, wrong_items, review], default: comprehensive }
         selectionOrder: { type: string, enum: [source_order, random, unseen_first], default: source_order }
         sourceId: { type: string, description: 指定题目数据来源；不传表示全部题目 }
         sourceSectionId: { type: string, description: 指定来源章节 }
@@ -1247,6 +1247,7 @@ components:
               knowledgePointIds: { type: array, items: { type: string } }
         comprehensive: { type: object, nullable: true }
         statsEmpty: { type: boolean }
+        reviewDueCount: { type: integer, description: 当前用户已到期的确定性复习题数量 }
         memory: { $ref: '#/components/schemas/LearningMemory' }
     LearningMemory:
       type: object

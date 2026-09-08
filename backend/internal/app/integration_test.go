@@ -1119,6 +1119,52 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 		})
 	}
 
+	t.Run("到期复习计划按事实重建且可创建复习批次", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "review-plan@example.com")
+		reviewBase := time.Now().UTC().Add(-48 * time.Hour).Truncate(time.Second)
+		addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+			"deterministic", "incorrect", stringPtr("official"), reviewBase)
+		addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+			"deterministic", "correct", stringPtr("official"), reviewBase.Add(24*time.Hour))
+		if err := learningStore.RebuildQuestionReviews(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		var stage int
+		var nextReview time.Time
+		if err := pool.QueryRow(ctx, `SELECT stage, next_review_at FROM user_question_reviews WHERE user_id = $1 AND question_id = $2`, userID, data.keyQuestionID).Scan(&stage, &nextReview); err != nil {
+			t.Fatal(err)
+		}
+		wantNext := reviewBase.Add(24*time.Hour + 3*24*time.Hour)
+		if stage != 1 || !nextReview.Equal(wantNext) {
+			t.Fatalf("unexpected review plan: stage=%d next=%s want=%s", stage, nextReview, wantNext)
+		}
+		if due, err := learningStore.DueReviewCount(ctx, userID); err != nil || due != 0 {
+			t.Fatalf("review should not be due before next_review_at: due=%d err=%v", due, err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE user_question_reviews SET next_review_at = now() - interval '1 hour' WHERE user_id = $1 AND question_id = $2`, userID, data.keyQuestionID); err != nil {
+			t.Fatal(err)
+		}
+		if due, err := learningStore.DueReviewCount(ctx, userID); err != nil || due != 1 {
+			t.Fatalf("due count should use stored UTC timestamp: due=%d err=%v", due, err)
+		}
+		created, err := practice.NewService(pool, content.NewStore(pool)).CreateSession(ctx, userID, practice.CreateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Mode: "review", Count: 1,
+		})
+		if err != nil || created.TotalCount != 1 {
+			t.Fatalf("due review should reuse normal practice creation: session=%+v err=%v", created, err)
+		}
+		if err := learningStore.RebuildQuestionReviews(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		var repeatStage int
+		if err := pool.QueryRow(ctx, `SELECT stage FROM user_question_reviews WHERE user_id = $1 AND question_id = $2`, userID, data.keyQuestionID).Scan(&repeatStage); err != nil {
+			t.Fatal(err)
+		}
+		if repeatStage != 1 {
+			t.Fatalf("rebuilding the same facts must not advance review stage: %d", repeatStage)
+		}
+	})
+
 	t.Run("同批次按题号稳定计算", func(t *testing.T) {
 		userID := cloneIntegrationLearner(t, pool, "same-batch@example.com")
 		questionRows, err := store.CollectRows[struct {

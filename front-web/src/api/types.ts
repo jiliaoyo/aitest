@@ -290,6 +290,7 @@ export interface DashboardDTO {
   recommendations: Recommendation[]
   comprehensive?: Recommendation | null
   statsEmpty: boolean
+  reviewDueCount: number
   memory: LearningMemoryDTO
 }
 

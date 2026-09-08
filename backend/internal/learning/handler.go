@@ -40,7 +40,10 @@ func (h *Handler) handleRebuildStats(ctx context.Context, attempts, maxAttempts 
 	if err := json.Unmarshal(payload, &req); err != nil || req.UserID == "" {
 		return fmt.Errorf("rebuild stats payload 不合法")
 	}
-	return h.store.RebuildUserStats(ctx, h.pool, req.UserID)
+	if err := h.store.RebuildUserStats(ctx, h.pool, req.UserID); err != nil {
+		return err
+	}
+	return h.store.RebuildQuestionReviews(ctx, h.pool, req.UserID)
 }
 
 // RegisterRoutes 挂载学习端档案路由与举报管理路由；mux/adminMux 传 nil 表示不挂载。
@@ -108,6 +111,11 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Memory = memory
+	d.ReviewDueCount, err = h.store.DueReviewCount(ctx, userID)
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
 
 	weak, err := h.store.WeakKnowledgePoints(ctx, userID, 3)
 	if err != nil {

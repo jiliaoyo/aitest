@@ -41,6 +41,25 @@ func (s *Store) InsertItems(ctx context.Context, tx pgx.Tx, sessionID string, it
 	return nil
 }
 
+func (s *Store) ReviewQuestionIDs(ctx context.Context, userID, levelID, subjectID string) ([]string, error) {
+	rows, err := store.CollectRows[struct{ ID string }](ctx, s.db, `
+		SELECT r.question_id::text
+		FROM user_question_reviews r
+		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
+		JOIN question_versions v ON v.id = q.published_version_id
+		WHERE r.user_id = $1 AND r.next_review_at <= now()
+		  AND v.level_id::text = $2 AND ($3 = '' OR v.subject_id::text = $3)
+		ORDER BY r.next_review_at, r.question_id`, userID, levelID, subjectID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	return ids, nil
+}
+
 type ItemSeed struct {
 	QuestionID string
 	VersionID  string
