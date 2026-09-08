@@ -55,6 +55,7 @@ describe('历史与错题本软删除', () => {
           wrongItems: [{
             itemId: 'item-1', sessionId: 'session-1', questionId: 'question-1', position: 1,
             type: 'single_choice', stem: '練習問題です。', options: [{ id: 'a', label: 'A', text: '甲' }, { id: 'b', label: 'B', text: '乙' }], knowledgePoints: [], gradingStatus: 'incorrect',
+            gradingSource: 'deterministic',
             userAnswer: { optionIds: ['a'] }, correctAnswer: { optionIds: ['b'] },
           }],
         }

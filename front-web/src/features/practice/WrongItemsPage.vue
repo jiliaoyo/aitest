@@ -5,7 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { KnowledgePointItem, WrongItem } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
-import { authorityText, formatAIText, gradingStatusText } from '@/app/format'
+import { authorityText, formatAIText, formatAnswerValue, gradingStatusText } from '@/app/format'
 
 const router = useRouter()
 
@@ -63,27 +63,11 @@ onMounted(async () => {
   }
 })
 
-function optionText(item: WrongItem, ids: string[] | undefined): string {
-  if (!ids) return '—'
-  return ids.map((id) => {
-    const option = item.options?.find((o) => o.id === id)
-    return option ? `${option.label}. ${option.text}` : id
-  }).join('、')
-}
-
-function answerText(item: WrongItem, answer: WrongItem['userAnswer']): string {
-  if (!answer) return '未作答'
-  if ('optionIds' in answer && answer.optionIds) return optionText(item, answer.optionIds)
-  if ('text' in answer && answer.text) return answer.text
-  return '未作答'
-}
-
-function correctText(item: WrongItem): string {
-  const answer = item.correctAnswer
-  if (!answer) return '—'
-  if ('optionIds' in answer && answer.optionIds) return optionText(item, answer.optionIds)
-  if ('text' in answer && answer.text) return answer.text
-  return '—'
+function correctLabel(item: WrongItem): string {
+  if (item.gradingSource === 'ai') return 'AI 参考答案'
+  if (item.type === 'fill_blank') return '可接受答案'
+  if (item.type === 'short_answer') return '参考答案'
+  return '标准答案'
 }
 
 const canRetrain = computed(() => items.value.some((item) => item.gradingStatus !== 'correct'))
@@ -180,7 +164,10 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           <p class="material-text" style="margin: 0; white-space: pre-wrap">{{ item.material.content }}</p>
         </section>
         <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap">{{ item.stem }}</p>
-        <p class="mono" style="margin: 0">你的答案：{{ answerText(item, item.userAnswer) }} · 标准答案：{{ correctText(item) }}</p>
+        <p class="mono" style="margin: 0">
+          你的答案：{{ item.userAnswer ? formatAnswerValue(item.userAnswer, item.options ?? []) : '未作答' }} ·
+          {{ correctLabel(item) }}：{{ formatAnswerValue(item.correctAnswer, item.options ?? []) }}
+        </p>
         <div v-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}

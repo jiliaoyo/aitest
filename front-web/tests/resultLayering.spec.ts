@@ -92,4 +92,38 @@ describe('结果分层展示', () => {
     expect(wrapper.text()).toContain('C. に沿って')
 		expect(wrapper.text()).toContain('出题时的语法说明。')
   })
+
+  it('展示填空可接受值和简答参考内容', () => {
+    const fill = mount(ResultItem, {
+      props: {
+        item: {
+          ...baseItem,
+          type: 'fill_blank',
+          options: [],
+          userAnswer: { text: 'で' },
+          correctAnswer: { acceptable: ['に', 'へ'] },
+          gradingSource: 'deterministic',
+          answerAuthority: 'official',
+        },
+      },
+    })
+    expect(fill.text()).toContain('可接受答案')
+    expect(fill.text()).toContain('に、へ')
+
+    const short = mount(ResultItem, {
+      props: {
+        item: {
+          ...baseItem,
+          type: 'short_answer',
+          options: [],
+          userAnswer: { text: '私の回答' },
+          correctAnswer: { text: '参考となる回答' },
+          gradingSource: 'ai',
+          gradingStatus: 'incorrect',
+        },
+      },
+    })
+    expect(short.text()).toContain('AI 参考答案')
+    expect(short.text()).toContain('参考となる回答')
+  })
 })

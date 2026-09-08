@@ -1,33 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { OptionDTO, ResultItem as ResultItemDTO } from '@/api/types'
-import { authorityText, explanationSourceText, formatAIText, gradingStatusText, questionTypeText } from '@/app/format'
+import type { ResultItem as ResultItemDTO } from '@/api/types'
+import { authorityText, explanationSourceText, formatAIText, formatAnswerValue, gradingStatusText, questionTypeText } from '@/app/format'
 import ReportDialog from '@/features/issues/ReportDialog.vue'
 
 // 逐题解析：正式分层（确定性）与 AI 判定分开呈现，来源标签始终可见。
 const props = defineProps<{ item: ResultItemDTO }>()
 
-function answerText(answer: ResultItemDTO['userAnswer'], options: OptionDTO[]): string {
-  if (!answer) return '—'
-  if ('optionIds' in answer && answer.optionIds) {
-    return answer.optionIds
-      .map((id) => {
-        const option = options.find((o) => o.id === id)
-        return option ? `${option.label}. ${option.text}` : id
-      })
-      .join('、')
-  }
-  if ('text' in answer && answer.text) return answer.text
-  return '—'
-}
-
-const userText = computed(() => answerText(props.item.userAnswer, props.item.options))
+const userText = computed(() => formatAnswerValue(props.item.userAnswer, props.item.options))
 const hasGeneratedFallback = computed(() => props.item.gradingStatus === 'failed' && props.item.correctAnswer !== null)
-const correctLabel = computed(() => (hasGeneratedFallback.value ? '出题时答案' : '标准答案'))
+const correctLabel = computed(() => {
+  if (hasGeneratedFallback.value) return '出题时答案'
+  if (props.item.gradingSource === 'ai') return 'AI 参考答案'
+  if (props.item.type === 'fill_blank') return '可接受答案'
+  if (props.item.type === 'short_answer') return '参考答案'
+  return '标准答案'
+})
 const correctText = computed(() =>
   props.item.gradingStatus === 'pending' || (props.item.gradingStatus === 'failed' && !hasGeneratedFallback.value)
     ? '待 AI 判定'
-    : answerText(props.item.correctAnswer, props.item.options),
+    : formatAnswerValue(props.item.correctAnswer, props.item.options),
 )
 const statusTone = computed(() =>
   props.item.gradingStatus === 'correct'

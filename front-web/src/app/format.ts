@@ -1,5 +1,7 @@
 // 统一格式化：同一页面内精度与风格保持一致。
 
+import type { OptionDTO, ResultAnswerValue } from '@/api/types'
+
 const percentFmt = new Intl.NumberFormat('zh-CN', {
   style: 'percent',
   maximumFractionDigits: 1,
@@ -50,6 +52,19 @@ export function formatTime(value: string | null | undefined): string {
     return '—'
   }
   return new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(date)
+}
+
+export function formatAnswerValue(value: ResultAnswerValue, options: OptionDTO[] = []): string {
+  if (!value) return '—'
+  if ('optionIds' in value) {
+    return value.optionIds.map((id) => {
+      const option = options.find((candidate) => candidate.id === id)
+      return option ? `${option.label}. ${option.text}` : id
+    }).join('、') || '—'
+  }
+  if ('text' in value) return value.text || '—'
+  if ('acceptable' in value) return value.acceptable.filter(Boolean).join('、') || '—'
+  return value.reference || '—'
 }
 
 // AI 可能返回单行总结或把换行编码成字面量；保持纯文本渲染，避免引入不安全的 HTML。

@@ -513,6 +513,7 @@ type wrongItemRow struct {
 	MaterialContent   *string
 	KPID              *string
 	KPName            *string
+	Source            string
 	Status            string
 	Authority         *string
 	CorrectValue      *string
@@ -584,7 +585,7 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 		          pi.position, v.type, v.stem, v.options::text,
 		          mv.material_id::text, mv.title, mv.content,
 		          kp.id::text, kp.name,
-		          gr.status, gr.answer_authority, gr.correct_value::text, gr.user_value::text,
+		          gr.source, gr.status, gr.answer_authority, gr.correct_value::text, gr.user_value::text,
 		          gr.explanation, gr.explanation_source, gr.updated_at::text AS graded_at
 		   FROM grading_results gr
 		   JOIN practice_items pi ON pi.id = gr.item_id

@@ -96,6 +96,7 @@ export interface MaterialDTO {
 }
 
 export type AnswerValue = { optionIds: string[] } | { text: string } | null
+export type ResultAnswerValue = AnswerValue | { acceptable: string[] } | { reference: string }
 
 export interface PreSubmitItem {
   id: string
@@ -212,7 +213,7 @@ export interface ResultItem {
   gradingStatus: GradingStatus
   gradingSource: 'deterministic' | 'ai' | null
   answerAuthority: AnswerAuthority | null
-  correctAnswer: AnswerValue
+  correctAnswer: ResultAnswerValue
   explanation: ExplanationDTO | null
 }
 
@@ -308,9 +309,10 @@ export interface WrongItem {
   material?: MaterialDTO
   knowledgePoints: KPRef[]
   gradingStatus: string
+  gradingSource: 'deterministic' | 'ai'
   answerAuthority?: string | null
   userAnswer: AnswerValue
-  correctAnswer: AnswerValue
+  correctAnswer: ResultAnswerValue
   explanation?: ExplanationDTO
 }
 

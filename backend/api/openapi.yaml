@@ -823,6 +823,18 @@ components:
         - type: object
           properties: { text: { type: string } }
       nullable: true
+    ResultAnswerValue:
+      description: 答题后答案；权威填空和简答可保留题库中的可接受值或参考答案结构
+      oneOf:
+        - type: object
+          properties: { optionIds: { type: array, items: { type: string } } }
+        - type: object
+          properties: { text: { type: string } }
+        - type: object
+          properties: { acceptable: { type: array, items: { type: string } } }
+        - type: object
+          properties: { reference: { type: string } }
+      nullable: true
     PreSubmitSession:
       type: object
       description: 答题前 DTO；契约保证不含 correctAnswer/answerAuthority/gradingStatus/explanation 等字段
@@ -905,7 +917,7 @@ components:
               gradingStatus: { type: string, enum: [correct, incorrect, unanswered, pending, failed] }
               gradingSource: { type: string, enum: [deterministic, ai], nullable: true }
               answerAuthority: { type: string, enum: [official, human_verified], nullable: true }
-              correctAnswer: { $ref: '#/components/schemas/AnswerValue' }
+              correctAnswer: { $ref: '#/components/schemas/ResultAnswerValue' }
               explanation:
                 nullable: true
                 type: object
@@ -1185,9 +1197,10 @@ components:
         material: { type: object, nullable: true }
         knowledgePoints: { type: array, items: { type: object } }
         gradingStatus: { type: string }
+        gradingSource: { type: string, enum: [deterministic, ai] }
         answerAuthority: { type: string, nullable: true }
         userAnswer: { $ref: '#/components/schemas/AnswerValue' }
-        correctAnswer: { $ref: '#/components/schemas/AnswerValue' }
+        correctAnswer: { $ref: '#/components/schemas/ResultAnswerValue' }
         explanation: { type: object, nullable: true }
     Dashboard:
       type: object

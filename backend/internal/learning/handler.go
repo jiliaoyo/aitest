@@ -197,7 +197,7 @@ func (h *Handler) wrongItems(w http.ResponseWriter, r *http.Request) {
 			dto = &wrongItemDTO{
 				ItemID: row.ItemID, SessionID: row.SessionID, QuestionID: row.QuestionID,
 				Position: row.Position, Type: row.Type, Stem: row.Stem,
-				Options: json.RawMessage("null"), GradingStatus: row.Status,
+				Options: json.RawMessage("null"), GradingStatus: row.Status, GradingSource: row.Source,
 				KnowledgePoints: []kpRef{},
 			}
 			if row.OptionsText != nil && *row.OptionsText != "null" {
@@ -334,6 +334,7 @@ type wrongItemDTO struct {
 	Material        *materialDTO    `json:"material,omitempty"`
 	KnowledgePoints []kpRef         `json:"knowledgePoints"`
 	GradingStatus   string          `json:"gradingStatus"`
+	GradingSource   string          `json:"gradingSource"`
 	AnswerAuthority *string         `json:"answerAuthority,omitempty"`
 	UserAnswer      json.RawMessage `json:"userAnswer"`
 	CorrectAnswer   json.RawMessage `json:"correctAnswer"`
