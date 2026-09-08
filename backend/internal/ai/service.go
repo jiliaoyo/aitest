@@ -40,17 +40,23 @@ type Service struct {
 	client               *Client
 	logger               *slog.Logger
 	generationDailyLimit int
+	generationCallBudget int
 }
 
 const defaultAIGenerationDailyLimit = 10
+const defaultAIGenerationCallBudget = 6
 
 // NewService 的可选配额参数保持旧的测试和工具调用兼容；正式进程由配置传入。
 func NewService(pool *pgxpool.Pool, client *Client, logger *slog.Logger, dailyLimit ...int) *Service {
 	limit := defaultAIGenerationDailyLimit
+	budget := defaultAIGenerationCallBudget
 	if len(dailyLimit) > 0 {
 		limit = dailyLimit[0]
 	}
-	return &Service{pool: pool, client: client, logger: logger, generationDailyLimit: limit}
+	if len(dailyLimit) > 1 && dailyLimit[1] > 0 {
+		budget = dailyLimit[1]
+	}
+	return &Service{pool: pool, client: client, logger: logger, generationDailyLimit: limit, generationCallBudget: budget}
 }
 
 func (s *Service) markBusinessSuccess(ctx context.Context, runID string) {

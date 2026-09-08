@@ -47,6 +47,8 @@ const (
 const maxRecentGeneratedStemsInPrompt = 20
 const maxGenerationCalls = 6
 
+var errGenerationBudgetExceeded = errors.New("AI 生成批次已达到模型调用上限")
+
 var generatedCategories = map[string]struct{}{
 	generatedCategoryMixed:  {},
 	"grammar_case_particle": {}, "grammar_conjunctive_particle": {}, "grammar_adverbial_particle": {}, "grammar_final_particle": {},
@@ -205,9 +207,9 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 			subjectID = req.SubjectID
 		}
 		if err := tx.QueryRow(ctx,
-			`INSERT INTO practice_sessions (user_id, status, level_id, subject_id, scope, requested_count)
-			 VALUES ($1, 'generating', $2, $3, $4, $5) RETURNING id::text`,
-			userID, req.LevelID, subjectID, scope, req.Count).Scan(&out.ID); err != nil {
+			`INSERT INTO practice_sessions (user_id, status, level_id, subject_id, scope, requested_count, ai_generation_call_budget)
+			 VALUES ($1, 'generating', $2, $3, $4, $5, $6) RETURNING id::text`,
+			userID, req.LevelID, subjectID, scope, req.Count, s.generationCallBudget).Scan(&out.ID); err != nil {
 			return err
 		}
 		out.Status = "generating"
@@ -573,14 +575,34 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, LearningMemory: memory,
 		})
+		reserved, err := s.reserveGenerationCall(ctx, req.SessionID)
+		if err != nil {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+		}
+		if !reserved {
+			cause := fmt.Errorf("本批 AI 模型调用已达到 %d 次上限，已停止继续重试", s.generationCallBudget)
+			s.recordGenerationError(ctx, req.SessionID, cause)
+			if err := s.markGenerationFailed(ctx, req.SessionID, cause); err != nil {
+				return err
+			}
+			return nil
+		}
 		out, runID, err := s.client.RunPromptWithTemperatureAndAudit(ctx, row.UserID, "practice_question_generation", promptVersion,
 			req.SessionID, systemPrompt, string(inputJSON), temperature)
 		if err != nil {
+			s.recordGenerationError(ctx, req.SessionID, err)
+			if nonRetryableGenerationError(err) {
+				if markErr := s.markGenerationFailed(ctx, req.SessionID, err); markErr != nil {
+					return markErr
+				}
+				return nil
+			}
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		var response generatedQuestionResponse
 		if err := strictDecode(out, &response); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_structure", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
 			validationErr = fmt.Errorf("AI 出题输出不合法: %w", err)
 			retryNote = ""
 			continue
@@ -588,6 +610,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		questions := capGeneratedQuestions(response.Questions, remaining)
 		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
 			validationErr = err
 			retryNote = ""
 			continue
@@ -596,12 +619,14 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		generatedKeys, err := generatedQuestionKeys(row.LevelID, subjectID, generatedQuestions, generatedQuestionPoints)
 		if err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		blockedKeys = append(blockedKeys, generatedKeys...)
 		uniqueQuestions, duplicates, err := filterGeneratedQuestionDuplicates(questions, row.LevelID, subjectID, generatedQuestionPoints, blockedKeys)
 		if err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		s.markBusinessSuccess(ctx, runID)
@@ -1111,7 +1136,7 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 			}
 		}
 		if _, err := tx.Exec(ctx,
-			`UPDATE practice_sessions SET status = 'active', updated_at = now() WHERE id = $1 AND status = 'generating'`, sessionID); err != nil {
+			`UPDATE practice_sessions SET status = 'active', ai_generation_last_error = '', updated_at = now() WHERE id = $1 AND status = 'generating'`, sessionID); err != nil {
 			return err
 		}
 		_, err = tx.Exec(ctx,
@@ -1122,6 +1147,7 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 }
 
 func (s *Service) generationRetry(ctx context.Context, sessionID string, attempts, maxAttempts int, cause error) error {
+	s.recordGenerationError(ctx, sessionID, cause)
 	if attempts < maxAttempts {
 		return cause
 	}
@@ -1129,6 +1155,55 @@ func (s *Service) generationRetry(ctx context.Context, sessionID string, attempt
 		return fmt.Errorf("标记 AI 出题失败失败: %v（原错误：%w）", err, cause)
 	}
 	return cause
+}
+
+func (s *Service) reserveGenerationCall(ctx context.Context, sessionID string) (bool, error) {
+	err := store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx,
+			`UPDATE practice_sessions
+			 SET ai_generation_calls_used = ai_generation_calls_used + 1, updated_at = now()
+			 WHERE id = $1 AND status = 'generating'
+			   AND ai_generation_calls_used < ai_generation_call_budget`, sessionID)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return errGenerationBudgetExceeded
+		}
+		return nil
+	})
+	if errors.Is(err, errGenerationBudgetExceeded) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+func (s *Service) recordGenerationError(ctx context.Context, sessionID string, cause error) {
+	if cause == nil {
+		return
+	}
+	message := shortError(cause)
+	_ = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx,
+			`UPDATE practice_sessions SET ai_generation_last_error = left($2, 500), updated_at = now()
+			 WHERE id = $1 AND status = 'generating'`, sessionID, message)
+		return err
+	})
+}
+
+func nonRetryableGenerationError(err error) bool {
+	var responseErr *httpResponseError
+	if errors.As(err, &responseErr) {
+		return responseErr.status >= 400 && responseErr.status < 500 && responseErr.status != http.StatusRequestTimeout && responseErr.status != http.StatusTooManyRequests
+	}
+	var notConfigured notConfiguredError
+	return errors.As(err, &notConfigured)
 }
 
 func (s *Service) markGenerationFailed(ctx context.Context, sessionID string, cause error) error {
@@ -1142,7 +1217,8 @@ func (s *Service) markGenerationFailed(ctx context.Context, sessionID string, ca
 		}
 		_, err := tx.Exec(ctx,
 			`UPDATE practice_sessions
-			 SET status = 'generation_failed', ai_summary_status = 'failed', ai_summary = $2, updated_at = now()
+			 SET status = 'generation_failed', ai_summary_status = 'failed', ai_summary = $2,
+			     ai_generation_last_error = left($2, 500), updated_at = now()
 			 WHERE id = $1 AND status = 'generating'`, sessionID, message)
 		return err
 	})

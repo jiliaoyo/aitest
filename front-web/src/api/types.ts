@@ -116,6 +116,9 @@ export interface PreSubmitSession {
   status: SessionStatus
   answeredCount: number
   totalCount: number
+  generationCallsUsed?: number
+  generationCallBudget?: number
+  generationLastError?: string
   items: PreSubmitItem[]
 }
 

@@ -959,6 +959,46 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("AI 生成模型调用预算跨任务重试累计", func(t *testing.T) {
+		badAI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "temporary upstream failure", http.StatusBadGateway)
+		}))
+		defer badAI.Close()
+		client := ai.NewClient(ai.Config{BaseURL: badAI.URL, APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, logger)
+		service := ai.NewService(pool, client, logger, 0, 2)
+		generated, err := service.CreateGeneratedSession(context.Background(), data.adminID, ai.AIGenerateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Count: 10,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), `DELETE FROM ai_runs WHERE input_ref = $1`, generated.ID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM jobs WHERE payload->>'sessionId' = $1`, generated.ID)
+			_, _ = pool.Exec(context.Background(), `DELETE FROM practice_sessions WHERE id = $1`, generated.ID)
+		})
+		handler := service.Handlers()["generate_ai_practice_session"]
+		if err := handler(context.Background(), 1, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err == nil {
+			t.Fatal("first upstream failure should ask the job to retry")
+		}
+		if err := handler(context.Background(), 2, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err == nil {
+			t.Fatal("second upstream failure should still be retryable")
+		}
+		if err := handler(context.Background(), 3, 3, json.RawMessage(`{"sessionId":"`+generated.ID+`"}`)); err != nil {
+			t.Fatalf("budget exhaustion should converge without another model call: %v", err)
+		}
+		var status, lastError string
+		var used, budget int
+		if err := pool.QueryRow(context.Background(),
+			`SELECT status, ai_generation_calls_used, ai_generation_call_budget, ai_generation_last_error FROM practice_sessions WHERE id = $1`, generated.ID).
+			Scan(&status, &used, &budget, &lastError); err != nil {
+			t.Fatal(err)
+		}
+		if status != "generation_failed" || used != 2 || budget != 2 || lastError == "" || countRows(t, pool, `SELECT count(*) FROM ai_runs WHERE input_ref = $1`, generated.ID) != 2 {
+			t.Fatalf("generation budget should persist across job retries: status=%q used=%d budget=%d error=%q", status, used, budget, lastError)
+		}
+	})
+
 	t.Run("重置密码与令牌消费原子完成并撤销旧会话", func(t *testing.T) {
 		resetClient := newIntegrationClient(t)
 		var reset struct {

@@ -49,16 +49,19 @@ type ItemSeed struct {
 // ---------- 查询 ----------
 
 type SessionMeta struct {
-	ID              string
-	UserID          string
-	Status          string
-	SubmitKey       *string
-	SubmitHash      *string
-	CreatedAt       string
-	SubmittedAt     *string
-	CompletedAt     *string
-	AISummary       string
-	AISummaryStatus string
+	ID                   string
+	UserID               string
+	Status               string
+	SubmitKey            *string
+	SubmitHash           *string
+	CreatedAt            string
+	SubmittedAt          *string
+	CompletedAt          *string
+	AISummary            string
+	AISummaryStatus      string
+	GenerationCallsUsed  int
+	GenerationCallBudget int
+	GenerationLastError  string
 }
 
 // SessionMetaForUser 按 (id, user_id) 查询；不匹配一律当作不存在，防止越权探测。
@@ -67,10 +70,11 @@ func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string
 	err := s.db.QueryRow(ctx,
 		`SELECT id::text, user_id::text, status, submit_key, submit_hash,
 		        created_at::text, submitted_at::text, completed_at::text,
-		        ai_summary, ai_summary_status
+		        ai_summary, ai_summary_status, ai_generation_calls_used,
+		        ai_generation_call_budget, ai_generation_last_error
 		 FROM practice_sessions WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 		sessionID, userID,
-	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus)
+	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus, &m.GenerationCallsUsed, &m.GenerationCallBudget, &m.GenerationLastError)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SessionMeta{}, httpapi.ErrNotFound
 	}

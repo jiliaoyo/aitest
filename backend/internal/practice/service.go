@@ -211,11 +211,14 @@ func (s *Service) GetPreSubmit(ctx context.Context, userID, sessionID string) (P
 		return PreSubmitSession{}, err
 	}
 	return PreSubmitSession{
-		ID:            meta.ID,
-		Status:        meta.Status,
-		AnsweredCount: answered,
-		TotalCount:    len(items),
-		Items:         items,
+		ID:                   meta.ID,
+		Status:               meta.Status,
+		AnsweredCount:        answered,
+		TotalCount:           len(items),
+		GenerationCallsUsed:  meta.GenerationCallsUsed,
+		GenerationCallBudget: meta.GenerationCallBudget,
+		GenerationLastError:  meta.GenerationLastError,
+		Items:                items,
 	}, nil
 }
 

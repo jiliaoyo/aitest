@@ -23,7 +23,8 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 }
 
 const generatingSession: PreSubmitSession = {
-  id: 'session-1', status: 'generating', answeredCount: 0, totalCount: 0, items: [],
+  id: 'session-1', status: 'generating', answeredCount: 0, totalCount: 0,
+  generationCallsUsed: 1, generationCallBudget: 2, generationLastError: '上一次暂时失败', items: [],
 }
 
 const activeSession: PreSubmitSession = {
@@ -59,6 +60,9 @@ describe('AI 出题等待页', () => {
     await router.isReady()
     const wrapper = mount(PracticePage, { global: { plugins: [router] } })
     await flushPromises()
+
+    expect(wrapper.text()).toContain('已尝试 1 / 2 次模型调用')
+    expect(wrapper.text()).toContain('上一次暂时失败')
 
     await vi.advanceTimersByTimeAsync(4000)
     secondPoll.resolve(activeSession)

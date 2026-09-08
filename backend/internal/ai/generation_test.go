@@ -254,3 +254,12 @@ func TestCapGeneratedQuestionsDropsOnlyExtraQuestions(t *testing.T) {
 		t.Fatalf("valid-sized response should be kept: %+v", same)
 	}
 }
+
+func TestNonRetryableGenerationError(t *testing.T) {
+	if !nonRetryableGenerationError(&httpResponseError{status: 401}) || nonRetryableGenerationError(&httpResponseError{status: 429}) || nonRetryableGenerationError(&httpResponseError{status: 502}) {
+		t.Fatal("only configuration-like 4xx responses should stop generation immediately")
+	}
+	if !nonRetryableGenerationError(errNotConfigured) {
+		t.Fatal("missing AI configuration should stop generation immediately")
+	}
+}

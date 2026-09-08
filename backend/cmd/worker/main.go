@@ -37,7 +37,7 @@ func main() {
 		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
 		InputPricePerMillion: cfg.AIInputPricePerMillion, OutputPricePerMillion: cfg.AIOutputPricePerMillion,
 	}, pool, logger)
-	aiService := ai.NewService(pool, aiClient, logger, cfg.AIGenerationDailyLimit)
+	aiService := ai.NewService(pool, aiClient, logger, cfg.AIGenerationDailyLimit, cfg.AIGenerationCallBudget)
 	learningHandler := learning.NewHandler(pool, logger)
 
 	handlers := map[string]jobs.Handler{}

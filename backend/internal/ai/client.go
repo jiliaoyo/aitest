@@ -127,7 +127,7 @@ func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inp
 		return nil, runID, err
 	}
 	if resp.StatusCode >= 400 {
-		err := fmt.Errorf("AI 服务返回 %d", resp.StatusCode)
+		err := &httpResponseError{status: resp.StatusCode}
 		failureKind := failureHTTP
 		if resp.StatusCode == http.StatusTooManyRequests {
 			failureKind = failureRateLimit
@@ -271,5 +271,11 @@ func stripFences(s string) string {
 type notConfiguredError struct{}
 
 func (notConfiguredError) Error() string { return "AI 服务未配置" }
+
+type httpResponseError struct{ status int }
+
+func (e *httpResponseError) Error() string { return fmt.Sprintf("AI 服务返回 %d", e.status) }
+
+func (e *httpResponseError) StatusCode() int { return e.status }
 
 var errNotConfigured = notConfiguredError{}

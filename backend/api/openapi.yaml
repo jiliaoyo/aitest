@@ -848,6 +848,9 @@ components:
         status: { type: string, enum: [generating, active, grading, completed, analysis_failed, generation_failed] }
         answeredCount: { type: integer }
         totalCount: { type: integer }
+        generationCallsUsed: { type: integer, description: 当前 AI 生成批次已尝试的模型调用次数 }
+        generationCallBudget: { type: integer, description: 当前 AI 生成批次的持久化模型调用上限 }
+        generationLastError: { type: string, description: 最近一次可重试的生成错误；不含密钥或完整用户答案 }
         items:
           type: array
           items:

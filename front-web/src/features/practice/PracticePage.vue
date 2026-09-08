@@ -230,6 +230,10 @@ onBeforeUnmount(() => {
           </div>
           <h2>AI 正在生成个性化题目</h2>
           <p class="muted">正在根据你的全局做题记忆和薄弱知识点随机出题，请稍候。</p>
+          <p v-if="session.generationCallBudget" class="muted">
+            已尝试 {{ session.generationCallsUsed ?? 0 }} / {{ session.generationCallBudget }} 次模型调用
+            <template v-if="session.generationLastError">；上一轮：{{ session.generationLastError }}</template>
+          </p>
           <button type="button" @click="load()">刷新生成状态</button>
         </div>
       </template>
@@ -237,6 +241,10 @@ onBeforeUnmount(() => {
         <div class="card">
           <h2>AI 题目生成失败</h2>
           <p class="muted">本次生成没有写入公共题库，请返回重新开始。</p>
+          <p v-if="session.generationCallsUsed" class="muted">
+            已尝试 {{ session.generationCallsUsed }} / {{ session.generationCallBudget }} 次模型调用
+            <template v-if="session.generationLastError">；{{ session.generationLastError }}</template>
+          </p>
           <button class="primary" @click="router.push('/practice/new')">重新开始</button>
         </div>
       </template>

@@ -81,11 +81,14 @@ type PreSubmitItem struct {
 }
 
 type PreSubmitSession struct {
-	ID            string          `json:"id"`
-	Status        string          `json:"status"`
-	AnsweredCount int             `json:"answeredCount"`
-	TotalCount    int             `json:"totalCount"`
-	Items         []PreSubmitItem `json:"items"`
+	ID                   string          `json:"id"`
+	Status               string          `json:"status"`
+	AnsweredCount        int             `json:"answeredCount"`
+	TotalCount           int             `json:"totalCount"`
+	GenerationCallsUsed  int             `json:"generationCallsUsed,omitempty"`
+	GenerationCallBudget int             `json:"generationCallBudget,omitempty"`
+	GenerationLastError  string          `json:"generationLastError,omitempty"`
+	Items                []PreSubmitItem `json:"items"`
 }
 
 // ---------- 答题后 DTO ----------
