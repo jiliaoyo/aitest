@@ -512,19 +512,21 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, LearningMemory: memory,
 		})
-		out, err := s.client.RunPromptWithTemperature(ctx, row.UserID, "practice_question_generation", promptVersion,
+		out, runID, err := s.client.RunPromptWithTemperatureAndAudit(ctx, row.UserID, "practice_question_generation", promptVersion,
 			req.SessionID, systemPrompt, string(inputJSON), temperature)
 		if err != nil {
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		var response generatedQuestionResponse
 		if err := strictDecode(out, &response); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_structure", err)
 			validationErr = fmt.Errorf("AI 出题输出不合法: %w", err)
 			retryNote = ""
 			continue
 		}
 		questions := capGeneratedQuestions(response.Questions, remaining)
 		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			validationErr = err
 			retryNote = ""
 			continue
@@ -532,13 +534,16 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		blockedKeys := append([]string{}, existingKeys...)
 		generatedKeys, err := generatedQuestionKeys(row.LevelID, subjectID, generatedQuestions, generatedQuestionPoints)
 		if err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		blockedKeys = append(blockedKeys, generatedKeys...)
 		uniqueQuestions, duplicates, err := filterGeneratedQuestionDuplicates(questions, row.LevelID, subjectID, generatedQuestionPoints, blockedKeys)
 		if err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
+		s.markBusinessSuccess(ctx, runID)
 		if len(duplicates) > 0 {
 			// 只把本轮实际命中的旧题干加入重试上下文，避免把全部历史题干发给模型。
 			avoidStems = appendUniqueGeneratedStems(avoidStems, duplicates)

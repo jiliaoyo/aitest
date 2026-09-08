@@ -45,6 +45,18 @@ func NewService(pool *pgxpool.Pool, client *Client, logger *slog.Logger) *Servic
 	return &Service{pool: pool, client: client, logger: logger}
 }
 
+func (s *Service) markBusinessSuccess(ctx context.Context, runID string) {
+	if err := s.client.MarkBusinessSuccess(ctx, runID); err != nil {
+		s.logger.Warn("ai_business_audit_failed", "run_id", runID, "status", businessSucceeded, "error", err)
+	}
+}
+
+func (s *Service) markBusinessFailure(ctx context.Context, runID, failureKind string, cause error) {
+	if err := s.client.MarkBusinessFailure(ctx, runID, failureKind, cause); err != nil {
+		s.logger.Warn("ai_business_audit_failed", "run_id", runID, "status", businessFailed, "failure_kind", failureKind, "error", err)
+	}
+}
+
 // Handlers 返回 AI 相关任务处理器，供 worker 注册。
 func (s *Service) Handlers() map[string]jobs.Handler {
 	return map[string]jobs.Handler{
@@ -144,7 +156,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		"material":   item.Material,
 		"userAnswer": item.UserValue,
 	})
-	out, err := s.client.RunPrompt(ctx, item.UserID, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON))
+	out, runID, err := s.client.RunPromptWithAudit(ctx, item.UserID, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON))
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
@@ -158,6 +170,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		Confidence    string          `json:"confidence"`
 	}
 	if err := strictDecode(out, &resp); err != nil {
+		s.markBusinessFailure(ctx, runID, "business_structure", err)
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
 		}
@@ -166,6 +179,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 	explanation := strings.TrimSpace(resp.Explanation)
 	if explanation == "" || len([]rune(explanation)) > 2000 {
 		err := errors.New("AI 判分解析文本缺失或超长")
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
 		}
@@ -178,12 +192,14 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 	}[resp.Correctness]
 	if status == "" {
 		err := fmt.Errorf("AI 判分结论不合法: %s", resp.Correctness)
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
 		}
 		return err
 	}
 	if err := validateAICorrectAnswer(item.Type, item.Options, resp.CorrectAnswer, resp.Correctness); err != nil {
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
 		}
@@ -192,6 +208,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 	if status == practice.StatusFailed {
 		explanation = "AI 无法可靠判定本题，已留待人工处理。"
 	}
+	s.markBusinessSuccess(ctx, runID)
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := jobs.GuardLease(ctx, tx); err != nil {
 			return err
@@ -363,7 +380,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		input.Materials = nil
 	}
 	inputJSON, _ := json.Marshal(input)
-	out, err := s.client.RunPrompt(ctx, userID, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON))
+	out, runID, err := s.client.RunPromptWithAudit(ctx, userID, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON))
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
@@ -385,6 +402,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		} `json:"explanations"`
 	}
 	if err := strictDecode(out, &response); err != nil {
+		s.markBusinessFailure(ctx, runID, "business_structure", err)
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
 		}
@@ -393,6 +411,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	summary := strings.TrimSpace(response.Summary)
 	if summary == "" || len([]rune(summary)) > 4000 {
 		err := errors.New("AI 批次总结文本缺失或超长")
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
 		}
@@ -401,6 +420,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	memoryAdvice := strings.TrimSpace(response.MemoryAdvice)
 	if refreshMemoryAdvice && (memoryAdvice == "" || len([]rune(memoryAdvice)) > 4000) {
 		err := errors.New("AI 全局学习建议文本缺失或超长")
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
 		}
@@ -424,12 +444,14 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	for _, grade := range response.Grades {
 		if !allowedGrades[grade.ItemID] || seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || strings.TrimSpace(grade.Explanation) == "" || len([]rune(grade.Explanation)) > 2000 {
 			err := errors.New("AI 批次判定包含无效题目或结论")
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}
 			return err
 		}
 		if err := validateAICorrectAnswer(rowsByItem[grade.ItemID].Type, rowsByItem[grade.ItemID].Options, grade.CorrectAnswer, grade.Correctness); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}
@@ -440,6 +462,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	for itemID, needed := range allowedGrades {
 		if needed && !seenGrades[itemID] {
 			err := errors.New("AI 批次判定缺少题目结果")
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}
@@ -451,6 +474,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		text := strings.TrimSpace(explanation.Text)
 		if !allowedExplanations[explanation.ItemID] || seenExplanations[explanation.ItemID] || text == "" || len([]rune(text)) > 2000 {
 			err := errors.New("AI 批次解析包含无效题目或文本")
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}
@@ -461,6 +485,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	for itemID, needed := range allowedExplanations {
 		if needed && !seenExplanations[itemID] {
 			err := errors.New("AI 批次解析缺少题目结果")
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
 				return s.failBatchAnalysis(ctx, req.SessionID, err)
 			}
@@ -468,6 +493,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		}
 	}
 
+	s.markBusinessSuccess(ctx, runID)
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := jobs.GuardLease(ctx, tx); err != nil {
 			return err
@@ -664,7 +690,7 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		"options": item.Options, "material": item.Material,
 		"standardAnswer": item.KeyValue, "userAnswer": item.UserValue,
 	})
-	out, err := s.client.RunPrompt(ctx, item.UserID, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON))
+	out, runID, err := s.client.RunPromptWithAudit(ctx, item.UserID, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON))
 	if err != nil {
 		return err // 解析失败不影响判分，直接按任务重试策略处理
 	}
@@ -672,12 +698,16 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		Explanation string `json:"explanation"`
 	}
 	if err := strictDecode(out, &resp); err != nil {
+		s.markBusinessFailure(ctx, runID, "business_structure", err)
 		return err
 	}
 	explanation := strings.TrimSpace(resp.Explanation)
 	if explanation == "" || len([]rune(explanation)) > 2000 {
-		return errors.New("AI 解析文本缺失或超长")
+		err := errors.New("AI 解析文本缺失或超长")
+		s.markBusinessFailure(ctx, runID, "business_semantic", err)
+		return err
 	}
+	s.markBusinessSuccess(ctx, runID)
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		if err := jobs.GuardLease(ctx, tx); err != nil {
 			return err

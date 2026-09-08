@@ -84,8 +84,8 @@ WITH practice AS (
 ai_stats AS (
   SELECT
     count(*)::int AS ai_calls,
-    (count(*) FILTER (WHERE ar.error = ''))::int AS ai_successful_calls,
-    (count(*) FILTER (WHERE ar.error <> ''))::int AS ai_failed_calls,
+    (count(*) FILTER (WHERE ar.error = '' AND ar.business_status <> 'pending'))::int AS ai_successful_calls,
+    (count(*) FILTER (WHERE ar.error <> '' OR ar.business_status = 'failed'))::int AS ai_failed_calls,
     (count(*) FILTER (WHERE ar.kind = 'practice_question_generation'))::int AS ai_generation_calls,
     coalesce(sum(ar.prompt_tokens), 0)::bigint AS ai_prompt_tokens,
     coalesce(sum(ar.completion_tokens), 0)::bigint AS ai_completion_tokens,
@@ -233,8 +233,8 @@ WITH practice AS (
 ai_stats AS (
   SELECT ar.user_id,
     count(*)::int AS ai_calls,
-    (count(*) FILTER (WHERE ar.error = ''))::int AS ai_successful_calls,
-    (count(*) FILTER (WHERE ar.error <> ''))::int AS ai_failed_calls,
+    (count(*) FILTER (WHERE ar.error = '' AND ar.business_status <> 'pending'))::int AS ai_successful_calls,
+    (count(*) FILTER (WHERE ar.error <> '' OR ar.business_status = 'failed'))::int AS ai_failed_calls,
     (count(*) FILTER (WHERE ar.kind = 'practice_question_generation'))::int AS ai_generation_calls,
     coalesce(sum(ar.prompt_tokens), 0)::bigint AS ai_prompt_tokens,
     coalesce(sum(ar.completion_tokens), 0)::bigint AS ai_completion_tokens,
@@ -422,8 +422,8 @@ func (s *Store) AIByModel(ctx context.Context, dateRange DateRange, userID strin
 
 func (s *Store) aiBreakdown(ctx context.Context, dateRange DateRange, userID, groupColumn, orderColumn string) ([]AIUsageBreakdown, error) {
 	q := `SELECT ` + groupColumn + `, count(*)::int,
-       (count(*) FILTER (WHERE ar.error = ''))::int,
-       (count(*) FILTER (WHERE ar.error <> ''))::int,
+       (count(*) FILTER (WHERE ar.error = '' AND ar.business_status <> 'pending'))::int,
+       (count(*) FILTER (WHERE ar.error <> '' OR ar.business_status = 'failed'))::int,
        coalesce(sum(ar.prompt_tokens), 0)::bigint,
        coalesce(sum(ar.completion_tokens), 0)::bigint,
        coalesce(sum(ar.duration_ms), 0)::bigint,
@@ -458,7 +458,7 @@ type aiDailyRow struct {
 
 func (s *Store) AIDaily(ctx context.Context, dateRange DateRange, userID string) ([]AIDailyUsage, error) {
 	q := `SELECT ar.created_at::date::text, count(*)::int,
-       (count(*) FILTER (WHERE ar.error <> ''))::int,
+       (count(*) FILTER (WHERE ar.error <> '' OR ar.business_status = 'failed'))::int,
        coalesce(sum(ar.prompt_tokens), 0)::bigint,
        coalesce(sum(ar.completion_tokens), 0)::bigint,
        coalesce(sum(ar.duration_ms), 0)::bigint,
@@ -519,6 +519,9 @@ type recentAIRunRow struct {
 	Model            string
 	InputRef         string
 	Status           string
+	HTTPStatus       *int
+	BusinessStatus   string
+	FailureKind      string
 	PromptTokens     int
 	CompletionTokens int
 	DurationMs       int
@@ -529,7 +532,10 @@ type recentAIRunRow struct {
 
 func (s *Store) RecentAIRuns(ctx context.Context, dateRange DateRange, userID string) ([]RecentAIRun, error) {
 	q := `SELECT ar.id::text, ar.kind, ar.prompt_version, ar.model, ar.input_ref,
-       CASE WHEN ar.error = '' THEN 'succeeded' ELSE 'failed' END,
+       CASE WHEN ar.error <> '' OR ar.business_status = 'failed' THEN 'failed'
+            WHEN ar.business_status = 'pending' THEN 'pending'
+            ELSE 'succeeded' END,
+       ar.http_status, ar.business_status, ar.failure_kind,
        ar.prompt_tokens, ar.completion_tokens, ar.duration_ms,
        ar.estimated_cost_usd::float8, ar.error, ar.created_at::text
 FROM ai_runs ar
@@ -544,7 +550,9 @@ LIMIT $4`
 	for _, row := range rows {
 		out = append(out, RecentAIRun{
 			ID: row.ID, Kind: row.Kind, PromptVersion: row.PromptVersion, Model: row.Model,
-			InputRef: row.InputRef, Status: row.Status, PromptTokens: row.PromptTokens,
+			InputRef: row.InputRef, Status: row.Status, HTTPStatus: row.HTTPStatus,
+			BusinessStatus: row.BusinessStatus, FailureKind: row.FailureKind,
+			PromptTokens:     row.PromptTokens,
 			CompletionTokens: row.CompletionTokens, TotalTokens: row.PromptTokens + row.CompletionTokens,
 			DurationMs: row.DurationMs, EstimatedCostUSD: row.EstimatedCostUSD, Error: row.Error, CreatedAt: row.CreatedAt,
 		})

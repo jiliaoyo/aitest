@@ -6,7 +6,7 @@ import type { AdminAIUsageBreakdown, AdminUserDetail } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { aiRunKindText, formatDateTime, formatInteger, formatUSD, practiceModeText, roleText } from '@/app/format'
+import { aiFailureKindText, aiRunKindText, formatDateTime, formatInteger, formatUSD, practiceModeText, roleText } from '@/app/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -210,13 +210,19 @@ onMounted(() => void load())
         <div v-if="detail.recentAiRuns.length === 0" class="muted">当前区间没有 AI 调用。</div>
         <div v-else style="overflow-x: auto">
           <table class="data mobile-card-table">
-            <thead><tr><th>时间</th><th>用途</th><th>模型 / prompt</th><th>状态</th><th class="num">token</th><th class="num">耗时</th><th class="num">费用</th><th>错误</th></tr></thead>
+            <thead><tr><th>时间</th><th>用途</th><th>模型 / prompt</th><th>状态</th><th>HTTP / 业务校验</th><th>失败阶段</th><th class="num">token</th><th class="num">耗时</th><th class="num">费用</th><th>错误</th></tr></thead>
             <tbody>
               <tr v-for="run in detail.recentAiRuns" :key="run.id">
                 <td class="mono" data-label="时间">{{ formatDateTime(run.createdAt) }}</td>
                 <td data-label="用途">{{ aiRunKindText[run.kind] ?? run.kind }}</td>
                 <td class="mono" data-label="模型 / prompt">{{ run.model || '未记录' }}<br>{{ run.promptVersion }}</td>
                 <td data-label="状态"><StatusBadge :value="run.status" /></td>
+                <td data-label="HTTP / 业务校验">
+                  <span class="mono">{{ run.httpStatus ?? '—' }}</span>
+                  <span v-if="run.businessStatus === 'unknown' || run.businessStatus === 'not_applicable'" class="muted"> / —</span>
+                  <span v-else> / <StatusBadge :value="run.businessStatus" /></span>
+                </td>
+                <td data-label="失败阶段">{{ aiFailureKindText[run.failureKind] ?? (run.failureKind || '—') }}</td>
                 <td class="num" data-label="token">{{ formatInteger(run.totalTokens) }}</td>
                 <td class="num" data-label="耗时">{{ duration(run.durationMs) }}</td>
                 <td class="num" data-label="费用">{{ formatUSD(run.estimatedCostUsd) }}</td>

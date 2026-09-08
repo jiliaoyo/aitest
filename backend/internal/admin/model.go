@@ -158,6 +158,9 @@ type RecentAIRun struct {
 	Model            string   `json:"model"`
 	InputRef         string   `json:"inputRef"`
 	Status           string   `json:"status"`
+	HTTPStatus       *int     `json:"httpStatus"`
+	BusinessStatus   string   `json:"businessStatus"`
+	FailureKind      string   `json:"failureKind"`
 	PromptTokens     int      `json:"promptTokens"`
 	CompletionTokens int      `json:"completionTokens"`
 	TotalTokens      int      `json:"totalTokens"`

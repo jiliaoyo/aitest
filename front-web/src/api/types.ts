@@ -481,7 +481,10 @@ export interface AdminAIRun {
   promptVersion: string
   model: string
   inputRef: string
-  status: 'succeeded' | 'failed'
+  status: 'succeeded' | 'pending' | 'failed'
+  httpStatus: number | null
+  businessStatus: 'unknown' | 'pending' | 'succeeded' | 'failed' | 'not_applicable'
+  failureKind: string
   promptTokens: number
   completionTokens: number
   totalTokens: number

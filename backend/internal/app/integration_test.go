@@ -128,8 +128,9 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 	t.Run("管理端用户用量接口", func(t *testing.T) {
 		learnerID := dataUserID(t, pool, "learner-a@example.com")
 		if _, err := pool.Exec(context.Background(), `
-			INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd)
-			VALUES ($1, 'practice_question_generation', 'test.v1', 'test-model', 'test-ref', 17, 3, 42, '', 0.0012)`, learnerID); err != nil {
+			INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd, http_status, business_status, failure_kind)
+			VALUES ($1, 'practice_question_generation', 'test.v1', 'test-model', 'test-ref', 17, 3, 42, '', 0.0012, 200, 'succeeded', ''),
+			       ($1, 'practice_batch_analysis', 'test.v1', 'test-model', 'test-ref-2', 5, 2, 18, '批次字段无效', NULL, 200, 'failed', 'business_semantic')`, learnerID); err != nil {
 			t.Fatal(err)
 		}
 		var page struct {
@@ -137,7 +138,9 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				TotalUsers int `json:"totalUsers"`
 				Usage      struct {
 					AI struct {
-						Calls int `json:"calls"`
+						Calls      int `json:"calls"`
+						Successful int `json:"successfulCalls"`
+						Failed     int `json:"failedCalls"`
 					} `json:"ai"`
 				} `json:"usage"`
 			} `json:"summary"`
@@ -151,7 +154,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			} `json:"users"`
 		}
 		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/users", nil, ""), &page)
-		if page.Summary.TotalUsers != 3 || page.Summary.Usage.AI.Calls != 1 || len(page.Users) != 3 {
+		if page.Summary.TotalUsers != 3 || page.Summary.Usage.AI.Calls != 2 || page.Summary.Usage.AI.Successful != 1 || page.Summary.Usage.AI.Failed != 1 || len(page.Users) != 3 {
 			t.Fatalf("unexpected user page: %+v", page)
 		}
 		var detail struct {
@@ -162,19 +165,36 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				PracticeSessions int `json:"practiceSessions"`
 				AI               struct {
 					Calls            int      `json:"calls"`
+					SuccessfulCalls  int      `json:"successfulCalls"`
+					FailedCalls      int      `json:"failedCalls"`
 					PromptTokens     int64    `json:"promptTokens"`
 					EstimatedCostUSD *float64 `json:"estimatedCostUsd"`
 				} `json:"ai"`
 			} `json:"usage"`
 			RecentAIRuns []struct {
-				Kind string `json:"kind"`
+				Kind           string `json:"kind"`
+				HTTPStatus     *int   `json:"httpStatus"`
+				BusinessStatus string `json:"businessStatus"`
+				FailureKind    string `json:"failureKind"`
 			} `json:"recentAiRuns"`
 		}
 		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet, "/api/v1/admin/users/"+learnerID, nil, ""), &detail)
 		if detail.User.Email != "learner-a@example.com" || detail.Usage.PracticeSessions != 0 ||
-			detail.Usage.AI.Calls != 1 || detail.Usage.AI.PromptTokens != 17 || detail.Usage.AI.EstimatedCostUSD == nil ||
-			*detail.Usage.AI.EstimatedCostUSD != 0.0012 || len(detail.RecentAIRuns) != 1 || detail.RecentAIRuns[0].Kind != "practice_question_generation" {
+			detail.Usage.AI.Calls != 2 || detail.Usage.AI.SuccessfulCalls != 1 || detail.Usage.AI.FailedCalls != 1 || detail.Usage.AI.PromptTokens != 22 || detail.Usage.AI.EstimatedCostUSD == nil ||
+			*detail.Usage.AI.EstimatedCostUSD != 0.0012 || len(detail.RecentAIRuns) != 2 {
 			t.Fatalf("unexpected user detail: %+v", detail)
+		}
+		var foundSucceeded, foundFailed bool
+		for _, run := range detail.RecentAIRuns {
+			if run.Kind == "practice_question_generation" && run.HTTPStatus != nil && *run.HTTPStatus == 200 && run.BusinessStatus == "succeeded" {
+				foundSucceeded = true
+			}
+			if run.Kind == "practice_batch_analysis" && run.HTTPStatus != nil && *run.HTTPStatus == 200 && run.BusinessStatus == "failed" && run.FailureKind == "business_semantic" {
+				foundFailed = true
+			}
+		}
+		if !foundSucceeded || !foundFailed {
+			t.Fatalf("HTTP success and business failure should remain distinguishable: %+v", detail.RecentAIRuns)
 		}
 		var emptyRange struct {
 			Summary struct {
@@ -216,6 +236,33 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			t.Fatalf("cursor should advance user page: %+v", secondPage)
 		}
 		assertStatus(t, jsonRequest(t, data.learnerA, server.URL, http.MethodGet, "/api/v1/admin/users", nil, ""), http.StatusForbidden)
+	})
+
+	t.Run("AI 调用审计关联业务校验", func(t *testing.T) {
+		mockAI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"{\"summary\":\"ok\"}"}}],"usage":{"prompt_tokens":2,"completion_tokens":1}}`)
+		}))
+		defer mockAI.Close()
+		learnerID := dataUserID(t, pool, "learner-a@example.com")
+		client := ai.NewClient(ai.Config{BaseURL: mockAI.URL, APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		out, runID, err := client.RunPromptWithAudit(context.Background(), learnerID, "practice_batch_analysis", "test.v1", "audit-ref", "system", "payload")
+		if err != nil || runID == "" || string(out) != `{"summary":"ok"}` {
+			t.Fatalf("unexpected AI response: out=%s runID=%q err=%v", out, runID, err)
+		}
+		if err := client.MarkBusinessFailure(context.Background(), runID, "business_semantic", errors.New("summary invalid")); err != nil {
+			t.Fatal(err)
+		}
+		var httpStatus *int
+		var businessStatus, failureKind, auditError string
+		if err := pool.QueryRow(context.Background(),
+			`SELECT http_status, business_status, failure_kind, error FROM ai_runs WHERE id = $1`, runID).
+			Scan(&httpStatus, &businessStatus, &failureKind, &auditError); err != nil {
+			t.Fatal(err)
+		}
+		if httpStatus == nil || *httpStatus != http.StatusOK || businessStatus != "failed" || failureKind != "business_semantic" || auditError != "summary invalid" {
+			t.Fatalf("unexpected staged audit: http=%v business=%q failure=%q error=%q", httpStatus, businessStatus, failureKind, auditError)
+		}
 	})
 
 	t.Run("管理概览质量入口与题目筛选", func(t *testing.T) {

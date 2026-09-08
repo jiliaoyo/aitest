@@ -160,6 +160,17 @@ export const aiRunKindText: Record<string, string> = {
   practice_explain: 'AI 解析',
 }
 
+export const aiFailureKindText: Record<string, string> = {
+  transport: '网络',
+  http: 'HTTP',
+  rate_limit: '限流',
+  truncated: '截断',
+  response_structure: '响应结构',
+  invalid_json: 'JSON',
+  business_structure: '业务结构',
+  business_semantic: '业务语义',
+}
+
 export const practiceModeText: Record<string, string> = {
   ai_generated: 'AI 出题练习',
   comprehensive: '综合练习',

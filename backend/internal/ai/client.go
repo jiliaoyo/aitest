@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -32,6 +33,20 @@ type Client struct {
 
 const generatedPracticeMaxTokens = 16384
 
+const (
+	maxAIResponseBytes = 1 << 20
+	businessPending    = "pending"
+	businessSucceeded  = "succeeded"
+	businessFailed     = "failed"
+	businessNotApplied = "not_applicable"
+	failureTransport   = "transport"
+	failureHTTP        = "http"
+	failureRateLimit   = "rate_limit"
+	failureStructure   = "response_structure"
+	failureJSON        = "invalid_json"
+	failureTruncated   = "truncated"
+)
+
 func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
 	return &Client{
 		cfg:    cfg,
@@ -43,11 +58,23 @@ func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
 
 // RunPrompt 记录一次 ai_runs 审计并返回模型原始 JSON 输出。
 func (c *Client) RunPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, error) {
+	out, _, err := c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
+	return out, err
+}
+
+// RunPromptWithAudit 与 RunPrompt 相同，但返回可用于补写业务校验结果的 run ID。
+func (c *Client) RunPromptWithAudit(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, string, error) {
 	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
 }
 
 // RunPromptWithTemperature 用于需要随机性的内容生成；判分与统计类任务继续使用温度 0。
 func (c *Client) RunPromptWithTemperature(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
+	out, _, err := c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
+	return out, err
+}
+
+// RunPromptWithTemperatureAndAudit 返回随机出题调用的审计 run ID。
+func (c *Client) RunPromptWithTemperatureAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, string, error) {
 	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
 }
 
@@ -55,9 +82,9 @@ func (c *Client) Configured() bool {
 	return c.cfg.BaseURL != "" && c.cfg.APIKey != "" && c.cfg.Model != ""
 }
 
-func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64, disableThinking bool) (json.RawMessage, error) {
+func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64, disableThinking bool) (json.RawMessage, string, error) {
 	if c.cfg.BaseURL == "" || c.cfg.APIKey == "" || c.cfg.Model == "" {
-		return nil, errNotConfigured
+		return nil, "", errNotConfigured
 	}
 	start := time.Now()
 	reqBody := map[string]any{
@@ -77,26 +104,36 @@ func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inp
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		trimRight(c.cfg.BaseURL)+"/chat/completions", bytes.NewReader(data))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
-		return nil, fmt.Errorf("AI 服务请求失败: %w", err)
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, nil, businessNotApplied, failureTransport, err)
+		return nil, runID, fmt.Errorf("AI 服务请求失败: %w", err)
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	statusCode := resp.StatusCode
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAIResponseBytes+1))
 	if err != nil {
-		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
-		return nil, fmt.Errorf("读取 AI 响应失败: %w", err)
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureTransport, err)
+		return nil, runID, fmt.Errorf("读取 AI 响应失败: %w", err)
+	}
+	if len(body) > maxAIResponseBytes {
+		err := errors.New("AI 响应超过大小限制")
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureTruncated, err)
+		return nil, runID, err
 	}
 	if resp.StatusCode >= 400 {
 		err := fmt.Errorf("AI 服务返回 %d", resp.StatusCode)
-		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
-		return nil, err
+		failureKind := failureHTTP
+		if resp.StatusCode == http.StatusTooManyRequests {
+			failureKind = failureRateLimit
+		}
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureKind, err)
+		return nil, runID, err
 	}
 	var chat struct {
 		Choices []struct {
@@ -111,8 +148,8 @@ func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inp
 	}
 	if err := json.Unmarshal(body, &chat); err != nil || len(chat.Choices) == 0 {
 		err := fmt.Errorf("AI 响应结构不合法")
-		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, err)
-		return nil, err
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureStructure, err)
+		return nil, runID, err
 	}
 	content := chat.Choices[0].Message.Content
 	// 模型可能用代码块包裹 JSON，剥离围栏后再交给严格解码
@@ -120,20 +157,20 @@ func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inp
 	var out json.RawMessage
 	if json.Unmarshal([]byte(content), &out) != nil {
 		err := fmt.Errorf("AI 输出不是合法 JSON")
-		c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, err)
-		return nil, err
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, &statusCode, businessNotApplied, failureJSON, err)
+		return nil, runID, err
 	}
-	c.audit(ctx, userID, kind, promptVersion, inputRef, start, out, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, nil)
-	return out, nil
+	runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, out, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, &statusCode, businessPending, "", nil)
+	return out, runID, nil
 }
 
-func (c *Client) audit(ctx context.Context, userID, kind, promptVersion, inputRef string, start time.Time, output any, promptTokens, completionTokens int, err error) {
+func (c *Client) audit(ctx context.Context, userID, kind, promptVersion, inputRef string, start time.Time, output any, promptTokens, completionTokens int, httpStatus *int, businessStatus, failureKind string, err error) string {
+	if c.pool == nil {
+		return ""
+	}
 	errMsg := ""
 	if err != nil {
-		errMsg = err.Error()
-		if len(errMsg) > 300 {
-			errMsg = errMsg[:300]
-		}
+		errMsg = trimError(err)
 	}
 	var outputArg any
 	if output != nil {
@@ -147,14 +184,59 @@ func (c *Client) audit(ctx context.Context, userID, kind, promptVersion, inputRe
 	if (c.cfg.InputPricePerMillion > 0 || c.cfg.OutputPricePerMillion > 0) && (promptTokens > 0 || completionTokens > 0) {
 		costArg = (float64(promptTokens)*c.cfg.InputPricePerMillion + float64(completionTokens)*c.cfg.OutputPricePerMillion) / 1_000_000
 	}
-	_, e := c.pool.Exec(ctx,
-		`INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, output, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+	auditCtx := ctx
+	cancel := func() {}
+	if ctx.Err() != nil {
+		auditCtx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	}
+	defer cancel()
+	var runID string
+	e := c.pool.QueryRow(auditCtx,
+		`INSERT INTO ai_runs (user_id, kind, prompt_version, model, input_ref, output, prompt_tokens, completion_tokens, duration_ms, error, estimated_cost_usd, http_status, business_status, failure_kind)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		 RETURNING id::text`,
 		userIDArg, kind, promptVersion, c.cfg.Model, inputRef, outputArg, promptTokens, completionTokens,
-		time.Since(start).Milliseconds(), errMsg, costArg)
-	if e != nil {
+		time.Since(start).Milliseconds(), errMsg, costArg, httpStatus, businessStatus, failureKind).Scan(&runID)
+	if e != nil && c.logger != nil {
 		c.logger.Error("ai_audit_failed", "error", e)
 	}
+	return runID
+}
+
+// MarkBusinessSuccess/Failure 在模型返回合法 JSON 后补写业务校验结果。
+func (c *Client) MarkBusinessSuccess(ctx context.Context, runID string) error {
+	return c.markBusinessResult(ctx, runID, businessSucceeded, "", nil)
+}
+
+func (c *Client) MarkBusinessFailure(ctx context.Context, runID, failureKind string, cause error) error {
+	return c.markBusinessResult(ctx, runID, businessFailed, failureKind, cause)
+}
+
+func (c *Client) markBusinessResult(ctx context.Context, runID, status, failureKind string, cause error) error {
+	if runID == "" || c.pool == nil {
+		return nil
+	}
+	errMsg := ""
+	if cause != nil {
+		errMsg = trimError(cause)
+	}
+	_, err := c.pool.Exec(ctx,
+		`UPDATE ai_runs
+		 SET business_status = $2, failure_kind = $3,
+		     error = CASE WHEN $4 = '' THEN error ELSE $4 END
+		 WHERE id = $1 AND business_status = $5`, runID, status, failureKind, errMsg, businessPending)
+	return err
+}
+
+func trimError(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if len(msg) > 300 {
+		msg = msg[:300]
+	}
+	return msg
 }
 
 func trimRight(s string) string {

@@ -1032,7 +1032,7 @@ components:
       description: AI 实际模型调用统计；重试会分别计数
       properties:
         calls: { type: integer }
-        successfulCalls: { type: integer }
+        successfulCalls: { type: integer, description: HTTP/JSON 与业务校验均已完成的调用；待业务校验的调用不计入 }
         failedCalls: { type: integer }
         generationCalls: { type: integer }
         promptTokens: { type: integer, format: int64 }
@@ -1129,7 +1129,10 @@ components:
         promptVersion: { type: string }
         model: { type: string }
         inputRef: { type: string }
-        status: { type: string, enum: [succeeded, failed] }
+        status: { type: string, enum: [succeeded, pending, failed] }
+        httpStatus: { type: integer, nullable: true, description: HTTP 响应状态码；请求未得到响应时为 null }
+        businessStatus: { type: string, enum: [unknown, pending, succeeded, failed, not_applicable] }
+        failureKind: { type: string, description: 网络、HTTP、JSON 或业务校验失败阶段；成功时为空 }
         promptTokens: { type: integer }
         completionTokens: { type: integer }
         totalTokens: { type: integer }
