@@ -38,7 +38,7 @@ func NewService(pool *pgxpool.Pool, contentService *content.Service, uploadDir s
 }
 
 // Upload 保存原文件并立即解析导入；数据库失败时清理刚写入的文件。
-func (s *Service) Upload(ctx context.Context, adminID string, file multipart.File, header *multipart.FileHeader) (Job, error) {
+func (s *Service) Upload(ctx context.Context, adminID string, file multipart.File, header *multipart.FileHeader, allowDuplicate bool) (Job, error) {
 	name := filepath.Base(header.Filename)
 	if name == "." || name == "" || len([]rune(name)) > 255 {
 		return Job{}, httpapi.ValidationError(map[string]string{"file": "文件名不合法"})
@@ -49,6 +49,18 @@ func (s *Service) Upload(ctx context.Context, adminID string, file multipart.Fil
 	storedPath, size, digest, mimeType, err := s.saveUpload(file)
 	if err != nil {
 		return Job{}, err
+	}
+	if !allowDuplicate {
+		if existing, found, err := s.store.JobByDigest(ctx, digest); err != nil {
+			_ = os.Remove(storedPath)
+			return Job{}, err
+		} else if found {
+			_ = os.Remove(storedPath)
+			return Job{}, httpapi.WithDetails(
+				httpapi.E(http.StatusConflict, "duplicate_import_file", "该文件已经创建过导入任务，请查看旧任务或确认另建。"),
+				map[string]any{"jobId": existing.ID, "status": existing.Status, "fileName": existing.FileName},
+			)
+		}
 	}
 	job, err := s.importJSON(ctx, adminID, name, storedPath, digest, mimeType, size)
 	if err != nil {

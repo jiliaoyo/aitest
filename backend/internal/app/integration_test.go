@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -114,7 +115,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler := newHTTPHandler(ctx, config.Config{
 		AppEnv: "dev", PublicOrigin: "http://localhost:5173", RunWorker: false,
-		WorkerConcurrency: 1, SessionTTL: time.Hour, AITimeout: time.Second,
+		WorkerConcurrency: 1, SessionTTL: time.Hour, AITimeout: time.Second, UploadMaxBytes: 10 << 20,
 	}, pool, logger)
 	server := httptest.NewServer(handler)
 	data.pool, data.server = pool, server
@@ -315,6 +316,53 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				t.Fatalf("daily-limit details should include usage and reset time: %#v", apiErr.Details)
 			}
 		}
+	})
+
+	t.Run("重复导入文件必须明确另建", func(t *testing.T) {
+		payload := []byte(`{"items":[{"type":"single_choice","stem":"导入重复测试＿＿＿。","options":[{"id":"a","label":"A","text":"甲"},{"id":"b","label":"B","text":"乙"}],"levelCode":"n5","subjectCode":"grammar","difficulty":3,"knowledgePointNames":[],"sourceAnswer":{"value":{"optionIds":["a"]},"authority":"official"}}]}`)
+		upload := func(allowDuplicate bool) *http.Response {
+			var body bytes.Buffer
+			writer := multipart.NewWriter(&body)
+			part, err := writer.CreateFormFile("file", "duplicate.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := part.Write(payload); err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			suffix := ""
+			if allowDuplicate {
+				suffix = "?allowDuplicate=true"
+			}
+			req, err := http.NewRequest(http.MethodPost, server.URL+"/api/v1/admin/import-jobs"+suffix, &body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", writer.FormDataContentType())
+			resp, err := data.admin.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return resp
+		}
+		first := upload(false)
+		if first.StatusCode != http.StatusCreated {
+			t.Fatalf("first import should be created: %d %s", first.StatusCode, readResponse(t, first))
+		}
+		_ = readResponse(t, first)
+		second := upload(false)
+		secondBody := readResponse(t, second)
+		if second.StatusCode != http.StatusConflict || !bytes.Contains(secondBody, []byte("duplicate_import_file")) {
+			t.Fatalf("duplicate import should point to existing job: %d %s", second.StatusCode, secondBody)
+		}
+		third := upload(true)
+		if third.StatusCode != http.StatusCreated {
+			t.Fatalf("explicit duplicate import should create a separate job: %d %s", third.StatusCode, readResponse(t, third))
+		}
+		_ = readResponse(t, third)
 	})
 
 	t.Run("按章节顺序优先选择未练题目", func(t *testing.T) {

@@ -687,9 +687,12 @@ paths:
                   type: string
                   format: binary
                   description: 结构化 JSON 文件，默认最大 10 MB
+      parameters:
+        - { name: allowDuplicate, in: query, schema: { type: boolean, default: false }, description: 明确允许相同 SHA-256 文件另建任务 }
       responses:
         '201': { description: 已创建, content: { application/json: { schema: { type: object, properties: { job: { $ref: '#/components/schemas/ImportJob' } } } } } }
         '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { description: duplicate_import_file；details 包含旧任务 jobId、status、fileName }
         '413': { description: file_too_large }
     get:
       tags: [admin]

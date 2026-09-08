@@ -71,6 +71,13 @@ func (s *Service) importJSON(ctx context.Context, adminID, name, storedPath, dig
 	if err := dec.Decode(&payload); err != nil {
 		return Job{}, httpapi.ValidationError(map[string]string{"file": "JSON 结构不符合导入格式: " + err.Error()})
 	}
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return Job{}, httpapi.ValidationError(map[string]string{"file": "JSON 文件只能包含一个对象"})
+		}
+		return Job{}, httpapi.ValidationError(map[string]string{"file": "JSON 对象后存在额外内容"})
+	}
 	if len(payload.Items) == 0 || len(payload.Items) > 500 {
 		return Job{}, httpapi.ValidationError(map[string]string{"items": "题目数量必须是 1 到 500"})
 	}

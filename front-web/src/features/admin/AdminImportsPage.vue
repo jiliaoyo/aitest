@@ -16,6 +16,8 @@ const uploading = ref(false)
 const message = ref('')
 const errorMessage = ref('')
 const requestID = ref('')
+const duplicateJobID = ref('')
+const allowDuplicate = ref(false)
 
 async function load(append = false): Promise<void> {
   if (append) loadingMore.value = true
@@ -39,6 +41,7 @@ async function load(append = false): Promise<void> {
 function chooseFile(event: Event): void {
   file.value = (event.target as HTMLInputElement).files?.[0] ?? null
   message.value = ''
+  duplicateJobID.value = ''
 }
 
 async function createJob(): Promise<void> {
@@ -49,15 +52,20 @@ async function createJob(): Promise<void> {
   uploading.value = true
   message.value = ''
   try {
-    const res = await upload<{ job: ImportJobDTO }>('/admin/import-jobs', file.value)
+    const suffix = allowDuplicate.value ? '?allowDuplicate=true' : ''
+    const res = await upload<{ job: ImportJobDTO }>(`/admin/import-jobs${suffix}`, file.value)
     file.value = null
     const input = document.getElementById('import-file') as HTMLInputElement | null
     if (input) input.value = ''
     message.value = '已创建导入任务，正在处理。'
+    allowDuplicate.value = false
     await load()
     void res
   } catch (err) {
     message.value = err instanceof ApiError ? err.message : '上传失败，请重试'
+    if (err instanceof ApiError && err.code === 'duplicate_import_file') {
+      duplicateJobID.value = String(err.details?.jobId ?? '')
+    }
   } finally {
     uploading.value = false
   }
@@ -83,6 +91,10 @@ onMounted(load)
       </div>
       <button class="primary" type="submit" :disabled="uploading">{{ uploading ? '上传中…' : '上传并生成草稿' }}</button>
       <p v-if="message" class="tag" data-tone="success" role="status" style="margin: 10px 0 0">{{ message }}</p>
+      <p v-if="duplicateJobID" class="error-summary" role="alert">
+        <RouterLink :to="`/admin/imports/${duplicateJobID}`">查看已有任务</RouterLink>；
+        <button type="button" class="ghost" @click="allowDuplicate = true">确认另建任务</button>
+      </p>
     </form>
 
     <AppStatus v-if="state === 'loading'" state="loading" />

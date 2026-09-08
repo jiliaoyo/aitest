@@ -1,10 +1,15 @@
 package imports
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/aishuati/backend/internal/content"
+	"github.com/aishuati/backend/internal/httpapi"
 )
 
 func TestValidateDraft(t *testing.T) {
@@ -41,5 +46,25 @@ func TestBuildAIDraftCarriesFields(t *testing.T) {
 func TestTruncateRunes(t *testing.T) {
 	if got := truncateRunes("  あいうえお  ", 3); got != "あいう" {
 		t.Fatalf("unexpected truncation: %q", got)
+	}
+}
+
+func TestImportJSONRejectsTrailingContent(t *testing.T) {
+	path := t.TempDir() + "/items.json"
+	if err := os.WriteFile(path, []byte(`{"items":[]} {"items":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := (&Service{}).importJSON(context.Background(), "admin", "items.json", path, "digest", "application/json", 1)
+	if err == nil {
+		t.Fatal("trailing JSON object should be rejected")
+	}
+	var apiErr *httpapi.APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("unexpected trailing JSON error: %v", err)
+	}
+	details, ok := apiErr.Details.(map[string]any)
+	fields, fieldsOK := details["fields"].(map[string]string)
+	if !ok || !fieldsOK || !strings.Contains(fields["file"], "只能包含一个对象") {
+		t.Fatalf("unexpected trailing JSON error: %v", err)
 	}
 }

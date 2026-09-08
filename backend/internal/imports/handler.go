@@ -40,7 +40,8 @@ func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	job, err := h.service.Upload(r.Context(), ctxkeys.UserID(r.Context()), file, header)
+	allowDuplicate := r.URL.Query().Get("allowDuplicate") == "true"
+	job, err := h.service.Upload(r.Context(), ctxkeys.UserID(r.Context()), file, header, allowDuplicate)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

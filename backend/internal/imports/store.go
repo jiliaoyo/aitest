@@ -55,6 +55,18 @@ func (s *Store) JobByID(ctx context.Context, id string) (Job, error) {
 	return toJob(r), nil
 }
 
+func (s *Store) JobByDigest(ctx context.Context, digest string) (Job, bool, error) {
+	r, err := store.CollectRows[jobRow](ctx, s.db,
+		`SELECT `+jobColumns+` FROM import_jobs ij WHERE ij.file_sha256 = $1 ORDER BY ij.created_at DESC, ij.id DESC LIMIT 1`, digest)
+	if err != nil {
+		return Job{}, false, err
+	}
+	if len(r) == 0 {
+		return Job{}, false, nil
+	}
+	return toJob(r[0]), true, nil
+}
+
 func (s *Store) ListJobs(ctx context.Context, cursor string, limit int) ([]Job, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
