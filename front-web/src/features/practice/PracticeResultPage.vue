@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { request, ApiError } from '@/api/client'
 import type { ResultSession } from '@/api/types'
@@ -18,16 +18,35 @@ const errorMessage = ref('')
 const requestID = ref('')
 const retrying = ref(false)
 const retryError = ref('')
+const pollingError = ref('')
 
 let timer: ReturnType<typeof setInterval> | null = null
+let requestSequence = 0
+let requestInFlight = false
+let requestController: AbortController | null = null
 
 async function load(silent = false): Promise<void> {
+  if (silent && requestInFlight) return
+  const sequence = ++requestSequence
+  const targetSessionID = sessionID.value
+  requestController?.abort()
+  const controller = new AbortController()
+  requestController = controller
+  requestInFlight = true
   if (!silent) pageState.value = 'loading'
   try {
-    result.value = await request<ResultSession>(`/practice-sessions/${sessionID.value}/result`)
+    const next = await request<ResultSession>(`/practice-sessions/${targetSessionID}/result`, { signal: controller.signal })
+    if (sequence !== requestSequence) return
+    result.value = next
     pageState.value = 'ready'
+    pollingError.value = ''
     schedulePolling()
   } catch (err) {
+    if (sequence !== requestSequence || controller.signal.aborted) return
+    if (silent && result.value) {
+      pollingError.value = err instanceof ApiError ? err.message : '刷新失败，稍后自动重试'
+      return
+    }
     if (err instanceof ApiError && err.status === 404) {
       pageState.value = 'notfound'
       return
@@ -39,6 +58,11 @@ async function load(silent = false): Promise<void> {
     errorMessage.value = err instanceof ApiError ? err.message : '加载失败'
     requestID.value = err instanceof ApiError ? err.requestId ?? '' : ''
     pageState.value = 'error'
+  } finally {
+    if (sequence === requestSequence) {
+      requestInFlight = false
+      requestController = null
+    }
   }
 }
 
@@ -68,6 +92,13 @@ function onVisibility(): void {
   }
 }
 
+watch(sessionID, (next, previous) => {
+  if (next === previous) return
+  result.value = null
+  pollingError.value = ''
+  void load()
+})
+
 async function retryAnalysis(): Promise<void> {
   const aiStatus = result.value?.aiAnalysis.status
   const failedCount = result.value?.summary.ai.failed ?? 0
@@ -89,6 +120,8 @@ onMounted(() => {
   document.addEventListener('visibilitychange', onVisibility)
 })
 onBeforeUnmount(() => {
+  requestSequence++
+  requestController?.abort()
   if (timer) clearInterval(timer)
   document.removeEventListener('visibilitychange', onVisibility)
 })
@@ -118,6 +151,7 @@ const retryButtonLabel = computed(() => {
 
       <div v-if="result.status === 'grading'" class="card" role="status">
         <p>确定性判分已完成，AI 分析进行中…已确定的成绩如下，你可以离开页面稍后回来。</p>
+        <p v-if="pollingError" class="muted" role="status">{{ pollingError }}</p>
       </div>
 
       <div class="metrics">

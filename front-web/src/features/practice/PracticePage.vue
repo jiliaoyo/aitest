@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
 import type { AnswerValue, PreSubmitItem, PreSubmitSession } from '@/api/types'
@@ -60,6 +60,16 @@ function isMarked(item: PreSubmitItem): boolean {
 onMounted(() => {
   void load()
   document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+watch(sessionID, (next, previous) => {
+  if (next === previous) return
+  loadSequence++
+  currentIndex.value = 0
+  session.value = null
+  showLocalDraftNote.value = false
+  autosave.dispose()
+  void load()
 })
 
 async function load(silent = false): Promise<void> {

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import PracticeResultPage from '@/features/practice/PracticeResultPage.vue'
@@ -35,6 +35,11 @@ const pendingResult: ResultSession = {
 }
 
 describe('结果页 AI 重试', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    requestMock.mockReset()
+  })
+
   it('失败时可重新分析，处理中按钮禁用', async () => {
     requestMock.mockImplementation(async (_path: string, options?: { method?: string }) =>
       options?.method === 'POST' ? pendingResult : failedResult)
@@ -69,4 +74,40 @@ describe('结果页 AI 重试', () => {
     expect(wrapper.findAll('button')).toHaveLength(1)
     wrapper.unmount()
   })
+
+  it('轮询请求不重叠，静默失败保留已有结果', async () => {
+    vi.useFakeTimers()
+    let calls = 0
+    const deferredPoll = deferred<ResultSession>()
+    requestMock.mockImplementation(async () => {
+      calls++
+      if (calls === 1) return pendingResult
+      if (calls === 2) return deferredPoll.promise
+      return pendingResult
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/practice/:sessionId/result', component: PracticeResultPage }],
+    })
+    await router.push('/practice/session-poll/result')
+    await router.isReady()
+    const wrapper = mount(PracticeResultPage, { global: { plugins: [router] } })
+    await flushPromises()
+
+    await vi.advanceTimersByTimeAsync(3000)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(calls).toBe(2)
+    expect(wrapper.text()).toContain('确定性判分已完成')
+
+    deferredPoll.resolve({ ...pendingResult, status: 'completed', aiAnalysis: { status: 'completed', text: '完成' } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('已完成')
+    wrapper.unmount()
+  })
 })
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}

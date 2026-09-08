@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { request, ApiError } from '@/api/client'
 import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationCategory, AIGenerationDifficulty, AIGenerationMode, AIGenerationQuestionType, Exam, KnowledgePointItem, PracticeSource } from '@/api/types'
@@ -58,7 +58,8 @@ const sources = ref<PracticeSource[]>([])
 const sourcesLoading = ref(false)
 const sourcesError = ref('')
 
-onMounted(async () => {
+async function loadCatalog(): Promise<void> {
+  loadState.value = 'loading'
   try {
     const res = await request<{ exams: Exam[] }>('/catalog')
     exams.value = res.exams
@@ -69,7 +70,9 @@ onMounted(async () => {
     loadError.value = err instanceof ApiError ? err.message : '加载失败'
     loadState.value = 'error'
   }
-})
+}
+
+onMounted(loadCatalog)
 
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
@@ -92,14 +95,17 @@ watch(aiSubjectId, () => {
   }
 })
 
+let sourceSequence = 0
 watch([levelId, subjectId], async () => {
   if (!levelId.value) return
+  const sequence = ++sourceSequence
   sourcesLoading.value = true
   sourcesError.value = ''
   try {
     const params = new URLSearchParams({ levelId: levelId.value })
     if (subjectId.value) params.set('subjectId', subjectId.value)
     const res = await request<{ sources: PracticeSource[] }>(`/practice/sources?${params}`)
+    if (sequence !== sourceSequence) return
     sources.value = res.sources
     if (!sources.value.some((source) => source.id === sourceId.value)) {
       sourceId.value = ''
@@ -108,19 +114,24 @@ watch([levelId, subjectId], async () => {
       sourceSectionId.value = ''
     }
   } catch (err) {
+    if (sequence !== sourceSequence) return
     sources.value = []
     sourceId.value = ''
     sourcesError.value = err instanceof ApiError ? err.message : '数据来源加载失败'
   } finally {
-    sourcesLoading.value = false
+    if (sequence === sourceSequence) sourcesLoading.value = false
   }
 }, { immediate: true })
 
 let availabilityTimer: ReturnType<typeof setTimeout> | null = null
+let availabilitySequence = 0
 function refreshAvailability(): void {
   if (!levelId.value) return
+  const sequence = ++availabilitySequence
   if (availabilityTimer) clearTimeout(availabilityTimer)
+  availability.value = null
   availabilityTimer = setTimeout(async () => {
+    if (sequence !== availabilitySequence) return
     availabilityLoading.value = true
     availabilityError.value = ''
     try {
@@ -137,16 +148,19 @@ function refreshAvailability(): void {
         params.set('knowledgePointIds', knowledgePointIds.value.join(','))
       }
       const res = await request<{ available: number }>(`/practice/availability?${params}`)
-      availability.value = res.available
+      if (sequence === availabilitySequence) availability.value = res.available
     } catch (err) {
-      availabilityError.value = err instanceof ApiError ? err.message : '可用题量查询失败'
-      availability.value = null
+      if (sequence === availabilitySequence) {
+        availabilityError.value = err instanceof ApiError ? err.message : '可用题量查询失败'
+        availability.value = null
+      }
     } finally {
-      availabilityLoading.value = false
+      if (sequence === availabilitySequence) availabilityLoading.value = false
     }
   }, 250)
 }
 
+let knowledgeSequence = 0
 async function loadKnowledgePoints(append = false): Promise<void> {
   if (!levelId.value) return
   if (append) kpsLoadingMore.value = true
@@ -154,18 +168,30 @@ async function loadKnowledgePoints(append = false): Promise<void> {
     kpsLoading.value = true
     kpNextCursor.value = ''
   }
+  const sequence = ++knowledgeSequence
   try {
     const params = new URLSearchParams({ levelId: levelId.value, limit: '20' })
     if (subjectId.value) params.set('subjectId', subjectId.value)
     if (append && kpNextCursor.value) params.set('cursor', kpNextCursor.value)
     const res = await request<{ knowledgePoints: KnowledgePointItem[]; nextCursor?: string }>(`/knowledge-points?${params}`)
-    kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
-    kpNextCursor.value = res.nextCursor ?? ''
+    if (sequence === knowledgeSequence) {
+      kps.value = append ? [...kps.value, ...res.knowledgePoints] : res.knowledgePoints
+      kpNextCursor.value = res.nextCursor ?? ''
+    }
   } finally {
-    kpsLoading.value = false
-    kpsLoadingMore.value = false
+    if (sequence === knowledgeSequence) {
+      kpsLoading.value = false
+      kpsLoadingMore.value = false
+    }
   }
 }
+
+onBeforeUnmount(() => {
+  availabilitySequence++
+  sourceSequence++
+  knowledgeSequence++
+  if (availabilityTimer) clearTimeout(availabilityTimer)
+})
 
 const insufficient = computed(() => availability.value !== null && availability.value < count.value)
 const canUseAvailable = computed(() => !!levelId.value && availability.value !== null && availability.value > 0 && !availabilityLoading.value)
@@ -239,7 +265,7 @@ async function generateAIPractice(): Promise<void> {
 <template>
   <AppShell>
     <AppStatus v-if="loadState === 'loading'" state="loading" />
-    <AppStatus v-else-if="loadState === 'error'" state="error" :message="loadError" @action="loadState = 'ready'" />
+    <AppStatus v-else-if="loadState === 'error'" state="error" :message="loadError" @action="loadCatalog" />
     <template v-else>
       <h1>创建练习</h1>
       <p class="muted">系统只从已发布题目中选题；答题过程中不显示答案，整批提交后统一判分。</p>
