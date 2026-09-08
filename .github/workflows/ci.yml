@@ -9,6 +9,22 @@ on:
 jobs:
   backend-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ai_shuati_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ai_shuati_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ai_shuati_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +46,10 @@ jobs:
       - name: Run backend tests
         working-directory: ./backend
         run: go test ./...
+
+      - name: Run PostgreSQL integration tests
+        working-directory: ./backend
+        run: make test-integration
 
       - name: Build backend
         working-directory: ./backend

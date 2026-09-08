@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -75,6 +76,19 @@ type resultResponse struct {
 	} `json:"items"`
 }
 
+func TestIntegrationDatabaseNameGuard(t *testing.T) {
+	for name, want := range map[string]bool{
+		"ai_shuati_test":       true,
+		"ai_shuati_codex_test": true,
+		"ai_shuati_dev":        false,
+		"postgres":             false,
+	} {
+		if got := isIntegrationDatabase(name); got != want {
+			t.Errorf("database %q: got %t, want %t", name, got, want)
+		}
+	}
+}
+
 func TestPracticeHTTPIntegration(t *testing.T) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
 	if databaseURL == "" {
@@ -87,6 +101,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
+	assertIntegrationDatabase(t, pool)
 	resetIntegrationDatabase(t, pool)
 	data := seedIntegrationData(t, pool)
 
@@ -716,10 +731,21 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 					http.Error(w, "missing knowledge points", http.StatusBadRequest)
 					return
 				}
-				if generation.LearningMemory.KnowledgePoints[0].ID != data.knowledgePoint1 ||
-					generation.LearningMemory.KnowledgePoints[0].ConfirmedAnswered == 0 ||
-					generation.LearningMemory.KnowledgePoints[0].RecentWrongCount == 0 ||
-					generation.LearningMemory.KnowledgePoints[0].PriorityScore <= 0 {
+				var practiced *struct {
+					ID                string  `json:"id"`
+					ConfirmedAnswered int     `json:"confirmedAnswered"`
+					ConfirmedCorrect  int     `json:"confirmedCorrect"`
+					RecentWrongCount  int     `json:"recentWrongCount"`
+					PriorityScore     float64 `json:"priorityScore"`
+				}
+				for i := range generation.LearningMemory.KnowledgePoints {
+					if generation.LearningMemory.KnowledgePoints[i].ID == data.knowledgePoint1 {
+						practiced = &generation.LearningMemory.KnowledgePoints[i]
+						break
+					}
+				}
+				if practiced == nil || practiced.ConfirmedAnswered == 0 ||
+					generation.LearningMemory.KnowledgePoints[0].PriorityScore < practiced.PriorityScore {
 					http.Error(w, "memory candidates are not ranked by weakness", http.StatusBadRequest)
 					return
 				}
@@ -727,7 +753,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				questions := make([]map[string]any, generation.Count)
 				for i := range questions {
 					questions[i] = map[string]any{
-						"type": "single_choice", "stem": fmt.Sprintf("AI 个性化测试题 %d。", i+1),
+						"type": "single_choice", "stem": fmt.Sprintf("AI 个性化测试题 %d：＿＿＿。", i+1),
 						"options": []map[string]string{
 							{"id": "a", "label": "A", "text": "正解"}, {"id": "b", "label": "B", "text": "选项二"},
 							{"id": "c", "label": "C", "text": "选项三"}, {"id": "d", "label": "D", "text": "选项四"},
@@ -1022,6 +1048,19 @@ func resetIntegrationDatabase(t *testing.T, pool *pgxpool.Pool) {
 		t.Fatal(err)
 	}
 }
+
+func assertIntegrationDatabase(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	var name string
+	if err := pool.QueryRow(context.Background(), `SELECT current_database()`).Scan(&name); err != nil {
+		t.Fatal(err)
+	}
+	if !isIntegrationDatabase(name) {
+		t.Fatalf("拒绝清理非测试数据库 %q：数据库名必须以 _test 结尾", name)
+	}
+}
+
+func isIntegrationDatabase(name string) bool { return strings.HasSuffix(name, "_test") }
 
 func seedIntegrationData(t *testing.T, pool *pgxpool.Pool) integrationData {
 	t.Helper()
