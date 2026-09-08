@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	StatusQueued = "queued"
+	StatusQueued  = "queued"
 	StatusRunning = "running"
 )
 
@@ -72,10 +72,15 @@ func Claim(ctx context.Context, pool *pgxpool.Pool, workerID string, lease time.
 	return j, nil
 }
 
-// Release 租约到期任务回收为可领取；进程崩溃后由 reaper 兜底。
+// ReleaseExpired 回收租约到期任务；耗尽尝试次数时直接收敛到失败。
 func ReleaseExpired(ctx context.Context, pool *pgxpool.Pool) error {
 	_, err := pool.Exec(ctx,
-		`UPDATE jobs SET status = 'queued', locked_by = NULL, locked_until = NULL, updated_at = now()
+		`UPDATE jobs
+		 SET status = CASE WHEN attempts >= max_attempts THEN 'failed' ELSE 'queued' END,
+		     locked_by = NULL, locked_until = NULL,
+		     last_error = CASE WHEN attempts >= max_attempts
+		       THEN 'worker lease expired after final attempt' ELSE 'worker lease expired' END,
+		     updated_at = now()
 		 WHERE status = 'running' AND locked_until < now()`)
 	return err
 }

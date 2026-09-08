@@ -3,12 +3,14 @@ package jobs
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const lease = 10 * time.Minute
+const reapInterval = time.Minute
 
 // Worker 周期领取任务并按 kind 调度；首版用一个明确的 switch/map，不做插件注册框架。
 type Worker struct {
@@ -26,15 +28,39 @@ func NewWorker(pool *pgxpool.Pool, id string, concurrency int, handlers map[stri
 // Run 阻塞运行直到 ctx 取消。每个 worker 槽位串行处理任务，槽位数由配置控制。
 func (w *Worker) Run(ctx context.Context) {
 	w.logger.Info("worker_started", "worker_id", w.id, "concurrency", w.concurrency)
-	sem := make(chan struct{}, w.concurrency)
+	if err := ReleaseExpired(ctx, w.pool); err != nil {
+		w.logger.Warn("release_expired_failed", "error", err)
+	}
+	var slots sync.WaitGroup
+	for range w.concurrency {
+		slots.Add(1)
+		go func() {
+			defer slots.Done()
+			w.runSlot(ctx)
+		}()
+	}
+	ticker := time.NewTicker(reapInterval)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			slots.Wait()
 			return
-		default:
+		case <-ticker.C:
+			if err := ReleaseExpired(ctx, w.pool); err != nil {
+				w.logger.Warn("release_expired_failed", "error", err)
+			}
 		}
+	}
+}
+
+func (w *Worker) runSlot(ctx context.Context) {
+	for ctx.Err() == nil {
 		job, err := Claim(ctx, w.pool, w.id, lease)
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
 			w.logger.Error("claim_failed", "error", err, "worker_id", w.id)
 			sleepCtx(ctx, time.Second)
 			continue
@@ -43,15 +69,7 @@ func (w *Worker) Run(ctx context.Context) {
 			sleepCtx(ctx, 500*time.Millisecond)
 			continue
 		}
-		// 到期租约回收是低频操作，借领到任务的机会顺带执行
-		if err := ReleaseExpired(ctx, w.pool); err != nil {
-			w.logger.Warn("release_expired_failed", "error", err)
-		}
-		sem <- struct{}{}
-		go func(job Job) {
-			defer func() { <-sem }()
-			w.runJob(ctx, job)
-		}(job)
+		w.runJob(ctx, job)
 	}
 }
 
@@ -64,17 +82,17 @@ func (w *Worker) runJob(ctx context.Context, job Job) {
 		_ = Fail(ctx, w.pool, job, errUnknownKind(job.Kind))
 		return
 	}
-		err := func() (err error) {
-			defer func() {
-				if rec := recover(); rec != nil {
-					logger.Error("job_panic", "panic", rec)
-					err = errPanic
-				}
-			}()
-			jobCtx, cancel := context.WithTimeout(ctx, lease)
-			defer cancel()
-			return handler(jobCtx, job.Attempts, job.MaxAttempts, job.Payload)
+	err := func() (err error) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logger.Error("job_panic", "panic", rec)
+				err = errPanic
+			}
 		}()
+		jobCtx, cancel := context.WithTimeout(ctx, lease)
+		defer cancel()
+		return handler(jobCtx, job.Attempts, job.MaxAttempts, job.Payload)
+	}()
 	if err != nil {
 		logger.Error("job_failed", "error", err, "duration_ms", time.Since(start).Milliseconds())
 		_ = Fail(ctx, w.pool, job, err)

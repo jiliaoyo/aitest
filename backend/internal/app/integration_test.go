@@ -21,6 +21,7 @@ import (
 
 	"github.com/aishuati/backend/internal/ai"
 	"github.com/aishuati/backend/internal/config"
+	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
 	"github.com/aishuati/backend/internal/store"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1023,6 +1024,120 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 		}
 		if kpCount != 4 {
 			t.Fatalf("knowledge-point count=%d, want 4", kpCount)
+		}
+	})
+}
+
+func TestWorkerRecoveryIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("设置 TEST_DATABASE_URL 后运行 PostgreSQL 集成测试")
+	}
+	ctx := context.Background()
+	pool, err := store.Open(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	assertIntegrationDatabase(t, pool)
+	resetIntegrationDatabase(t, pool)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("空闲启动也回收过期任务", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs
+			(kind, payload, status, attempts, max_attempts, locked_by, locked_until)
+			VALUES ('integration_recovered', '{}', 'running', 1, 3, 'dead-worker', now() - interval '1 minute')`); err != nil {
+			t.Fatal(err)
+		}
+		handled := make(chan struct{}, 1)
+		workerCtx, cancel := context.WithCancel(ctx)
+		worker := jobs.NewWorker(pool, "recovery-worker", 1, map[string]jobs.Handler{
+			"integration_recovered": func(context.Context, int, int, json.RawMessage) error {
+				handled <- struct{}{}
+				return nil
+			},
+		}, logger)
+		done := make(chan struct{})
+		go func() {
+			worker.Run(workerCtx)
+			close(done)
+		}()
+		select {
+		case <-handled:
+		case <-time.After(2 * time.Second):
+			t.Fatal("expired job was not recovered while the queue was otherwise idle")
+		}
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after cancellation")
+		}
+	})
+
+	t.Run("过期的最终尝试收敛到失败", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs
+			(kind, payload, status, attempts, max_attempts, locked_by, locked_until)
+			VALUES ('integration_exhausted', '{}', 'running', 3, 3, 'dead-worker', now() - interval '1 minute')`); err != nil {
+			t.Fatal(err)
+		}
+		if err := jobs.ReleaseExpired(ctx, pool); err != nil {
+			t.Fatal(err)
+		}
+		var status string
+		if err := pool.QueryRow(ctx, `SELECT status FROM jobs WHERE kind = 'integration_exhausted'`).Scan(&status); err != nil {
+			t.Fatal(err)
+		}
+		if status != "failed" {
+			t.Fatalf("expired final attempt status=%q, want failed", status)
+		}
+	})
+
+	t.Run("并发槽满时不提前领取下一条", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `DELETE FROM jobs`); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO jobs (kind, payload) VALUES
+			('integration_blocked', '{}'), ('integration_blocked', '{}')`); err != nil {
+			t.Fatal(err)
+		}
+		started := make(chan struct{}, 1)
+		release := make(chan struct{})
+		workerCtx, cancel := context.WithCancel(ctx)
+		worker := jobs.NewWorker(pool, "single-slot-worker", 1, map[string]jobs.Handler{
+			"integration_blocked": func(jobCtx context.Context, _ int, _ int, _ json.RawMessage) error {
+				started <- struct{}{}
+				select {
+				case <-release:
+				case <-jobCtx.Done():
+				}
+				return nil
+			},
+		}, logger)
+		done := make(chan struct{})
+		go func() {
+			worker.Run(workerCtx)
+			close(done)
+		}()
+		select {
+		case <-started:
+		case <-time.After(2 * time.Second):
+			t.Fatal("first job did not start")
+		}
+		var running, queued int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FILTER (WHERE status = 'running'),
+			count(*) FILTER (WHERE status = 'queued') FROM jobs`).Scan(&running, &queued); err != nil {
+			t.Fatal(err)
+		}
+		if running != 1 || queued != 1 {
+			t.Fatalf("running=%d queued=%d, want 1/1", running, queued)
+		}
+		cancel()
+		close(release)
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("worker did not stop after cancellation")
 		}
 	})
 }
