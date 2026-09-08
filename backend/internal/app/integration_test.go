@@ -24,6 +24,7 @@ import (
 	"github.com/aishuati/backend/internal/config"
 	"github.com/aishuati/backend/internal/jobs"
 	"github.com/aishuati/backend/internal/learning"
+	"github.com/aishuati/backend/internal/practice"
 	"github.com/aishuati/backend/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -1301,6 +1302,78 @@ func TestWorkerRecoveryIntegration(t *testing.T) {
 			t.Fatal("worker did not stop after stale-owner test")
 		}
 	})
+}
+
+func TestWrongItemStateIntegration(t *testing.T) {
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("设置 TEST_DATABASE_URL 后运行 PostgreSQL 集成测试")
+	}
+	ctx := context.Background()
+	pool, err := store.Open(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	assertIntegrationDatabase(t, pool)
+	resetIntegrationDatabase(t, pool)
+	data := seedIntegrationData(t, pool)
+	userID := cloneIntegrationLearner(t, pool, "wrong-state@example.com")
+	questions, err := store.CollectRows[struct{ ID string }](ctx, pool,
+		`SELECT id::text FROM questions WHERE published_version_id IS NOT NULL ORDER BY id LIMIT 4`)
+	if err != nil || len(questions) != 4 {
+		t.Fatalf("load questions: %v, count=%d", err, len(questions))
+	}
+	baseTime := time.Date(2026, time.September, 2, 0, 0, 0, 0, time.UTC)
+
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[0].ID,
+		"deterministic", "incorrect", stringPtr("official"), baseTime)
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[0].ID,
+		"deterministic", "correct", stringPtr("official"), baseTime.Add(time.Minute))
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[1].ID,
+		"deterministic", "correct", stringPtr("official"), baseTime)
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[1].ID,
+		"deterministic", "incorrect", stringPtr("official"), baseTime.Add(2*time.Minute))
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[2].ID,
+		"deterministic", "incorrect", stringPtr("official"), baseTime)
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[2].ID,
+		"ai", "pending", nil, baseTime.Add(3*time.Minute))
+	addLearningResult(t, pool, userID, data.levelID, data.subjectID, questions[3].ID,
+		"deterministic", "correct", stringPtr("official"), baseTime.Add(4*time.Minute))
+
+	rows, _, err := learning.NewStore(pool).WrongItems(ctx, userID, "", "", "", "", false, "", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaultIDs := map[string]bool{}
+	for _, row := range rows {
+		defaultIDs[row.QuestionID] = true
+	}
+	if defaultIDs[questions[0].ID] || !defaultIDs[questions[1].ID] || !defaultIDs[questions[2].ID] || defaultIDs[questions[3].ID] {
+		t.Fatalf("unexpected current wrong questions: %+v", defaultIDs)
+	}
+	rows, _, err = learning.NewStore(pool).WrongItems(ctx, userID, "", "", "", "", true, "", 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allIDs := map[string]bool{}
+	for _, row := range rows {
+		allIDs[row.QuestionID] = true
+	}
+	if !allIDs[questions[0].ID] || !allIDs[questions[1].ID] || !allIDs[questions[2].ID] || allIDs[questions[3].ID] {
+		t.Fatalf("unexpected wrong and mastered questions: %+v", allIDs)
+	}
+	ids, err := practice.NewStore(pool).WrongQuestionIDs(ctx, userID, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	retrainIDs := map[string]bool{}
+	for _, id := range ids {
+		retrainIDs[id] = true
+	}
+	if retrainIDs[questions[0].ID] || !retrainIDs[questions[1].ID] || !retrainIDs[questions[2].ID] || retrainIDs[questions[3].ID] {
+		t.Fatalf("unexpected retrain questions: %+v", retrainIDs)
+	}
 }
 
 func cloneIntegrationLearner(t *testing.T, pool *pgxpool.Pool, email string) string {

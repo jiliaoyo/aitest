@@ -199,13 +199,13 @@ paths:
   /wrong-items:
     get:
       tags: [learning]
-      summary: 错题本（每题取最近一次错误作答）
+      summary: 错题本（按每题最近一次可判定作答区分待重练与已掌握）
       parameters:
         - { name: knowledgePointId, in: query, schema: { type: string } }
         - { name: from, in: query, schema: { type: string, format: date }, description: 错误作答开始日期（含当天） }
         - { name: to, in: query, schema: { type: string, format: date }, description: 错误作答结束日期（含当天） }
         - { name: keyword, in: query, schema: { type: string, maxLength: 100 }, description: 搜索题干、选项、材料或知识点 }
-        - { name: includeCorrect, in: query, schema: { type: boolean, default: false }, description: 是否同时显示最近一次作答正确的题目 }
+        - { name: includeCorrect, in: query, schema: { type: boolean, default: false }, description: 是否同时显示曾经答错、最近一次已答对的题目 }
         - { name: cursor, in: query, schema: { type: string }, description: 上一页返回的游标 }
         - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
       responses:

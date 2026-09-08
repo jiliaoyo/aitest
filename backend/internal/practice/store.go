@@ -422,20 +422,29 @@ func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string,
 	return out, next, nil
 }
 
-// WrongQuestionIDs 返回用户最近一次作答为错误的题目 ID（按最近错误时间倒序）。
+// WrongQuestionIDs 返回用户最近一次可判定作答仍为错误的题目 ID。
 func (s *Store) WrongQuestionIDs(ctx context.Context, userID string, limit int) ([]string, error) {
 	rows, err := store.CollectRows[struct{ ID string }](ctx, s.db,
-		`SELECT qid FROM (
-		   SELECT DISTINCT ON (pi.question_id) pi.question_id::text AS qid, gr.updated_at
+		`WITH eligible AS (
+		   SELECT pi.question_id, pi.position, gr.id AS result_id, gr.status,
+		          COALESCE(ps.submitted_at, ps.created_at) AS at_time
 		   FROM grading_results gr
 		   JOIN practice_items pi ON pi.id = gr.item_id
 		   JOIN practice_sessions ps ON ps.id = pi.session_id
-			   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL AND (
-		     (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect','unanswered'))
-		     OR (gr.source = 'ai' AND gr.status = 'incorrect'))
-		   ORDER BY pi.question_id, gr.updated_at DESC
-		 ) w
-		 ORDER BY w.updated_at DESC
+		   LEFT JOIN user_learning_memory mem ON mem.user_id = ps.user_id
+		   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL
+		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
+		     AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+		           AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+		       OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect')))
+		 ), ranked AS (
+		   SELECT eligible.*,
+		          row_number() OVER (PARTITION BY question_id ORDER BY at_time DESC, position DESC, result_id DESC) AS rn
+		   FROM eligible
+		 )
+		 SELECT question_id::text FROM ranked
+		 WHERE rn = 1 AND status IN ('incorrect', 'unanswered')
+		 ORDER BY at_time DESC, question_id DESC
 		 LIMIT $2`, userID, limit)
 	if err != nil {
 		return nil, err

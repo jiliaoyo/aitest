@@ -143,7 +143,7 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
       <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center">
         <label class="option-row" style="margin: 0">
           <input id="include-correct" v-model="includeCorrect" type="checkbox" @change="applyFilters" />
-          <span>显示正确题</span>
+          <span>显示已掌握题</span>
         </label>
         <button id="apply-wrong-filters" class="ghost" type="button" @click="applyFilters">筛选</button>
       </div>

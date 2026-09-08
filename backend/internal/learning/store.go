@@ -571,21 +571,21 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	args := []any{userID}
+	args := []any{userID, includeCorrect}
 	where := ""
 	if knowledgePointID != "" {
 		args = append(args, knowledgePointID)
 		where = ` AND EXISTS (SELECT 1 FROM question_version_knowledge_points qvkp2
-			   WHERE qvkp2.question_version_id = pi.question_version_id
-		       AND qvkp2.knowledge_point_id::text = $2)`
+			   WHERE qvkp2.question_version_id = l.question_version_id
+		       AND qvkp2.knowledge_point_id::text = $` + strconv.Itoa(len(args)) + `)`
 	}
 	if fromDate != "" {
 		args = append(args, fromDate)
-		where += " AND gr.updated_at >= $" + strconv.Itoa(len(args)) + "::date"
+		where += " AND l.at_time >= $" + strconv.Itoa(len(args)) + "::date"
 	}
 	if toDate != "" {
 		args = append(args, toDate)
-		where += " AND gr.updated_at < ($" + strconv.Itoa(len(args)) + "::date + INTERVAL '1 day')"
+		where += " AND l.at_time < ($" + strconv.Itoa(len(args)) + "::date + INTERVAL '1 day')"
 	}
 	if keyword != "" {
 		args = append(args, "%"+keyword+"%")
@@ -597,19 +597,11 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 			OR EXISTS (
 				SELECT 1 FROM question_version_knowledge_points qvkp3
 				JOIN knowledge_points kp3 ON kp3.id = qvkp3.knowledge_point_id
-				WHERE qvkp3.question_version_id = pi.question_version_id
+				WHERE qvkp3.question_version_id = l.question_version_id
 				  AND kp3.name ILIKE ` + keywordArg + `
 			)
 		)`
 	}
-	gradingFilter := ` AND (
-				 (gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL AND gr.status IN ('incorrect', 'unanswered'))
-				 OR (gr.source = 'ai' AND gr.status = 'incorrect')`
-	if includeCorrect {
-		gradingFilter += ` OR gr.status = 'correct'`
-	}
-	gradingFilter += `)`
-	outerWhere := ""
 	if cursor != "" {
 		parts := strings.Split(cursor, "\x00")
 		if len(parts) != 2 {
@@ -617,39 +609,70 @@ func (s *Store) WrongItems(ctx context.Context, userID, knowledgePointID, fromDa
 		}
 		args = append(args, parts[0], parts[1])
 		n := len(args)
-		outerWhere = " WHERE (w.graded_at::timestamptz, w.item_id::uuid) < ($" + strconv.Itoa(n-1) + "::timestamptz, $" + strconv.Itoa(n) + "::uuid)"
+		where += " AND (l.at_time, l.item_id) < ($" + strconv.Itoa(n-1) + "::timestamptz, $" + strconv.Itoa(n) + "::uuid)"
 	}
 	args = append(args, limit)
 	limitPh := "$" + strconv.Itoa(len(args))
 	rows, err := store.CollectRows[wrongItemRow](ctx, s.db,
-		`SELECT w.* FROM (
-		   SELECT DISTINCT ON (pi.question_id)
-		          pi.id::text AS item_id, ps.id::text AS session_id, pi.question_id::text,
-		          pi.position, v.type, v.stem, v.options::text,
-		          mv.material_id::text, mv.title, mv.content,
-		          kp.id::text, kp.name,
-		          gr.source, gr.status, gr.answer_authority, gr.correct_value::text, gr.user_value::text,
-		          gr.explanation, gr.explanation_source, gr.updated_at::text AS graded_at
+		`WITH eligible AS (
+		   SELECT pi.id AS item_id, pi.session_id, pi.question_id, pi.question_version_id, pi.position,
+		          gr.id AS result_id, gr.source, gr.status, gr.answer_authority,
+		          gr.correct_value, gr.user_value, gr.explanation, gr.explanation_source,
+		          COALESCE(ps.submitted_at, ps.created_at) AS at_time,
+		          gr.status IN ('incorrect', 'unanswered') AS is_wrong
 		   FROM grading_results gr
 		   JOIN practice_items pi ON pi.id = gr.item_id
 		   JOIN practice_sessions ps ON ps.id = pi.session_id
 		   LEFT JOIN user_learning_memory mem ON mem.user_id = ps.user_id
-		   JOIN question_versions v ON v.id = pi.question_version_id
-		   LEFT JOIN material_versions mv ON mv.id = v.material_version_id
-		   LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
-		   LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
-			   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL
+		   WHERE ps.user_id = $1 AND ps.deleted_at IS NULL AND pi.deleted_at IS NULL
 		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
-		     `+gradingFilter+where+`
-		   ORDER BY pi.question_id, gr.updated_at DESC
-		 ) w`+outerWhere+` ORDER BY w.graded_at DESC, w.item_id DESC LIMIT `+limitPh, args...)
+		     AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+		           AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+		       OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect')))
+		 ), ranked AS (
+		   SELECT eligible.*,
+		          row_number() OVER (PARTITION BY question_id ORDER BY at_time DESC, position DESC, result_id DESC) AS rn,
+		          bool_or(is_wrong) OVER (PARTITION BY question_id) AS had_wrong
+		   FROM eligible
+		 ), latest AS (
+		   SELECT * FROM ranked
+		   WHERE rn = 1 AND (is_wrong OR ($2 AND status = 'correct' AND had_wrong))
+		 ), filtered AS (
+		   SELECT l.* FROM latest l
+		   JOIN question_versions v ON v.id = l.question_version_id
+		   LEFT JOIN material_versions mv ON mv.id = v.material_version_id
+		   WHERE true`+where+`
+		   ORDER BY l.at_time DESC, l.item_id DESC LIMIT `+limitPh+`
+		 )
+		 SELECT f.item_id::text, f.session_id::text, f.question_id::text,
+		        f.position, v.type, v.stem, v.options::text,
+		        mv.material_id::text, mv.title, mv.content,
+		        kp.id::text, kp.name,
+		        f.source, f.status, f.answer_authority, f.correct_value::text, f.user_value::text,
+		        f.explanation, f.explanation_source, f.at_time::text
+		 FROM filtered f
+		 JOIN question_versions v ON v.id = f.question_version_id
+		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
+		 LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
+		 LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
+		 ORDER BY f.at_time DESC, f.item_id DESC, kp.id`, args...)
 	if err != nil {
 		return nil, "", err
 	}
 	next := ""
-	if len(rows) == limit {
-		r := rows[len(rows)-1]
-		next = r.GradedAt + "\x00" + r.ItemID
+	seenItems := map[string]bool{}
+	uniqueItems := 0
+	for _, row := range rows {
+		if !seenItems[row.ItemID] {
+			seenItems[row.ItemID] = true
+			uniqueItems++
+			if uniqueItems == limit {
+				next = row.GradedAt + "\x00" + row.ItemID
+			}
+		}
+	}
+	if uniqueItems < limit {
+		next = ""
 	}
 	return rows, next, nil
 }
