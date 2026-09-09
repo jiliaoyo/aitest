@@ -181,6 +181,23 @@ func TestValidateGeneratedQuestionsAcceptsTextQuestionTypes(t *testing.T) {
 	}
 }
 
+func TestNormalizeGeneratedQuestionAnswersAcceptsTextForShortAnswer(t *testing.T) {
+	questions := []generatedQuestion{{Type: "short_answer", CorrectAnswer: json.RawMessage(`{"text":"日本語で答えます。"}`)}}
+	if err := normalizeGeneratedQuestionAnswers(questions); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(questions[0].CorrectAnswer); got != `{"reference":"日本語で答えます。"}` {
+		t.Fatalf("normalized answer = %s", got)
+	}
+}
+
+func TestNormalizeGeneratedQuestionAnswersRejectsEmptyShortAnswer(t *testing.T) {
+	questions := []generatedQuestion{{Type: "short_answer", CorrectAnswer: json.RawMessage(`{"reference":null}`)}}
+	if err := normalizeGeneratedQuestionAnswers(questions); err == nil {
+		t.Fatal("empty reference should be rejected")
+	}
+}
+
 func TestRemapGeneratedChoiceOptionsUpdatesAnswer(t *testing.T) {
 	question := generatedQuestion{
 		Type: "multiple_choice",

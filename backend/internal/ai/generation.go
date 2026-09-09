@@ -38,6 +38,7 @@ const questionGenerationPromptAddendum = `
 2. questionType=mixed 时，输入 JSON 的 questionTypePlan 是本次响应必须严格满足的题型数量。四种题型都要按计划出现，不能用多道 single_choice 代替其他题型。
 3. category=grammar_modality 表示愿望、计划与基础推量；N5 不生成意志形（～（よ）う）或 ～ために。具体级别边界仍以 curriculumScope 为准。
 4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
+5. short_answer 的 correctAnswer 必须严格是 {"reference":"非空字符串"}；fill_blank 必须严格是 {"acceptable":["非空字符串"]}，不要使用 text、null、数组对象或其他结构。
 `
 
 //go:embed prompts/practice_question_generation.v12.md
@@ -753,6 +754,13 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			continue
 		}
 		questions := capGeneratedQuestions(response.Questions, remaining)
+		if err := normalizeGeneratedQuestionAnswers(questions); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
+			validationErr = err
+			retryNote = ""
+			continue
+		}
 		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			s.recordGenerationError(ctx, req.SessionID, err)
@@ -825,6 +833,45 @@ func capGeneratedQuestions(questions []generatedQuestion, expected int) []genera
 		return questions[:expected]
 	}
 	return questions
+}
+
+// normalizeGeneratedQuestionAnswers 兼容模型把答题 DTO 的 text 字段误用于简答题，
+// 但只接受非空字符串，不替模型猜答案。
+func normalizeGeneratedQuestionAnswers(questions []generatedQuestion) error {
+	for i := range questions {
+		question := &questions[i]
+		var value map[string]json.RawMessage
+		if err := json.Unmarshal(question.CorrectAnswer, &value); err != nil {
+			continue
+		}
+		if question.Type == "short_answer" {
+			if raw, ok := value["reference"]; ok {
+				var reference string
+				if err := json.Unmarshal(raw, &reference); err == nil && strings.TrimSpace(reference) != "" {
+					continue
+				}
+			}
+			if raw, ok := value["text"]; ok {
+				var text string
+				if err := json.Unmarshal(raw, &text); err == nil && strings.TrimSpace(text) != "" {
+					updated, _ := json.Marshal(map[string]string{"reference": strings.TrimSpace(text)})
+					question.CorrectAnswer = updated
+					continue
+				}
+			}
+			return fmt.Errorf("AI 第 %d 题简答答案必须是非空字符串 reference", i+1)
+		}
+		if question.Type == "fill_blank" {
+			if raw, ok := value["acceptable"]; ok {
+				var answer string
+				if err := json.Unmarshal(raw, &answer); err == nil && strings.TrimSpace(answer) != "" {
+					updated, _ := json.Marshal(map[string][]string{"acceptable": {strings.TrimSpace(answer)}})
+					question.CorrectAnswer = updated
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func randomSeed() (string, error) {

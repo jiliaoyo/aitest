@@ -14,7 +14,7 @@
 11. fill_blank 不要生成选项，correctAnswer 使用非空 acceptable 字符串数组；short_answer 不要生成选项，correctAnswer 使用非空 reference 字符串。
 12. 难度使用 1 到 5 表示：easy 只能生成 1 或 2，normal 只能生成 3，hard 只能生成 4 或 5，mixed 在 1 到 5 中随机混合。
 13. 每道解析不能超过 300 字，必须按以下三行排版并使用 JSON 字符串中的换行转义序列（反斜杠+n）：答案依据：……\n知识点：……\n常见误区：……；不要输出中文翻译作为题干的一部分。
-14. 这是账号私有的 AI 生成练习，答案会被服务端私下保存，不能在答题前接口返回。
+14. 这是账号私有的 AI 生成练习，答案会被服务端私下保存，不能在答题前接口返回。short_answer 的 correctAnswer 必须严格是 `{"reference":"非空字符串"}`；fill_blank 必须严格是 `{"acceptable":["非空字符串"]}`，不能使用 text、null 或其他结构。
 15. randomSeed 只用于增加变化，不要在输出中复述。
 16. 必须返回恰好 count 道题，不能少题、重复题或附加其他字段。
 17. 只输出一个 JSON 对象，不要输出 Markdown 或其他文字。
