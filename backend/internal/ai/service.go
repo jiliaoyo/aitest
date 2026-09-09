@@ -35,6 +35,53 @@ var explainPrompt string
 //go:embed prompts/practice_batch_analysis.v3.md
 var batchAnalysisPrompt string
 
+func aiObjectJSONSchema(properties map[string]any, required []string) map[string]any {
+	schema := map[string]any{"type": "object", "properties": properties, "additionalProperties": false}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+	return schema
+}
+
+func aiCorrectAnswerJSONSchema() map[string]any {
+	return aiObjectJSONSchema(map[string]any{
+		"optionIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"text":      map[string]any{"type": "string"},
+	}, nil)
+}
+
+var practiceGradeJSONSchema = aiObjectJSONSchema(map[string]any{
+	"correctness":   map[string]any{"type": "string", "enum": []string{"correct", "incorrect", "cannot_determine"}},
+	"correctAnswer": aiCorrectAnswerJSONSchema(),
+	"explanation":   map[string]any{"type": "string"},
+	"confidence":    map[string]any{"type": "string", "enum": []string{"high", "medium", "low"}},
+}, []string{"correctness", "explanation", "confidence"})
+
+var practiceExplainJSONSchema = aiObjectJSONSchema(map[string]any{
+	"explanation": map[string]any{"type": "string"},
+}, []string{"explanation"})
+
+var practiceBatchAnalysisJSONSchema = aiObjectJSONSchema(map[string]any{
+	"summary":      map[string]any{"type": "string"},
+	"memoryAdvice": map[string]any{"type": "string"},
+	"grades": map[string]any{
+		"type": "array",
+		"items": aiObjectJSONSchema(map[string]any{
+			"itemId":        map[string]any{"type": "string"},
+			"correctness":   map[string]any{"type": "string", "enum": []string{"correct", "incorrect", "cannot_determine"}},
+			"correctAnswer": aiCorrectAnswerJSONSchema(),
+			"explanation":   map[string]any{"type": "string"},
+		}, []string{"itemId", "correctness", "explanation"}),
+	},
+	"explanations": map[string]any{
+		"type": "array",
+		"items": aiObjectJSONSchema(map[string]any{
+			"itemId": map[string]any{"type": "string"},
+			"text":   map[string]any{"type": "string"},
+		}, []string{"itemId", "text"}),
+	},
+}, []string{"summary", "memoryAdvice", "grades", "explanations"})
+
 type Service struct {
 	pool                 *pgxpool.Pool
 	client               *Client
@@ -170,7 +217,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		"material":   item.Material,
 		"userAnswer": item.UserValue,
 	})
-	out, runID, err := s.client.RunPromptWithAudit(ctx, item.UserID, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON))
+	out, runID, err := s.client.RunPromptWithSchemaAndAudit(ctx, item.UserID, "practice_grade", gradePromptVersion, item.ItemID, gradePrompt, string(payloadJSON), practiceGradeJSONSchema, 0, false)
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
@@ -394,7 +441,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		input.Materials = nil
 	}
 	inputJSON, _ := json.Marshal(input)
-	out, runID, err := s.client.RunPromptWithAudit(ctx, userID, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON))
+	out, runID, err := s.client.RunPromptWithSchemaAndAudit(ctx, userID, "practice_batch_analysis", batchAnalysisPromptVersion, req.SessionID, batchAnalysisPrompt, string(inputJSON), practiceBatchAnalysisJSONSchema, 0, false)
 	if err != nil {
 		if attempts >= maxAttempts {
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
@@ -704,7 +751,7 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		"options": item.Options, "material": item.Material,
 		"standardAnswer": item.KeyValue, "userAnswer": item.UserValue,
 	})
-	out, runID, err := s.client.RunPromptWithAudit(ctx, item.UserID, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON))
+	out, runID, err := s.client.RunPromptWithSchemaAndAudit(ctx, item.UserID, "practice_explain", explainPromptVersion, item.ItemID, explainPrompt, string(payloadJSON), practiceExplainJSONSchema, 0, false)
 	if err != nil {
 		return err // 解析失败不影响判分，直接按任务重试策略处理
 	}

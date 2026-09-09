@@ -30,7 +30,7 @@ func TestRunPromptForGenerationUsesResponsesJSONSchema(t *testing.T) {
 			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
-		if request.Text.Format.Type != "json_schema" || request.Text.Format.Name != "practice_questions" || request.Text.Format.Schema["type"] != "object" || request.Reasoning.Effort != "none" {
+		if request.Text.Format.Type != "json_schema" || request.Text.Format.Name != "generation" || request.Text.Format.Schema["type"] != "object" || request.Reasoning.Effort != "none" {
 			http.Error(w, "unexpected structured request", http.StatusBadRequest)
 			return
 		}

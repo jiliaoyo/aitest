@@ -30,6 +30,8 @@ const (
 	aiAPIStyleResponses       = "responses"
 )
 
+var genericJSONObjectSchema = map[string]any{"type": "object"}
+
 type Client struct {
 	cfg    Config
 	http   *http.Client
@@ -67,32 +69,51 @@ func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
 
 // RunPrompt 记录一次 ai_runs 审计并返回模型原始 JSON 输出。
 func (c *Client) RunPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		out, _, err := c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, genericJSONObjectSchema, 0)
+		return out, err
+	}
 	out, _, err := c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
 	return out, err
 }
 
 // RunPromptWithAudit 与 RunPrompt 相同，但返回可用于补写业务校验结果的 run ID。
 func (c *Client) RunPromptWithAudit(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string) (json.RawMessage, string, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		return c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, genericJSONObjectSchema, 0)
+	}
 	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, 0, false)
 }
 
 // RunPromptWithTemperature 用于需要随机性的内容生成；判分与统计类任务继续使用温度 0。
 func (c *Client) RunPromptWithTemperature(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		out, _, err := c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, genericJSONObjectSchema, temperature)
+		return out, err
+	}
 	out, _, err := c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
 	return out, err
 }
 
 // RunPromptWithTemperatureAndAudit 返回随机出题调用的审计 run ID。
 func (c *Client) RunPromptWithTemperatureAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, string, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		return c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, genericJSONObjectSchema, temperature)
+	}
 	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
+}
+
+// RunPromptWithSchemaAndAudit 按配置选择 Chat Completions JSON Mode 或 Responses JSON Schema。
+func (c *Client) RunPromptWithSchemaAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef, systemPrompt, userPayload string, schema map[string]any, temperature float64, disableThinking bool) (json.RawMessage, string, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		return c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, schema, temperature)
+	}
+	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, disableThinking)
 }
 
 // RunPromptForGenerationAndAudit 按配置选择旧的 Chat Completions JSON Mode 或 Responses JSON Schema。
 func (c *Client) RunPromptForGenerationAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef, systemPrompt, userPayload string, schema map[string]any, temperature float64) (json.RawMessage, string, error) {
-	if c.cfg.APIStyle == aiAPIStyleResponses {
-		return c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, schema, temperature)
-	}
-	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
+	return c.RunPromptWithSchemaAndAudit(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, schema, temperature, true)
 }
 
 func (c *Client) Configured() bool {
@@ -186,6 +207,10 @@ func (c *Client) runResponsesPrompt(ctx context.Context, userID, kind, promptVer
 		return nil, "", errNotConfigured
 	}
 	start := time.Now()
+	schemaName := kind
+	if schemaName == "" {
+		schemaName = "structured_output"
+	}
 	reqBody := map[string]any{
 		"model":             c.cfg.Model,
 		"instructions":      systemPrompt,
@@ -196,7 +221,7 @@ func (c *Client) runResponsesPrompt(ctx context.Context, userID, kind, promptVer
 		"text": map[string]any{
 			"format": map[string]any{
 				"type":   "json_schema",
-				"name":   "practice_questions",
+				"name":   schemaName,
 				"schema": schema,
 			},
 		},
