@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v15"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v15.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v16"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v16.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
@@ -39,7 +39,7 @@ const questionGenerationPromptAddendum = `
 3. category=grammar_modality 表示愿望、计划与基础推量；N5 不生成意志形（～（よ）う）或 ～ために。具体级别边界仍以 curriculumScope 为准。
 4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
 5. short_answer 的 correctAnswer 必须严格是 {"reference":"非空字符串"}；fill_blank 必须严格是 {"acceptable":["非空字符串"]}，不要使用 text、null、数组对象或其他结构。
-6. 当 subjectCode=reading，或 category 以 reading_ 开头时，生成 2～6 篇彼此独立的公共阅读材料；20 道题优先生成 4 篇、每篇约 5 道小题，10 道题约 2 篇，30 道题约 6 篇。每篇材料至少对应 2 道题，同一篇的所有题必须逐字复用相同的 material.title 和 material.content；不要让整批题目只共用一篇材料，也不要每道题单独生成一篇材料。每道题仍必须输出 material，题干必须围绕对应材料。阅读选择题是材料理解题，可以使用完整疑问句和选项回答，不要强行插入语法填空空栏。
+6. 当 subjectCode=reading，或 category 以 reading_ 开头时，生成 2～6 篇彼此独立的公共阅读材料；20 道题优先生成 4 篇、每篇约 5 道小题，10 道题约 2 篇，30 道题约 6 篇。材料对应题量不要求完全均匀，但每篇至少对应 2 道题，任何一篇不要承载超过整批约 60% 的题目。同一篇材料的所有题必须逐字复用相同的 material.title 和 material.content；不要让整批题目只共用一篇材料，也不要每道题单独生成一篇材料。每道题仍必须输出 material，题干必须围绕对应材料。阅读选择题是材料理解题，可以使用完整疑问句和选项回答，不要强行插入语法填空空栏。
 `
 
 //go:embed prompts/practice_question_generation.v12.md
@@ -418,9 +418,13 @@ func validateGeneratedReadingQuestions(subjectCode, category string, questions [
 		return fmt.Errorf("AI 阅读题公共材料数量不能超过 6 篇")
 	}
 	if len(questions) >= 6 {
+		maxQuestionsPerMaterial := (len(questions)*3 + 4) / 5
 		for _, count := range materialCounts {
 			if count < 2 {
 				return fmt.Errorf("AI 阅读题每篇公共材料至少应对应两道题")
+			}
+			if len(questions) >= 10 && count > maxQuestionsPerMaterial {
+				return fmt.Errorf("AI 阅读题单篇材料题量过于集中")
 			}
 		}
 	}

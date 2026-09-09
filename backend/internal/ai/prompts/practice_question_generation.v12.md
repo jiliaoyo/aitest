@@ -19,7 +19,7 @@
 16. 必须返回恰好 count 道题，不能少题、重复题或附加其他字段。
 17. 只输出一个 JSON 对象，不要输出 Markdown 或其他文字。
 
-输出结构（版本 practice_question_generation.v15）：
+输出结构（版本 practice_question_generation.v16）：
 {
   "questions": [
     {

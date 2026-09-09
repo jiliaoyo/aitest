@@ -223,6 +223,21 @@ func TestValidateGeneratedReadingQuestionsUsesMultipleSharedMaterials(t *testing
 	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err == nil {
 		t.Fatal("each material should be shared by multiple questions")
 	}
+	lopsided := make([]generatedQuestion, 10)
+	for i := range lopsided {
+		material := materials[1]
+		if i < 6 {
+			material = materials[0]
+		}
+		lopsided[i] = generatedQuestion{Type: "single_choice", Stem: "材料の内容について問う。", Material: material}
+	}
+	if err := validateGeneratedReadingQuestions("reading", "mixed", lopsided); err != nil {
+		t.Fatalf("non-uniform but reasonable distribution should be valid: %v", err)
+	}
+	lopsided[6].Material = materials[0]
+	if err := validateGeneratedReadingQuestions("reading", "mixed", lopsided); err == nil {
+		t.Fatal("one material should not dominate a reading batch")
+	}
 }
 
 func TestValidateGeneratedQuestionsAllowsNonBlankReadingChoice(t *testing.T) {
