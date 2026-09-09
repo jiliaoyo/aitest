@@ -198,6 +198,20 @@ func TestNormalizeGeneratedQuestionAnswersRejectsEmptyShortAnswer(t *testing.T) 
 	}
 }
 
+func TestValidateGeneratedReadingQuestionsRequiresSharedMaterial(t *testing.T) {
+	questions := []generatedQuestion{
+		{Type: "single_choice", Stem: "材料中提到＿＿＿。", Material: &generatedMaterial{Title: "通知", Content: "これは日本語の読解練習に使う共有材料です。駅の案内について説明しています。利用時間と注意事項も詳しく書かれています。"}},
+		{Type: "single_choice", Stem: "材料の内容は＿＿＿。", Material: &generatedMaterial{Title: "通知", Content: "これは別の材料です。"}},
+	}
+	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err == nil {
+		t.Fatal("reading questions must share one valid material")
+	}
+	questions[1].Material = questions[0].Material
+	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err != nil {
+		t.Fatalf("valid shared material rejected: %v", err)
+	}
+}
+
 func TestRemapGeneratedChoiceOptionsUpdatesAnswer(t *testing.T) {
 	question := generatedQuestion{
 		Type: "multiple_choice",

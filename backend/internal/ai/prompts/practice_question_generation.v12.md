@@ -24,6 +24,7 @@
   "questions": [
     {
       "type": "single_choice",
+      "material": {"title": "阅读材料标题", "content": "完整公共阅读材料（仅阅读题需要）"},
       "stem": "题干",
       "options": [
         {"id": "a", "label": "A", "text": "选项"},

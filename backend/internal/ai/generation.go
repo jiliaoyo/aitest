@@ -39,6 +39,7 @@ const questionGenerationPromptAddendum = `
 3. category=grammar_modality 表示愿望、计划与基础推量；N5 不生成意志形（～（よ）う）或 ～ために。具体级别边界仍以 curriculumScope 为准。
 4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
 5. short_answer 的 correctAnswer 必须严格是 {"reference":"非空字符串"}；fill_blank 必须严格是 {"acceptable":["非空字符串"]}，不要使用 text、null、数组对象或其他结构。
+6. 当 subjectId 对应 reading，或 category 以 reading_ 开头时，每道题必须额外输出 material：{"title":"材料标题","content":"完整公共阅读材料"}。整批题目必须使用同一份 material，题干必须围绕材料出题，不能返回没有材料的单句题。
 `
 
 //go:embed prompts/practice_question_generation.v12.md
@@ -386,6 +387,33 @@ func validateGeneratedQuestionLevel(levelCode, subjectCode string, questions []g
 	return nil
 }
 
+func validateGeneratedReadingQuestions(subjectCode, category string, questions []generatedQuestion) error {
+	if subjectCode != "reading" && !strings.HasPrefix(category, "reading_") {
+		return nil
+	}
+	var materialKey string
+	for i, question := range questions {
+		if question.Material == nil {
+			return fmt.Errorf("AI 第 %d 题缺少公共阅读材料", i+1)
+		}
+		content := strings.TrimSpace(question.Material.Content)
+		if len([]rune(content)) < 40 || len([]rune(content)) > 5000 {
+			return fmt.Errorf("AI 第 %d 题公共材料长度不合法", i+1)
+		}
+		title := strings.TrimSpace(question.Material.Title)
+		if len([]rune(title)) > 100 {
+			return fmt.Errorf("AI 第 %d 题公共材料标题过长", i+1)
+		}
+		key := normalizeGeneratedStem(title + "\n" + content)
+		if materialKey == "" {
+			materialKey = key
+		} else if materialKey != key {
+			return fmt.Errorf("AI 阅读题必须共享同一份公共材料")
+		}
+	}
+	return nil
+}
+
 func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateRequest) error {
 	var levelCode string
 	if err := s.pool.QueryRow(ctx, `SELECT code FROM exam_levels WHERE id::text = $1`, req.LevelID).Scan(&levelCode); err != nil {
@@ -453,6 +481,7 @@ type questionGenerationInput struct {
 	LevelID          string                      `json:"levelId"`
 	LevelCode        string                      `json:"levelCode"`
 	SubjectID        string                      `json:"subjectId,omitempty"`
+	SubjectCode      string                      `json:"subjectCode,omitempty"`
 	Difficulty       string                      `json:"difficulty"`
 	GenerationMode   string                      `json:"generationMode"`
 	QuestionType     string                      `json:"questionType"`
@@ -472,15 +501,21 @@ type generatedOption struct {
 	Text  string `json:"text"`
 }
 
+type generatedMaterial struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
 type generatedQuestion struct {
-	Type              string            `json:"type"`
-	Stem              string            `json:"stem"`
-	Options           []generatedOption `json:"options"`
-	CorrectAnswer     json.RawMessage   `json:"correctAnswer"`
-	Explanation       string            `json:"explanation"`
-	KnowledgePointIDs []string          `json:"knowledgePointIds"`
-	SubjectID         string            `json:"subjectId"`
-	Difficulty        int               `json:"difficulty"`
+	Type              string             `json:"type"`
+	Stem              string             `json:"stem"`
+	Material          *generatedMaterial `json:"material,omitempty"`
+	Options           []generatedOption  `json:"options"`
+	CorrectAnswer     json.RawMessage    `json:"correctAnswer"`
+	Explanation       string             `json:"explanation"`
+	KnowledgePointIDs []string           `json:"knowledgePointIds"`
+	SubjectID         string             `json:"subjectId"`
+	Difficulty        int                `json:"difficulty"`
 }
 
 type generatedQuestionResponse struct {
@@ -503,13 +538,15 @@ type generatedStemRow struct {
 }
 
 type generatedQuestionHistoryRow struct {
-	LevelID    string
-	SubjectID  string
-	Type       string
-	Stem       string
-	Options    *string
-	Answer     *string
-	Difficulty int
+	LevelID       string
+	SubjectID     string
+	Type          string
+	Stem          string
+	Options       *string
+	MaterialTitle *string
+	Material      *string
+	Answer        *string
+	Difficulty    int
 }
 
 func (s *Service) loadGeneratedStems(ctx context.Context, db store.DBTx, userID, levelID, subjectID string, limit int) ([]string, error) {
@@ -547,12 +584,13 @@ func (s *Service) loadGeneratedStems(ctx context.Context, db store.DBTx, userID,
 
 func (s *Service) loadGeneratedQuestionKeys(ctx context.Context, db store.DBTx, userID, levelID, subjectID string) ([]string, error) {
 	rows, err := store.CollectRows[generatedQuestionHistoryRow](ctx, db,
-		`SELECT v.level_id::text, v.subject_id::text, v.type, v.stem, v.options::text, aga.value::text, v.difficulty
+		`SELECT v.level_id::text, v.subject_id::text, v.type, v.stem, v.options::text, mv.title, mv.content, aga.value::text, v.difficulty
 		 FROM practice_items pi
 		 JOIN practice_sessions ps ON ps.id = pi.session_id
 		 JOIN question_versions v ON v.id = pi.question_version_id
 		 JOIN source_sections ss ON ss.id = v.source_section_id
 		 JOIN sources src ON src.id = ss.source_id
+		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
 		 WHERE src.kind = 'ai_generated' AND ps.user_id = $1
 		   AND v.level_id::text = $2
@@ -573,6 +611,12 @@ func (s *Service) loadGeneratedQuestionKeys(ctx context.Context, db store.DBTx, 
 
 func generatedQuestionFromHistoryRow(row generatedQuestionHistoryRow) (generatedQuestion, error) {
 	question := generatedQuestion{Type: row.Type, Stem: row.Stem, Difficulty: row.Difficulty}
+	if row.Material != nil && strings.TrimSpace(*row.Material) != "" {
+		question.Material = &generatedMaterial{Content: *row.Material}
+		if row.MaterialTitle != nil {
+			question.Material.Title = *row.MaterialTitle
+		}
+	}
 	if row.Options != nil && strings.TrimSpace(*row.Options) != "" {
 		if err := json.Unmarshal([]byte(*row.Options), &question.Options); err != nil {
 			return generatedQuestion{}, fmt.Errorf("解析历史 AI 题目选项失败: %w", err)
@@ -716,7 +760,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			}
 		}
 		inputJSON, _ := json.Marshal(questionGenerationInput{
-			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
+			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, SubjectCode: row.SubjectCode, Difficulty: difficulty,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
 			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, QuestionTypePlan: questionTypePlan,
 			CurriculumScope: generationCurriculumScope(row.LevelCode), LearningMemory: memory,
@@ -776,6 +820,13 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			continue
 		}
 		if err := validateGeneratedQuestionLevel(row.LevelCode, row.SubjectCode, questions); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
+			validationErr = err
+			retryNote = ""
+			continue
+		}
+		if err := validateGeneratedReadingQuestions(row.SubjectCode, category, questions); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			s.recordGenerationError(ctx, req.SessionID, err)
 			validationErr = err
@@ -970,16 +1021,23 @@ func generatedQuestionReuseKey(levelID, subjectID string, question generatedQues
 	if len(correctOptionIDs) > 0 {
 		answer = nil
 	}
+	var material *generatedMaterial
+	if question.Material != nil {
+		material = &generatedMaterial{
+			Title: strings.TrimSpace(question.Material.Title), Content: strings.TrimSpace(question.Material.Content),
+		}
+	}
 	canonical := struct {
-		LevelID   string          `json:"levelId"`
-		SubjectID string          `json:"subjectId"`
-		Type      string          `json:"type"`
-		Stem      string          `json:"stem"`
-		Options   []optionKey     `json:"options"`
-		Answer    json.RawMessage `json:"answer"`
+		LevelID   string             `json:"levelId"`
+		SubjectID string             `json:"subjectId"`
+		Type      string             `json:"type"`
+		Stem      string             `json:"stem"`
+		Material  *generatedMaterial `json:"material,omitempty"`
+		Options   []optionKey        `json:"options"`
+		Answer    json.RawMessage    `json:"answer"`
 	}{
 		LevelID: levelID, SubjectID: subjectID, Type: question.Type,
-		Stem:    normalizeGeneratedStem(question.Stem),
+		Stem: normalizeGeneratedStem(question.Stem), Material: material,
 		Options: options, Answer: answer,
 	}
 	data, _ := json.Marshal(canonical)
@@ -1088,13 +1146,15 @@ func appendUniqueGeneratedStems(stems, additions []string) []string {
 }
 
 type generatedReuseCandidateRow struct {
-	QuestionID string
-	VersionID  string
-	Type       string
-	Stem       string
-	Options    *string
-	Answer     *string
-	Difficulty int
+	QuestionID    string
+	VersionID     string
+	Type          string
+	Stem          string
+	Options       *string
+	MaterialTitle *string
+	Material      *string
+	Answer        *string
+	Difficulty    int
 }
 
 func (s *Service) findOrAdoptGeneratedQuestion(ctx context.Context, tx pgx.Tx, key, levelID, subjectID string, question generatedQuestion) (questionID, versionID string, reused bool, err error) {
@@ -1115,11 +1175,12 @@ func (s *Service) findOrAdoptGeneratedQuestion(ctx context.Context, tx pgx.Tx, k
 	}
 
 	candidates, err := store.CollectRows[generatedReuseCandidateRow](ctx, tx,
-		`SELECT q.id::text, v.id::text, v.type, v.stem, v.options::text, aga.value::text, v.difficulty
+		`SELECT q.id::text, v.id::text, v.type, v.stem, v.options::text, mv.title, mv.content, aga.value::text, v.difficulty
 		 FROM question_versions v
 		 JOIN questions q ON q.id = v.question_id
 		 JOIN source_sections ss ON ss.id = v.source_section_id
 		 JOIN sources src ON src.id = ss.source_id
+		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
 		 WHERE src.kind = 'ai_generated' AND v.ai_reuse_key IS NULL
 		   AND v.level_id::text = $1 AND v.subject_id::text = $2 AND v.type = $3`, levelID, subjectID, question.Type)
@@ -1129,7 +1190,8 @@ func (s *Service) findOrAdoptGeneratedQuestion(ctx context.Context, tx pgx.Tx, k
 	for _, candidate := range candidates {
 		history, err := generatedQuestionFromHistoryRow(generatedQuestionHistoryRow{
 			LevelID: levelID, SubjectID: subjectID, Type: candidate.Type, Stem: candidate.Stem,
-			Options: candidate.Options, Answer: candidate.Answer, Difficulty: candidate.Difficulty,
+			Options: candidate.Options, MaterialTitle: candidate.MaterialTitle, Material: candidate.Material,
+			Answer: candidate.Answer, Difficulty: candidate.Difficulty,
 		})
 		if err != nil {
 			return "", "", false, err
@@ -1278,6 +1340,7 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 			sectionName = "根据当前级别生成"
 		}
 		var sourceID, sectionID string
+		materialVersionIDs := map[string]string{}
 		ensureSourceSection := func() error {
 			if sectionID != "" {
 				return nil
@@ -1309,6 +1372,20 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 				if err := ensureSourceSection(); err != nil {
 					return err
 				}
+				var materialVersionID *string
+				if question.Material != nil {
+					materialKey := normalizeGeneratedStem(strings.TrimSpace(question.Material.Title) + "\n" + strings.TrimSpace(question.Material.Content))
+					versionID, ok := materialVersionIDs[materialKey]
+					if !ok {
+						_, createdVersionID, err := content.NewStore(tx).CreateMaterial(ctx, strings.TrimSpace(question.Material.Title), strings.TrimSpace(question.Material.Content), userID)
+						if err != nil {
+							return fmt.Errorf("保存 AI 阅读材料失败: %w", err)
+						}
+						versionID = createdVersionID
+						materialVersionIDs[materialKey] = versionID
+					}
+					materialVersionID = &versionID
+				}
 				if err := tx.QueryRow(ctx,
 					`INSERT INTO questions (status, has_answer, created_by)
 					 VALUES ('draft', false, $1) RETURNING id::text`, userID).Scan(&questionID); err != nil {
@@ -1316,10 +1393,10 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 				}
 				if err := tx.QueryRow(ctx,
 					`INSERT INTO question_versions
-					 (question_id, version_no, type, stem, options, level_id, subject_id, source_section_id, difficulty, source_order, created_by, ai_reuse_key)
-					 VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+					 (question_id, version_no, type, stem, material_version_id, options, level_id, subject_id, source_section_id, difficulty, source_order, created_by, ai_reuse_key)
+					 VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 					 RETURNING id::text`, questionID, question.Type, strings.TrimSpace(question.Stem), optionsJSON,
-					levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID, key).Scan(&versionID); err != nil {
+					materialVersionID, levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID, key).Scan(&versionID); err != nil {
 					return err
 				}
 				if _, err := tx.Exec(ctx,
