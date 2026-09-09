@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v13"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v13.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v14"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v14.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
@@ -39,7 +39,7 @@ const questionGenerationPromptAddendum = `
 3. category=grammar_modality 表示愿望、计划与基础推量；N5 不生成意志形（～（よ）う）或 ～ために。具体级别边界仍以 curriculumScope 为准。
 4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
 5. short_answer 的 correctAnswer 必须严格是 {"reference":"非空字符串"}；fill_blank 必须严格是 {"acceptable":["非空字符串"]}，不要使用 text、null、数组对象或其他结构。
-6. 当 subjectId 对应 reading，或 category 以 reading_ 开头时，每道题必须额外输出 material：{"title":"材料标题","content":"完整公共阅读材料"}。整批题目必须使用同一份 material，题干必须围绕材料出题，不能返回没有材料的单句题。
+6. 当 subjectCode=reading，或 category 以 reading_ 开头时，生成 2～6 篇彼此独立的公共阅读材料；20 道题优先生成 4 篇、每篇约 5 道小题，10 道题约 2 篇，30 道题约 6 篇。每篇材料至少对应 2 道题，同一篇的所有题必须逐字复用相同的 material.title 和 material.content；不要让整批题目只共用一篇材料，也不要每道题单独生成一篇材料。每道题仍必须输出 material，题干必须围绕对应材料。阅读选择题是材料理解题，可以使用完整疑问句和选项回答，不要强行插入语法填空空栏。
 `
 
 //go:embed prompts/practice_question_generation.v12.md
@@ -266,6 +266,10 @@ func validGeneratedCategory(category string) bool {
 	return ok
 }
 
+func isReadingGeneration(subjectCode, category string) bool {
+	return subjectCode == "reading" || strings.HasPrefix(category, "reading_")
+}
+
 var generatedQuestionTypes = []string{"single_choice", "multiple_choice", "fill_blank", "short_answer"}
 
 // mixedQuestionTypePlan 按固定顺序分配余数，保证 10/20/30 题都覆盖四种题型。
@@ -388,10 +392,10 @@ func validateGeneratedQuestionLevel(levelCode, subjectCode string, questions []g
 }
 
 func validateGeneratedReadingQuestions(subjectCode, category string, questions []generatedQuestion) error {
-	if subjectCode != "reading" && !strings.HasPrefix(category, "reading_") {
+	if !isReadingGeneration(subjectCode, category) {
 		return nil
 	}
-	var materialKey string
+	materialCounts := make(map[string]int)
 	for i, question := range questions {
 		if question.Material == nil {
 			return fmt.Errorf("AI 第 %d 题缺少公共阅读材料", i+1)
@@ -405,10 +409,19 @@ func validateGeneratedReadingQuestions(subjectCode, category string, questions [
 			return fmt.Errorf("AI 第 %d 题公共材料标题过长", i+1)
 		}
 		key := normalizeGeneratedStem(title + "\n" + content)
-		if materialKey == "" {
-			materialKey = key
-		} else if materialKey != key {
-			return fmt.Errorf("AI 阅读题必须共享同一份公共材料")
+		materialCounts[key]++
+	}
+	if len(questions) >= 10 && len(materialCounts) < 2 {
+		return fmt.Errorf("AI 阅读题需要至少两篇公共材料，每篇材料对应多道题")
+	}
+	if len(materialCounts) > 6 {
+		return fmt.Errorf("AI 阅读题公共材料数量不能超过 6 篇")
+	}
+	if len(questions) >= 6 {
+		for _, count := range materialCounts {
+			if count < 2 {
+				return fmt.Errorf("AI 阅读题每篇公共材料至少应对应两道题")
+			}
 		}
 	}
 	return nil
@@ -745,7 +758,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		}
 		systemPrompt := questionGenerationPrompt + questionGenerationPromptAddendum
 		feedback := ""
-		temperature := 0.6
+		temperature := 0.4
 		promptVersion := questionGenerationPromptVersion
 		if generationAttempt > 0 {
 			promptVersion = questionGenerationRetryPromptVersion
@@ -805,7 +818,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			retryNote = ""
 			continue
 		}
-		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints); err != nil {
+		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints, row.SubjectCode, category); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			s.recordGenerationError(ctx, req.SessionID, err)
 			validationErr = err
@@ -867,6 +880,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, validationErr)
 	}
 	if err := validateGeneratedQuestionTypePlan(generatedQuestions, questionType, mixedQuestionTypePlan(row.RequestedCount)); err != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
+	}
+	if err := validateGeneratedReadingQuestions(row.SubjectCode, category, generatedQuestions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
 	if err := shuffleGeneratedChoiceOptions(generatedQuestions); err != nil {
@@ -933,7 +949,14 @@ func randomSeed() (string, error) {
 	return hex.EncodeToString(seed[:]), nil
 }
 
-func validateGeneratedQuestions(questions []generatedQuestion, expected int, difficulty, questionType string, points []learning.AIGenerationKnowledgePoint) error {
+func validateGeneratedQuestions(questions []generatedQuestion, expected int, difficulty, questionType string, points []learning.AIGenerationKnowledgePoint, readingContext ...string) error {
+	subjectCode, category := "", ""
+	if len(readingContext) > 0 {
+		subjectCode = readingContext[0]
+	}
+	if len(readingContext) > 1 {
+		category = readingContext[1]
+	}
 	if len(questions) != expected {
 		return fmt.Errorf("AI 出题数量不正确：需要 %d 道，实际 %d 道", expected, len(questions))
 	}
@@ -948,7 +971,7 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 		stem := strings.TrimSpace(question.Stem)
 		options := make([]content.Option, 0, len(question.Options))
 		if content.IsChoiceType(question.Type) {
-			if !choiceStemHasBlank(stem) {
+			if !isReadingGeneration(subjectCode, category) && !choiceStemHasBlank(stem) {
 				return fmt.Errorf("AI 第 %d 题选择题题干必须包含空栏（＿＿＿）", i+1)
 			}
 			if len(question.Options) != 4 {

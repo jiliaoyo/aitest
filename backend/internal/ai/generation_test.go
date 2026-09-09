@@ -198,17 +198,45 @@ func TestNormalizeGeneratedQuestionAnswersRejectsEmptyShortAnswer(t *testing.T) 
 	}
 }
 
-func TestValidateGeneratedReadingQuestionsRequiresSharedMaterial(t *testing.T) {
-	questions := []generatedQuestion{
-		{Type: "single_choice", Stem: "材料中提到＿＿＿。", Material: &generatedMaterial{Title: "通知", Content: "これは日本語の読解練習に使う共有材料です。駅の案内について説明しています。利用時間と注意事項も詳しく書かれています。"}},
-		{Type: "single_choice", Stem: "材料の内容は＿＿＿。", Material: &generatedMaterial{Title: "通知", Content: "これは別の材料です。"}},
+func TestValidateGeneratedReadingQuestionsUsesMultipleSharedMaterials(t *testing.T) {
+	materials := []*generatedMaterial{
+		{Title: "通知", Content: "これは日本語の読解練習に使う共有材料です。駅の案内について説明しています。利用時間と注意事項も詳しく書かれています。"},
+		{Title: "案内", Content: "これは別の日本語読解材料です。図書館の利用方法と予約できる時間について説明しています。"},
 	}
-	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err == nil {
-		t.Fatal("reading questions must share one valid material")
+	questions := make([]generatedQuestion, 6)
+	for i := range questions {
+		questions[i] = generatedQuestion{Type: "single_choice", Stem: "材料の内容について問う。", Material: materials[i/3]}
 	}
-	questions[1].Material = questions[0].Material
 	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err != nil {
-		t.Fatalf("valid shared material rejected: %v", err)
+		t.Fatalf("multiple shared materials should be valid: %v", err)
+	}
+	for i := range questions {
+		questions[i].Material = materials[0]
+	}
+	if err := validateGeneratedReadingQuestions("reading", "mixed", append(questions, questions[:4]...)); err == nil {
+		t.Fatal("a 10-question reading batch should not use one material")
+	}
+	for i := range questions {
+		questions[i].Material = materials[0]
+	}
+	questions[5].Material = materials[1]
+	if err := validateGeneratedReadingQuestions("reading", "mixed", questions); err == nil {
+		t.Fatal("each material should be shared by multiple questions")
+	}
+}
+
+func TestValidateGeneratedQuestionsAllowsNonBlankReadingChoice(t *testing.T) {
+	question := generatedQuestion{
+		Type: "single_choice", Stem: "本文の内容と合っているものはどれですか。", Difficulty: 3,
+		Material: &generatedMaterial{Title: "案内", Content: "これは日本語の読解練習に使う共有材料です。駅の案内について説明しています。利用時間と注意事項も詳しく書かれています。"},
+		Options: []generatedOption{
+			{ID: "a", Label: "A", Text: "正しい答え"}, {ID: "b", Label: "B", Text: "別の答え"},
+			{ID: "c", Label: "C", Text: "別の答え"}, {ID: "d", Label: "D", Text: "別の答え"},
+		},
+		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`), Explanation: "这是阅读题解析。",
+	}
+	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, "single_choice", nil, "reading", "mixed"); err != nil {
+		t.Fatalf("reading comprehension choice should not require a blank: %v", err)
 	}
 }
 

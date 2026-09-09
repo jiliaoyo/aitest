@@ -5,7 +5,7 @@
 2. 输入中的 knowledgePoints 只是候选素材。`knowledgePointIds` 只能填写输入中存在且确实匹配的知识点 ID；如果题目无法准确匹配任何输入知识点，必须返回空数组 `[]`，不得强行匹配、猜测或创造 ID。每道题可以没有知识点关联。若 `knowledgePointIds` 为空且输入中没有 `subjectId`，必须返回 `subjectId`，且只能从 `learningMemory.knowledgePoints` 中已有的 `subjectId` 里选择；输入中已有 `subjectId` 时可省略题目的 `subjectId`。
 3. 题目必须适合输入的 JLPT 级别和科目，题干、选项、答案和解析自洽；不要照抄已有题目（输入没有提供已有题目正文）。
 4. `avoidStems` 是该账号在同级别和科目下近期生成过的题干。新题必须避开这些题干及仅有空格差异的变体；同一批题目也要尽量更换句式、场景、词汇和考查位置，不能只替换一个词套用同一模板。
-5. 所有 single_choice 和 multiple_choice 都必须是可直接作答的填空式选择题：`stem` 必须包含且只围绕一个明确空栏，统一使用连续三个全角下划线 `＿＿＿`（也可使用等价的空括号 `（　）`）；每个选项文本必须能直接替换该空栏并形成完整、自然的句子。不得把完整答案或待选表达先写进题干，不得只给完整陈述句或问句而让学习者猜测选项应放在哪里。
+5. 非阅读科目的 single_choice 和 multiple_choice 都必须是可直接作答的填空式选择题：`stem` 必须包含且只围绕一个明确空栏，统一使用连续三个全角下划线 `＿＿＿`（也可使用等价的空括号 `（　）`）；每个选项文本必须能直接替换该空栏并形成完整、自然的句子。阅读科目的选择题必须围绕公共材料提问，可以使用完整疑问句和选项作答，不要强行插入语法填空空栏。任何题型都不得把完整答案或待选表达先写进题干。
 6. questionType=mixed 时混合生成 single_choice、multiple_choice、fill_blank、short_answer；否则所有题目必须使用指定题型。
 7. category 是硬性出题范围，不是参考方向。除非 category=mixed，否则每一道题的主要考点、正确答案和解析都必须与输入的 category 完全一致；不得用相邻分类替代，也不得为了凑题量混入其他分类。category=grammar_case_particle 时，每题必须直接考查格助词在句中的格关系、用法或辨析，例如 は、が、を、に、へ、で、と、から、まで、より、の 等；禁止把终助词、接续助词、副助词/係助词、助动词、动词或形容词活用、一般句型作为主要考点。每题解析必须明确说明所考查的格助词及其格关系。category 以 grammar_ 开头时围绕对应语法分类出题，category 以 vocabulary_ 开头时围绕对应文字词汇分类出题，category 以 reading_ 开头时围绕对应阅读能力出题。具体分类语义如下：case_particle=格助词，conjunctive_particle=接续助词，adverbial_particle=副助词或係助词，final_particle=终助词，auxiliary=助动词，verb=动词及活用，adjective=形容词或形容动词，adverb=副词，conjunction=接续词，adnominal=连体词或指示词，sentence_pattern=基本句型与句型表达，tense_aspect=时态、体与状态，condition=条件假定与逆接，voice=可能被动使役，benefactive=授受与请求，honorific=敬语与礼貌体，negation=否定限制与程度；vocabulary 中 kanji=汉字读音与表记，noun=名词，verb=动词，adjective=形容词或形容动词，adverb=副词，conjunction=接续词或连词，pronoun=代词或指示词，counter=数量词或量词，time_number=时间日期与数字，synonym=近义词与反义词，polysemy=多义词与同音异义词，collocation=词语搭配与惯用表达，compound=复合词与词族，affix=接头词与接尾词，onoma=拟声词与拟态词，katakana=片假名与外来语，honorific=敬语词汇，usage=语体与语境；reading 中 information=信息检索与细节，main_idea=主旨与主题，reference=指代与照应，paraphrase=同义替换与转述，logic=因果转折并列与让步，inference=推断与隐含信息，author=作者态度观点与意图，vocabulary=生词词义推测，structure=文章结构与段落功能，chart_notice=图表公告通知邮件与对话，style=文体语域与语气。
 8. 输出前逐题做分类自检：先用一句话概括该题实际考点；如果该考点不是输入的 category，就重写题干、选项、答案和解析。无法满足指定 category 时必须重写题目，不能返回其他分类的题目。
@@ -19,12 +19,12 @@
 16. 必须返回恰好 count 道题，不能少题、重复题或附加其他字段。
 17. 只输出一个 JSON 对象，不要输出 Markdown 或其他文字。
 
-输出结构（版本 practice_question_generation.v12）：
+输出结构（版本 practice_question_generation.v14）：
 {
   "questions": [
     {
       "type": "single_choice",
-      "material": {"title": "阅读材料标题", "content": "完整公共阅读材料（仅阅读题需要）"},
+      "material": {"title": "阅读材料标题", "content": "完整公共阅读材料（仅阅读题需要；同一材料的多道题必须逐字一致）"},
       "stem": "题干",
       "options": [
         {"id": "a", "label": "A", "text": "选项"},
