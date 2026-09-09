@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,10 +26,19 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v12"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v12.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v13"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v13.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
+
+const questionGenerationPromptAddendum = `
+
+服务端附加硬性约束：
+1. 输入 JSON 的 curriculumScope 是当前 JLPT 级别的边界说明，优先级高于常见教材记忆；不要把更高级别的句型带入低级别。
+2. questionType=mixed 时，输入 JSON 的 questionTypePlan 是本次响应必须严格满足的题型数量。四种题型都要按计划出现，不能用多道 single_choice 代替其他题型。
+3. category=grammar_modality 表示愿望、计划与基础推量；N5 不生成意志形（～（よ）う）或 ～ために。具体级别边界仍以 curriculumScope 为准。
+4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
+`
 
 //go:embed prompts/practice_question_generation.v12.md
 var questionGenerationPrompt string
@@ -54,7 +64,7 @@ var generatedCategories = map[string]struct{}{
 	"grammar_case_particle": {}, "grammar_conjunctive_particle": {}, "grammar_adverbial_particle": {}, "grammar_final_particle": {},
 	"grammar_auxiliary": {}, "grammar_verb": {}, "grammar_adjective": {}, "grammar_adverb": {}, "grammar_conjunction": {},
 	"grammar_adnominal": {}, "grammar_sentence_pattern": {}, "grammar_tense_aspect": {}, "grammar_condition": {},
-	"grammar_voice": {}, "grammar_benefactive": {}, "grammar_honorific": {}, "grammar_negation": {},
+	"grammar_voice": {}, "grammar_benefactive": {}, "grammar_honorific": {}, "grammar_negation": {}, "grammar_modality": {},
 	"vocabulary_kanji": {}, "vocabulary_noun": {}, "vocabulary_verb": {}, "vocabulary_adjective": {}, "vocabulary_adverb": {},
 	"vocabulary_conjunction": {}, "vocabulary_pronoun": {}, "vocabulary_counter": {}, "vocabulary_time_number": {},
 	"vocabulary_synonym": {}, "vocabulary_polysemy": {}, "vocabulary_collocation": {}, "vocabulary_compound": {},
@@ -254,13 +264,137 @@ func validGeneratedCategory(category string) bool {
 	return ok
 }
 
+var generatedQuestionTypes = []string{"single_choice", "multiple_choice", "fill_blank", "short_answer"}
+
+// mixedQuestionTypePlan 按固定顺序分配余数，保证 10/20/30 题都覆盖四种题型。
+func mixedQuestionTypePlan(count int) map[string]int {
+	plan := make(map[string]int, len(generatedQuestionTypes))
+	for i := 0; i < count; i++ {
+		plan[generatedQuestionTypes[i%len(generatedQuestionTypes)]]++
+	}
+	return plan
+}
+
+func questionTypePlanFor(total int, existing []generatedQuestion) map[string]int {
+	plan := mixedQuestionTypePlan(total)
+	for _, question := range existing {
+		if plan[question.Type] > 0 {
+			plan[question.Type]--
+		}
+	}
+	return plan
+}
+
+func validateGeneratedQuestionTypePlan(questions []generatedQuestion, mode string, plan map[string]int) error {
+	if mode != generatedQuestionTypeMixed {
+		return nil
+	}
+	counts := make(map[string]int, len(plan))
+	for _, question := range questions {
+		counts[question.Type]++
+	}
+	for questionType, expected := range plan {
+		if counts[questionType] != expected {
+			return fmt.Errorf("AI 混合题型分布不合法：%s 需要 %d 道，实际 %d 道", questionType, expected, counts[questionType])
+		}
+	}
+	return nil
+}
+
+var generatedCategoryMinimumLevel = map[string]int{
+	"grammar_condition":    4,
+	"grammar_voice":        3,
+	"grammar_honorific":    4,
+	"vocabulary_polysemy":  3,
+	"vocabulary_compound":  3,
+	"vocabulary_affix":     2,
+	"vocabulary_honorific": 3,
+	"reading_reference":    4,
+	"reading_paraphrase":   4,
+	"reading_logic":        4,
+	"reading_inference":    3,
+	"reading_author":       3,
+	"reading_structure":    3,
+	"reading_style":        2,
+}
+
+func validGeneratedCategoryForLevel(category, levelCode string) bool {
+	minimum, ok := generatedCategoryMinimumLevel[category]
+	if !ok || len(levelCode) < 2 || levelCode[0] != 'n' {
+		return true
+	}
+	level, err := strconv.Atoi(levelCode[1:])
+	return err != nil || level >= 1 && level <= 5 && level <= minimum
+}
+
+type generationCurriculum struct {
+	Scope          string
+	ForbiddenForms []string
+}
+
+var generationCurricula = map[string]generationCurriculum{
+	"n5": {
+		Scope:          "初级基础范围：假名和基础汉字、名词/い形容词/な形容词、动词ます形与基础活用、基本助词、存在句、时间地点、比较、简单请求/许可/禁止、愿望与基础推量。不要生成意志形（～（よ）う）、可能/被动/使役、～ために、复杂条件或高级书面表达。",
+		ForbiddenForms: []string{"ために", "ことができ", "ようになる", "ようにする", "ておく", "てしまう", "ばかり", "わけにはいか", "させられ"},
+	},
+	"n4": {
+		Scope:          "初中级范围：以 N5 基础为前提，加入常见条件、原因转折、先后、经验、目的、授受、请求许可和基础敬语。不要生成 N3 以上的书面句型、复杂复合表达或使役被动。",
+		ForbiddenForms: []string{"わけにはいか", "かねない", "かねる", "つつ", "ずには", "ざるを得", "ものなら", "ばかりに", "に違いない", "ことなく", "させられ"},
+	},
+	"n3": {
+		Scope:          "中级范围：以 N4 基础为前提，覆盖复合句、间接表达、变化、状态、可能/被动/使役、条件和语气辨析；可使用常见书面表达，但不要越过 N2/N1 的高阶惯用句型。",
+		ForbiddenForms: []string{"かねない", "かねる", "つつある", "ずには", "ざるを得", "ものなら", "ばかりに", "ことなく", "にわたって", "を問わず", "に違いない"},
+	},
+	"n2": {
+		Scope:          "中高级范围：覆盖复杂从句、书面语、抽象语义、语气和正式表达；保留 N5-N3 基础，但不要把 N1 特有的古雅、极正式或固定惯用句型当作常规考点。",
+		ForbiddenForms: []string{"が最後", "こととて", "かたわら", "が早いか", "そばから", "ずくめ", "たるもの", "あっての", "いかんに", "を余儀なく"},
+	},
+	"n1": {
+		Scope: "高级范围：允许正式、书面、抽象、惯用和较少见的 JLPT 高级表达，但题目仍需自洽、可解释，并避免生造不存在的句型。",
+	},
+}
+
+func generationCurriculumScope(levelCode string) string {
+	if curriculum, ok := generationCurricula[strings.ToLower(levelCode)]; ok {
+		return curriculum.Scope
+	}
+	return "以输入的 JLPT 级别和已审核知识点为唯一范围，不要自由扩展到更高或更低级别。"
+}
+
+func validateGeneratedQuestionLevel(levelCode, subjectCode string, questions []generatedQuestion) error {
+	if subjectCode != "grammar" {
+		return nil
+	}
+	curriculum, ok := generationCurricula[strings.ToLower(levelCode)]
+	if !ok || len(curriculum.ForbiddenForms) == 0 {
+		return nil
+	}
+	for i, question := range questions {
+		parts := []string{question.Stem}
+		for _, option := range question.Options {
+			parts = append(parts, option.Text)
+		}
+		parts = append(parts, string(question.CorrectAnswer))
+		text := strings.Join(parts, "\n")
+		for _, form := range curriculum.ForbiddenForms {
+			if strings.Contains(text, form) {
+				return fmt.Errorf("AI 第 %d 题包含 %s，超出 %s 语法范围", i+1, form, strings.ToUpper(levelCode))
+			}
+		}
+	}
+	return nil
+}
+
 func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateRequest) error {
-	var levelExists bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM exam_levels WHERE id::text = $1)`, req.LevelID).Scan(&levelExists); err != nil {
+	var levelCode string
+	if err := s.pool.QueryRow(ctx, `SELECT code FROM exam_levels WHERE id::text = $1`, req.LevelID).Scan(&levelCode); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return httpapi.ErrNotFound
+		}
 		return err
 	}
-	if !levelExists {
-		return httpapi.ErrNotFound
+	if !validGeneratedCategoryForLevel(req.Category, levelCode) {
+		return httpapi.ValidationError(map[string]string{"category": fmt.Sprintf("%s 不适用于 %s 级别，请选择当前级别支持的分类", req.Category, strings.ToUpper(levelCode))})
 	}
 	if req.SubjectID != "" {
 		var scopeExists bool
@@ -314,19 +448,21 @@ type generationJobRequest struct {
 }
 
 type questionGenerationInput struct {
-	Count          int                         `json:"count"`
-	LevelID        string                      `json:"levelId"`
-	LevelCode      string                      `json:"levelCode"`
-	SubjectID      string                      `json:"subjectId,omitempty"`
-	Difficulty     string                      `json:"difficulty"`
-	GenerationMode string                      `json:"generationMode"`
-	QuestionType   string                      `json:"questionType"`
-	ShowFurigana   bool                        `json:"showFurigana"`
-	Category       string                      `json:"category"`
-	RandomSeed     string                      `json:"randomSeed"`
-	RetryFeedback  string                      `json:"retryFeedback,omitempty"`
-	AvoidStems     []string                    `json:"avoidStems,omitempty"`
-	LearningMemory learning.AIGenerationMemory `json:"learningMemory"`
+	Count            int                         `json:"count"`
+	LevelID          string                      `json:"levelId"`
+	LevelCode        string                      `json:"levelCode"`
+	SubjectID        string                      `json:"subjectId,omitempty"`
+	Difficulty       string                      `json:"difficulty"`
+	GenerationMode   string                      `json:"generationMode"`
+	QuestionType     string                      `json:"questionType"`
+	ShowFurigana     bool                        `json:"showFurigana"`
+	Category         string                      `json:"category"`
+	RandomSeed       string                      `json:"randomSeed"`
+	RetryFeedback    string                      `json:"retryFeedback,omitempty"`
+	AvoidStems       []string                    `json:"avoidStems,omitempty"`
+	QuestionTypePlan map[string]int              `json:"questionTypePlan,omitempty"`
+	CurriculumScope  string                      `json:"curriculumScope,omitempty"`
+	LearningMemory   learning.AIGenerationMemory `json:"learningMemory"`
 }
 
 type generatedOption struct {
@@ -355,6 +491,7 @@ type generationSessionRow struct {
 	LevelID        string
 	LevelCode      string
 	SubjectID      *string
+	SubjectCode    string
 	RequestedCount int
 	Scope          string
 	Status         string
@@ -469,9 +606,12 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	}
 	var row generationSessionRow
 	err := s.pool.QueryRow(ctx,
-		`SELECT ps.user_id::text, ps.level_id::text, l.code, ps.subject_id::text, ps.requested_count, ps.scope::text, ps.status
-		 FROM practice_sessions ps JOIN exam_levels l ON l.id = ps.level_id WHERE ps.id = $1`, req.SessionID,
-	).Scan(&row.UserID, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.RequestedCount, &row.Scope, &row.Status)
+		`SELECT ps.user_id::text, ps.level_id::text, l.code, ps.subject_id::text, coalesce(sub.code, ''), ps.requested_count, ps.scope::text, ps.status
+		 FROM practice_sessions ps
+		 JOIN exam_levels l ON l.id = ps.level_id
+		 LEFT JOIN subjects sub ON sub.id = ps.subject_id
+		 WHERE ps.id = $1`, req.SessionID,
+	).Scan(&row.UserID, &row.LevelID, &row.LevelCode, &row.SubjectID, &row.SubjectCode, &row.RequestedCount, &row.Scope, &row.Status)
 	if errors.Is(err, pgx.ErrNoRows) || row.Status == "active" {
 		return nil
 	}
@@ -550,11 +690,15 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	retryNote := ""
 	for generationAttempt := 0; generationAttempt < maxGenerationCalls && len(generatedQuestions) < row.RequestedCount; generationAttempt++ {
 		remaining := row.RequestedCount - len(generatedQuestions)
+		var questionTypePlan map[string]int
+		if questionType == generatedQuestionTypeMixed {
+			questionTypePlan = questionTypePlanFor(row.RequestedCount, generatedQuestions)
+		}
 		seed, err := randomSeed()
 		if err != nil {
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
-		systemPrompt := questionGenerationPrompt
+		systemPrompt := questionGenerationPrompt + questionGenerationPromptAddendum
 		feedback := ""
 		temperature := 0.6
 		promptVersion := questionGenerationPromptVersion
@@ -573,7 +717,8 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		inputJSON, _ := json.Marshal(questionGenerationInput{
 			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, Difficulty: difficulty,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
-			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, LearningMemory: memory,
+			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, QuestionTypePlan: questionTypePlan,
+			CurriculumScope: generationCurriculumScope(row.LevelCode), LearningMemory: memory,
 		})
 		reserved, err := s.reserveGenerationCall(ctx, req.SessionID)
 		if err != nil {
@@ -615,6 +760,20 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			retryNote = ""
 			continue
 		}
+		if err := validateGeneratedQuestionTypePlan(questions, questionType, questionTypePlan); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
+			validationErr = err
+			retryNote = ""
+			continue
+		}
+		if err := validateGeneratedQuestionLevel(row.LevelCode, row.SubjectCode, questions); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
+			validationErr = err
+			retryNote = ""
+			continue
+		}
 		blockedKeys := append([]string{}, existingKeys...)
 		generatedKeys, err := generatedQuestionKeys(row.LevelID, subjectID, generatedQuestions, generatedQuestionPoints)
 		if err != nil {
@@ -647,6 +806,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			validationErr = fmt.Errorf("AI 题目去重后数量不足：需要 %d 道，实际 %d 道", row.RequestedCount, len(generatedQuestions))
 		}
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, validationErr)
+	}
+	if err := validateGeneratedQuestionTypePlan(generatedQuestions, questionType, mixedQuestionTypePlan(row.RequestedCount)); err != nil {
+		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
 	if err := shuffleGeneratedChoiceOptions(generatedQuestions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("打乱 AI 选项失败: %w", err))

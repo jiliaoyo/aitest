@@ -1070,7 +1070,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		aiClient := ai.NewClient(ai.Config{BaseURL: fakeAI.URL, APIKey: "test-key", Model: "test-model", Timeout: time.Second}, pool, logger)
 		aiService := ai.NewService(pool, aiClient, logger)
 		generated, err := aiService.CreateGeneratedSession(context.Background(), dataUserID(t, pool, "learner-b@example.com"), ai.AIGenerateRequest{
-			LevelID: data.levelID, SubjectID: data.subjectID, Count: 10,
+			LevelID: data.levelID, SubjectID: data.subjectID, Count: 10, QuestionType: "single_choice",
 		})
 		if err != nil {
 			t.Fatal(err)

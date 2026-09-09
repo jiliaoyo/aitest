@@ -271,12 +271,18 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 			            ELSE greatest(0, floor(extract(epoch FROM (now() - st.last_practiced_at)) / 86400))::int
 			       END AS days_since_practice
 			FROM knowledge_points kp
+			JOIN exam_levels l ON l.id = kp.level_id
+			JOIN subjects s ON s.id = kp.subject_id
+			LEFT JOIN knowledge_points parent ON parent.id = kp.parent_id
 			LEFT JOIN user_knowledge_stats st
 			  ON st.knowledge_point_id = kp.id AND st.user_id = $1 AND $5 = 'memory'
 			WHERE kp.status = 'published'
 			  AND kp.level_id::text = $2
 			  AND ($3 = '' OR kp.subject_id::text = $3)
 			  AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
+			  AND ($4::uuid[] <> '{}' OR kp.parent_id IS NOT NULL)
+			  AND ($4::uuid[] <> '{}' OR l.code NOT IN ('n4', 'n5') OR parent.name IS NULL OR parent.name NOT LIKE 'AI 生成候选（%')
+			  AND NOT ($4::uuid[] = '{}' AND l.code = 'n5' AND s.code = 'grammar' AND kp.name = '条件、假定与让步')
 		), scored AS (
 			SELECT base.*,
 			       CASE WHEN $5 <> 'memory' THEN 0.0 ELSE (

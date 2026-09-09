@@ -31,7 +31,7 @@ const aiQuestionTypeOptions: { value: AIGenerationQuestionType; label: string }[
   { value: 'short_answer', label: '简答题' },
 ]
 
-const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(aiSubjectCode(detail.value?.subjectName ?? '')))
+const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(aiSubjectCode(detail.value?.subjectName ?? ''), detail.value?.levelCode ?? ''))
 
 watch(aiCategoryGroups, () => {
   if (!aiCategoryGroups.value.some((group) => group.options.some((option) => option.value === aiCategory.value))) {

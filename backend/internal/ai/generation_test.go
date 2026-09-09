@@ -244,6 +244,51 @@ func TestValidGeneratedCategory(t *testing.T) {
 	}
 }
 
+func TestMixedQuestionTypePlanIsBalanced(t *testing.T) {
+	for _, count := range []int{10, 20, 30} {
+		plan := mixedQuestionTypePlan(count)
+		if len(plan) != 4 {
+			t.Fatalf("mixed plan for %d questions has %d types", count, len(plan))
+		}
+		total := 0
+		for _, size := range plan {
+			total += size
+		}
+		if total != count {
+			t.Fatalf("mixed plan total = %d, want %d", total, count)
+		}
+	}
+}
+
+func TestValidateGeneratedQuestionTypePlanRejectsAllSingleChoice(t *testing.T) {
+	questions := make([]generatedQuestion, 20)
+	for i := range questions {
+		questions[i].Type = "single_choice"
+	}
+	if err := validateGeneratedQuestionTypePlan(questions, generatedQuestionTypeMixed, mixedQuestionTypePlan(20)); err == nil {
+		t.Fatal("all-single response should not satisfy mixed question plan")
+	}
+}
+
+func TestValidateGeneratedQuestionLevelRejectsN5PurposeExpression(t *testing.T) {
+	question := generatedQuestion{
+		Type: "single_choice", Stem: "日本語を勉強する＿＿＿、日本へ行きます。",
+		Options: []generatedOption{{ID: "a", Text: "ために"}, {ID: "b", Text: "から"}, {ID: "c", Text: "ので"}, {ID: "d", Text: "まで"}},
+	}
+	if err := validateGeneratedQuestionLevel("n5", "grammar", []generatedQuestion{question}); err == nil {
+		t.Fatal("N5 should reject ～ために")
+	}
+}
+
+func TestValidGeneratedCategoryForLevel(t *testing.T) {
+	if validGeneratedCategoryForLevel("grammar_condition", "n5") {
+		t.Fatal("N5 should not expose condition category")
+	}
+	if !validGeneratedCategoryForLevel("grammar_condition", "n4") || !validGeneratedCategoryForLevel("grammar_voice", "n3") {
+		t.Fatal("level-specific category should be allowed at its minimum level")
+	}
+}
+
 func TestCapGeneratedQuestionsDropsOnlyExtraQuestions(t *testing.T) {
 	questions := []generatedQuestion{{Stem: "一"}, {Stem: "二"}, {Stem: "三"}}
 	trimmed := capGeneratedQuestions(questions, 2)

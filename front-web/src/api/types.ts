@@ -143,6 +143,7 @@ export type AIGenerationCategory =
   | 'grammar_adnominal'
   | 'grammar_sentence_pattern'
   | 'grammar_tense_aspect'
+  | 'grammar_modality'
   | 'grammar_condition'
   | 'grammar_voice'
   | 'grammar_benefactive'

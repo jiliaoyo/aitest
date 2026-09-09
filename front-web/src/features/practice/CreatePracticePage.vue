@@ -89,9 +89,11 @@ onMounted(loadCatalog)
 
 const levels = computed(() => exams.value.flatMap((e) => e.levels))
 const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
-const selectedLevelName = computed(() => levels.value.find((level) => level.id === aiLevelId.value)?.name ?? '指定级别')
+const targetAILevelId = computed(() => aiGenerationMode.value === 'level' ? aiLevelId.value : levelId.value)
+const selectedLevelName = computed(() => levels.value.find((level) => level.id === targetAILevelId.value)?.name ?? '指定级别')
+const selectedAILevelCode = computed(() => levels.value.find((level) => level.id === targetAILevelId.value)?.code ?? '')
 const selectedAISubjectCode = computed(() => subjects.value.find((subject) => subject.id === aiSubjectId.value)?.code ?? '')
-const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(selectedAISubjectCode.value))
+const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(selectedAISubjectCode.value, selectedAILevelCode.value))
 
 watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], async () => {
   await refreshAvailability()
@@ -246,7 +248,7 @@ async function create(requestedCount = count.value): Promise<void> {
 }
 
 async function generateAIPractice(): Promise<void> {
-  const targetLevelId = aiGenerationMode.value === 'level' ? aiLevelId.value : levelId.value
+  const targetLevelId = targetAILevelId.value
   if (!targetLevelId || generatingAI.value) return
   generatingAI.value = true
   generateAIError.value = ''

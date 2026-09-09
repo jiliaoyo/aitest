@@ -27,6 +27,7 @@ const categoryGroups: Record<string, AIGenerationCategoryGroup> = {
       { value: 'grammar_adnominal', label: '连体词 / 指示词' },
       { value: 'grammar_sentence_pattern', label: '基本句型与句型表达' },
       { value: 'grammar_tense_aspect', label: '时态、体与状态' },
+      { value: 'grammar_modality', label: '愿望、计划与推量' },
       { value: 'grammar_condition', label: '条件、假定与逆接' },
       { value: 'grammar_voice', label: '可能、被动、使役' },
       { value: 'grammar_benefactive', label: '授受与请求' },
@@ -77,8 +78,39 @@ const categoryGroups: Record<string, AIGenerationCategoryGroup> = {
   },
 }
 
-export function aiCategoryGroupsForSubject(subjectCode: string): AIGenerationCategoryGroup[] {
-  return [categoryGroups[subjectCode] ?? { label: '综合分类', options: [{ value: 'mixed', label: '全部分类' }] }]
+const levelCategoryAllowlist: Record<string, Record<string, AIGenerationCategory[]>> = {
+  n5: {
+    grammar: ['mixed', 'grammar_sentence_pattern', 'grammar_case_particle', 'grammar_verb', 'grammar_adjective', 'grammar_tense_aspect', 'grammar_auxiliary', 'grammar_modality', 'grammar_conjunctive_particle', 'grammar_benefactive', 'grammar_negation'],
+    vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_collocation', 'vocabulary_katakana', 'vocabulary_usage'],
+    reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_vocabulary', 'reading_chart_notice'],
+  },
+  n4: {
+    grammar: ['mixed', 'grammar_sentence_pattern', 'grammar_case_particle', 'grammar_adverbial_particle', 'grammar_final_particle', 'grammar_auxiliary', 'grammar_verb', 'grammar_adjective', 'grammar_adverb', 'grammar_conjunctive_particle', 'grammar_conjunction', 'grammar_adnominal', 'grammar_tense_aspect', 'grammar_modality', 'grammar_condition', 'grammar_benefactive', 'grammar_honorific', 'grammar_negation'],
+    vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_conjunction', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_synonym', 'vocabulary_collocation', 'vocabulary_compound', 'vocabulary_onoma', 'vocabulary_katakana', 'vocabulary_usage'],
+    reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_reference', 'reading_paraphrase', 'reading_logic', 'reading_vocabulary', 'reading_chart_notice'],
+  },
+  n3: {
+    grammar: ['mixed', 'grammar_case_particle', 'grammar_conjunctive_particle', 'grammar_adverbial_particle', 'grammar_final_particle', 'grammar_auxiliary', 'grammar_verb', 'grammar_adjective', 'grammar_adverb', 'grammar_conjunction', 'grammar_adnominal', 'grammar_sentence_pattern', 'grammar_tense_aspect', 'grammar_modality', 'grammar_condition', 'grammar_voice', 'grammar_benefactive', 'grammar_honorific', 'grammar_negation'],
+    vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_conjunction', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_synonym', 'vocabulary_polysemy', 'vocabulary_collocation', 'vocabulary_compound', 'vocabulary_onoma', 'vocabulary_katakana', 'vocabulary_honorific', 'vocabulary_usage'],
+    reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_reference', 'reading_paraphrase', 'reading_logic', 'reading_inference', 'reading_author', 'reading_vocabulary', 'reading_structure', 'reading_chart_notice'],
+  },
+}
+
+const advancedCategories = Object.values(categoryGroups).flatMap((group) => group.options.map((option) => option.value))
+for (const level of ['n2', 'n1']) {
+  levelCategoryAllowlist[level] = {
+    grammar: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('grammar_')),
+    vocabulary: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('vocabulary_')),
+    reading: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('reading_')),
+  }
+}
+
+export function aiCategoryGroupsForSubject(subjectCode: string, levelCode = ''): AIGenerationCategoryGroup[] {
+  const group = categoryGroups[subjectCode]
+  if (!group) return [{ label: '综合分类', options: [{ value: 'mixed', label: '全部分类' }] }]
+  const allowed = levelCategoryAllowlist[levelCode.toLowerCase()]?.[subjectCode]
+  if (!allowed) return [group]
+  return [{ ...group, options: group.options.filter((option) => allowed.includes(option.value)) }]
 }
 
 export function aiSubjectCode(subjectName: string): string {
