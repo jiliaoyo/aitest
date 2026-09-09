@@ -19,10 +19,16 @@ type Config struct {
 	BaseURL               string
 	APIKey                string
 	Model                 string
+	APIStyle              string
 	Timeout               time.Duration
 	InputPricePerMillion  float64
 	OutputPricePerMillion float64
 }
+
+const (
+	aiAPIStyleChatCompletions = "chat_completions"
+	aiAPIStyleResponses       = "responses"
+)
 
 type Client struct {
 	cfg    Config
@@ -48,6 +54,9 @@ const (
 )
 
 func NewClient(cfg Config, pool *pgxpool.Pool, logger *slog.Logger) *Client {
+	if cfg.APIStyle == "" {
+		cfg.APIStyle = aiAPIStyleChatCompletions
+	}
 	return &Client{
 		cfg:    cfg,
 		http:   &http.Client{Timeout: cfg.Timeout},
@@ -75,6 +84,14 @@ func (c *Client) RunPromptWithTemperature(ctx context.Context, userID, kind, pro
 
 // RunPromptWithTemperatureAndAudit 返回随机出题调用的审计 run ID。
 func (c *Client) RunPromptWithTemperatureAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, temperature float64) (json.RawMessage, string, error) {
+	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
+}
+
+// RunPromptForGenerationAndAudit 按配置选择旧的 Chat Completions JSON Mode 或 Responses JSON Schema。
+func (c *Client) RunPromptForGenerationAndAudit(ctx context.Context, userID, kind, promptVersion, inputRef, systemPrompt, userPayload string, schema map[string]any, temperature float64) (json.RawMessage, string, error) {
+	if c.cfg.APIStyle == aiAPIStyleResponses {
+		return c.runResponsesPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, schema, temperature)
+	}
 	return c.runPrompt(ctx, userID, kind, promptVersion, inputRef, systemPrompt, userPayload, temperature, true)
 }
 
@@ -161,6 +178,115 @@ func (c *Client) runPrompt(ctx context.Context, userID, kind, promptVersion, inp
 		return nil, runID, err
 	}
 	runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, out, chat.Usage.PromptTokens, chat.Usage.CompletionTokens, &statusCode, businessPending, "", nil)
+	return out, runID, nil
+}
+
+func (c *Client) runResponsesPrompt(ctx context.Context, userID, kind, promptVersion, inputRef string, systemPrompt, userPayload string, schema map[string]any, temperature float64) (json.RawMessage, string, error) {
+	if !c.Configured() {
+		return nil, "", errNotConfigured
+	}
+	start := time.Now()
+	reqBody := map[string]any{
+		"model":             c.cfg.Model,
+		"instructions":      systemPrompt,
+		"input":             userPayload,
+		"reasoning":         map[string]string{"effort": "none"},
+		"temperature":       temperature,
+		"max_output_tokens": generatedPracticeMaxTokens,
+		"text": map[string]any{
+			"format": map[string]any{
+				"type":   "json_schema",
+				"name":   "practice_questions",
+				"schema": schema,
+			},
+		},
+	}
+	data, _ := json.Marshal(reqBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, trimRight(c.cfg.BaseURL)+"/responses", bytes.NewReader(data))
+	if err != nil {
+		return nil, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, nil, businessNotApplied, failureTransport, err)
+		return nil, runID, fmt.Errorf("AI 服务请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	statusCode := resp.StatusCode
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxAIResponseBytes+1))
+	if err != nil {
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureTransport, err)
+		return nil, runID, fmt.Errorf("读取 AI 响应失败: %w", err)
+	}
+	if len(body) > maxAIResponseBytes {
+		err := errors.New("AI 响应超过大小限制")
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureTruncated, err)
+		return nil, runID, err
+	}
+	if resp.StatusCode >= 400 {
+		err := &httpResponseError{status: resp.StatusCode}
+		failureKind := failureHTTP
+		if resp.StatusCode == http.StatusTooManyRequests {
+			failureKind = failureRateLimit
+		}
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureKind, err)
+		return nil, runID, err
+	}
+	var response struct {
+		Status            string `json:"status"`
+		IncompleteDetails *struct {
+			Reason string `json:"reason"`
+		} `json:"incomplete_details"`
+		Output []struct {
+			Type    string `json:"type"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"output"`
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(body, &response); err != nil {
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, 0, 0, &statusCode, businessNotApplied, failureStructure, err)
+		return nil, runID, fmt.Errorf("AI 响应结构不合法: %w", err)
+	}
+	if response.Status == "incomplete" {
+		reason := "未知原因"
+		if response.IncompleteDetails != nil && response.IncompleteDetails.Reason != "" {
+			reason = response.IncompleteDetails.Reason
+		}
+		err := fmt.Errorf("AI 响应未完成: %s", reason)
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, response.Usage.InputTokens, response.Usage.OutputTokens, &statusCode, businessNotApplied, failureTruncated, err)
+		return nil, runID, err
+	}
+	var content bytes.Buffer
+	for _, item := range response.Output {
+		if item.Type != "message" {
+			continue
+		}
+		for _, part := range item.Content {
+			if part.Type == "output_text" {
+				content.WriteString(part.Text)
+			}
+		}
+	}
+	if content.Len() == 0 {
+		err := errors.New("AI 响应没有可用文本")
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, response.Usage.InputTokens, response.Usage.OutputTokens, &statusCode, businessNotApplied, failureStructure, err)
+		return nil, runID, err
+	}
+	var out json.RawMessage
+	if json.Unmarshal([]byte(stripFences(content.String())), &out) != nil {
+		err := errors.New("AI 输出不是合法 JSON")
+		runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, nil, response.Usage.InputTokens, response.Usage.OutputTokens, &statusCode, businessNotApplied, failureJSON, err)
+		return nil, runID, err
+	}
+	runID := c.audit(ctx, userID, kind, promptVersion, inputRef, start, out, response.Usage.InputTokens, response.Usage.OutputTokens, &statusCode, businessPending, "", nil)
 	return out, runID, nil
 }
 

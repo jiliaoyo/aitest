@@ -26,8 +26,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v14"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v14.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v15"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v15.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
@@ -535,6 +535,50 @@ type generatedQuestionResponse struct {
 	Questions []generatedQuestion `json:"questions"`
 }
 
+var questionGenerationJSONSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"questions": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"type": map[string]any{"type": "string", "enum": []string{"single_choice", "multiple_choice", "fill_blank", "short_answer"}},
+					"stem": map[string]any{"type": "string"},
+					"material": map[string]any{
+						"type":                 "object",
+						"properties":           map[string]any{"title": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}},
+						"required":             []string{"title", "content"},
+						"additionalProperties": false,
+					},
+					"options": map[string]any{
+						"type": "array",
+						"items": map[string]any{
+							"type":                 "object",
+							"properties":           map[string]any{"id": map[string]any{"type": "string"}, "label": map[string]any{"type": "string"}, "text": map[string]any{"type": "string"}},
+							"required":             []string{"id", "text"},
+							"additionalProperties": false,
+						},
+					},
+					"correctAnswer": map[string]any{
+						"type":                 "object",
+						"properties":           map[string]any{"optionIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "acceptable": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "reference": map[string]any{"type": "string"}, "text": map[string]any{"type": "string"}},
+						"additionalProperties": false,
+					},
+					"explanation":       map[string]any{"type": "string"},
+					"knowledgePointIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					"subjectId":         map[string]any{"type": "string"},
+					"difficulty":        map[string]any{"type": "integer", "minimum": 1, "maximum": 5},
+				},
+				"required":             []string{"type", "stem", "options", "correctAnswer", "explanation", "knowledgePointIds", "difficulty"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"questions"},
+	"additionalProperties": false,
+}
+
 type generationSessionRow struct {
 	UserID         string
 	LevelID        string
@@ -790,8 +834,8 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			}
 			return nil
 		}
-		out, runID, err := s.client.RunPromptWithTemperatureAndAudit(ctx, row.UserID, "practice_question_generation", promptVersion,
-			req.SessionID, systemPrompt, string(inputJSON), temperature)
+		out, runID, err := s.client.RunPromptForGenerationAndAudit(ctx, row.UserID, "practice_question_generation", promptVersion,
+			req.SessionID, systemPrompt, string(inputJSON), questionGenerationJSONSchema, temperature)
 		if err != nil {
 			s.recordGenerationError(ctx, req.SessionID, err)
 			if nonRetryableGenerationError(err) {

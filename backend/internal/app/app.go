@@ -88,7 +88,7 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 	learningHandler := learning.NewHandler(pool, logger)
 
 	aiClient := ai.NewClient(ai.Config{
-		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
+		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, APIStyle: cfg.AIAPIStyle, Timeout: cfg.AITimeout,
 		InputPricePerMillion: cfg.AIInputPricePerMillion, OutputPricePerMillion: cfg.AIOutputPricePerMillion,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger, cfg.AIGenerationDailyLimit, cfg.AIGenerationCallBudget)

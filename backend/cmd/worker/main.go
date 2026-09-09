@@ -34,7 +34,7 @@ func main() {
 	defer pool.Close()
 
 	aiClient := ai.NewClient(ai.Config{
-		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, Timeout: cfg.AITimeout,
+		BaseURL: cfg.AIBaseURL, APIKey: cfg.AIAPIKey, Model: cfg.AIModel, APIStyle: cfg.AIAPIStyle, Timeout: cfg.AITimeout,
 		InputPricePerMillion: cfg.AIInputPricePerMillion, OutputPricePerMillion: cfg.AIOutputPricePerMillion,
 	}, pool, logger)
 	aiService := ai.NewService(pool, aiClient, logger, cfg.AIGenerationDailyLimit, cfg.AIGenerationCallBudget)

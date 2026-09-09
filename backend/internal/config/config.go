@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const (
+	AIAPIStyleChatCompletions = "chat_completions"
+	AIAPIStyleResponses       = "responses"
+)
+
 // Config 汇总启动配置；在进程启动时一次性读取并校验。
 type Config struct {
 	AppEnv            string // dev | prod
@@ -28,6 +33,7 @@ type Config struct {
 	AIBaseURL              string
 	AIAPIKey               string
 	AIModel                string
+	AIAPIStyle             string
 	AITimeout              time.Duration
 	AIGenerationDailyLimit int
 	AIGenerationCallBudget int
@@ -52,6 +58,7 @@ func Load() (Config, error) {
 		AIBaseURL:    os.Getenv("AI_BASE_URL"),
 		AIAPIKey:     os.Getenv("AI_API_KEY"),
 		AIModel:      getenv("AI_MODEL", ""),
+		AIAPIStyle:   getenv("AI_API_STYLE", AIAPIStyleChatCompletions),
 	}
 	trustedProxyCIDRs, err := parseTrustedProxyCIDRs(os.Getenv("TRUSTED_PROXY_CIDRS"))
 	if err != nil {
@@ -105,6 +112,9 @@ func Load() (Config, error) {
 	}
 	c.AIInputPricePerMillion = inputPrice
 	c.AIOutputPricePerMillion = outputPrice
+	if c.AIAPIStyle != AIAPIStyleChatCompletions && c.AIAPIStyle != AIAPIStyleResponses {
+		return c, fmt.Errorf("AI_API_STYLE 必须是 %s 或 %s", AIAPIStyleChatCompletions, AIAPIStyleResponses)
+	}
 
 	if c.AppEnv != "dev" && c.AppEnv != "prod" {
 		return c, fmt.Errorf("APP_ENV 必须是 dev 或 prod")
