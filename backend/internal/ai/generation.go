@@ -1395,8 +1395,8 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 					`INSERT INTO question_versions
 					 (question_id, version_no, type, stem, material_version_id, options, level_id, subject_id, source_section_id, difficulty, source_order, created_by, ai_reuse_key)
 					 VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-					 RETURNING id::text`, questionID, question.Type, strings.TrimSpace(question.Stem), optionsJSON,
-					materialVersionID, levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID, key).Scan(&versionID); err != nil {
+					RETURNING id::text`, questionID, question.Type, strings.TrimSpace(question.Stem), materialVersionID, optionsJSON,
+					levelID, questionSubjectID, sectionID, question.Difficulty, i+1, userID, key).Scan(&versionID); err != nil {
 					return err
 				}
 				if _, err := tx.Exec(ctx,
