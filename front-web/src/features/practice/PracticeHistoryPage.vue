@@ -145,7 +145,7 @@ async function deleteSession(session: SessionListItem): Promise<void> {
     <AppStatus v-if="state === 'loading'" state="loading" />
     <AppStatus v-else-if="state === 'error'" state="error" :message="errorMessage" :request-id="requestID" @action="load()" />
     <AppStatus v-else-if="sessions.length === 0" state="empty" message="还没有练习记录。" action-label="创建练习" @action="router.push('/practice/new')" />
-    <div v-else class="history-groups">
+    <div v-else class="history-groups" style="display: flex; flex-direction: column; gap: 14px">
       <section v-for="group in groupedSessions" :key="group.key" class="card history-group">
         <details :open="group.key === 'today'">
           <summary style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; cursor: pointer"><strong>{{ group.label }}</strong><span class="muted">{{ group.items.length }} 批</span></summary>
@@ -190,7 +190,7 @@ async function deleteSession(session: SessionListItem): Promise<void> {
           </div>
         </details>
       </section>
-      <p v-if="nextCursor" style="margin-top: 12px; text-align: center">
+      <p v-if="nextCursor" style="margin: 0; text-align: center">
         <button @click="load(true)">加载更多</button>
       </p>
     </div>
