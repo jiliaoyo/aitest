@@ -311,6 +311,7 @@ paths:
       summary: 练习历史
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [generating, active, grading, completed, analysis_failed, generation_failed] } }
+        - { name: mode, in: query, schema: { type: string, enum: [comprehensive, knowledge, wrong_items, review, ai_generated] }, description: 按练习分类筛选 }
         - { name: cursor, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
       responses:
@@ -985,6 +986,7 @@ components:
       properties:
         id: { type: string }
         status: { type: string }
+        mode: { type: string, enum: [comprehensive, knowledge, wrong_items, review, ai_generated] }
         totalCount: { type: integer }
         createdAt: { type: string }
         submittedAt: { type: string, nullable: true }

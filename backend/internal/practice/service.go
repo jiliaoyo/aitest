@@ -617,11 +617,18 @@ func (s *Service) RetryAnalysis(ctx context.Context, userID, sessionID string) (
 
 // ---------- 历史 ----------
 
-func (s *Service) ListSessions(ctx context.Context, userID, status, cursor string, limit int) ([]SessionListItem, string, error) {
+func (s *Service) ListSessions(ctx context.Context, userID, status, mode, cursor string, limit int) ([]SessionListItem, string, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	return s.store.ListSessions(ctx, userID, status, cursor, limit)
+	if mode != "" {
+		switch mode {
+		case "comprehensive", "knowledge", "wrong_items", "review", "ai_generated":
+		default:
+			return nil, "", httpapi.ValidationError(map[string]string{"mode": "练习分类不合法"})
+		}
+	}
+	return s.store.ListSessions(ctx, userID, status, mode, cursor, limit)
 }
 
 func (s *Service) DeleteSession(ctx context.Context, userID, sessionID string) error {

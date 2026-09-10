@@ -83,7 +83,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	limit := atoiDefault(q.Get("limit"), 20)
-	items, cursor, err := h.service.ListSessions(r.Context(), ctxkeys.UserID(r.Context()), q.Get("status"), q.Get("cursor"), limit)
+	items, cursor, err := h.service.ListSessions(r.Context(), ctxkeys.UserID(r.Context()), q.Get("status"), q.Get("mode"), q.Get("cursor"), limit)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return

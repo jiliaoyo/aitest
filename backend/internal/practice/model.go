@@ -160,6 +160,7 @@ type AIAnalysis struct {
 type SessionListItem struct {
 	ID          string  `json:"id"`
 	Status      string  `json:"status"`
+	Mode        string  `json:"mode"`
 	TotalCount  int     `json:"totalCount"`
 	CreatedAt   string  `json:"createdAt"`
 	SubmittedAt *string `json:"submittedAt"`

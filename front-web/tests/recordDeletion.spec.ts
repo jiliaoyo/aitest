@@ -27,6 +27,38 @@ function routerFor(component: object) {
 }
 
 describe('历史与错题本软删除', () => {
+  it('按练习分类筛选，并按日期分组且默认只展开今天', async () => {
+    const now = new Date()
+    const createdAt = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86400000).toISOString()
+    requestMock.mockImplementation(async (path: string) => {
+      if (path.startsWith('/practice-sessions?')) {
+        return {
+          sessions: [
+            { id: 'today-session', mode: 'knowledge', status: 'completed', totalCount: 10, createdAt: createdAt(0), submittedAt: createdAt(0) },
+            { id: 'yesterday-session', mode: 'wrong_items', status: 'completed', totalCount: 5, createdAt: createdAt(1), submittedAt: createdAt(1) },
+            { id: 'earlier-session', mode: 'comprehensive', status: 'completed', totalCount: 20, createdAt: createdAt(8), submittedAt: createdAt(8) },
+          ],
+          nextCursor: '',
+        }
+      }
+      return undefined
+    })
+    const router = routerFor(PracticeHistoryPage)
+    await router.push('/history?mode=wrong_items')
+    await router.isReady()
+    const wrapper = mount(PracticeHistoryPage, { global: { plugins: [router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('今天'))
+
+    expect(requestMock.mock.calls.some(([path]) => path === '/practice-sessions?limit=20&mode=wrong_items')).toBe(true)
+    expect(wrapper.text()).toContain('昨天')
+    expect(wrapper.text()).toContain('一周前及更早')
+    const groups = wrapper.findAll('details')
+    expect(groups).toHaveLength(3)
+    expect(groups[0]!.attributes('open')).toBeDefined()
+    expect(groups[1]!.attributes('open')).toBeUndefined()
+    expect(wrapper.text()).toContain('知识点练习')
+  })
+
   it('隐藏一条练习历史并调用软删除接口', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     requestMock.mockImplementation(async (path: string) => {

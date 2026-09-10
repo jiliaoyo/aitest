@@ -402,17 +402,22 @@ func (s *Store) SetAISummary(ctx context.Context, sessionID, status, summary str
 type sessionListRow struct {
 	ID          string
 	Status      string
+	Mode        string
 	TotalCount  int
 	CreatedAt   string
 	SubmittedAt *string
 }
 
-func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string, limit int) ([]SessionListItem, string, error) {
+func (s *Store) ListSessions(ctx context.Context, userID, status, mode, cursor string, limit int) ([]SessionListItem, string, error) {
 	args := []any{userID}
 	conds := []string{"ps.user_id = $1", "ps.deleted_at IS NULL"}
 	if status != "" {
 		args = append(args, status)
 		conds = append(conds, "ps.status = $"+store.Itoa(len(args)))
+	}
+	if mode != "" {
+		args = append(args, mode)
+		conds = append(conds, "coalesce(ps.scope->>'mode', 'comprehensive') = $"+store.Itoa(len(args)))
 	}
 	if cursor != "" {
 		args = append(args, cursor)
@@ -422,6 +427,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string,
 	limitPh := "$" + store.Itoa(len(args))
 	rows, err := store.CollectRows[sessionListRow](ctx, s.db,
 		`SELECT ps.id::text, ps.status,
+		        coalesce(ps.scope->>'mode', 'comprehensive'),
 		        (SELECT count(*) FROM practice_items pi WHERE pi.session_id = ps.id) AS total_count,
 		        ps.created_at::text, ps.submitted_at::text
 		 FROM practice_sessions ps
@@ -435,7 +441,7 @@ func (s *Store) ListSessions(ctx context.Context, userID, status, cursor string,
 	next := ""
 	for _, r := range rows {
 		out = append(out, SessionListItem{
-			ID: r.ID, Status: r.Status, TotalCount: r.TotalCount,
+			ID: r.ID, Status: r.Status, Mode: r.Mode, TotalCount: r.TotalCount,
 			CreatedAt: r.CreatedAt, SubmittedAt: r.SubmittedAt,
 		})
 		next = r.CreatedAt

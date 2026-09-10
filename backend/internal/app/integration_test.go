@@ -1285,6 +1285,31 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("练习历史按分类筛选并返回分类字段", func(t *testing.T) {
+		if _, err := pool.Exec(ctx, `INSERT INTO practice_sessions
+			(user_id, status, level_id, subject_id, scope, requested_count)
+			VALUES ($1, 'completed', $2, $3, '{"mode":"review"}', 1)`, data.adminID, data.levelID, data.subjectID); err != nil {
+			t.Fatal(err)
+		}
+		var page struct {
+			Sessions []struct {
+				Mode string `json:"mode"`
+			} `json:"sessions"`
+		}
+		decodeResponse(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/practice-sessions?mode=review&limit=20", nil, ""), &page)
+		if len(page.Sessions) == 0 {
+			t.Fatal("review history filter should return the inserted session")
+		}
+		for _, session := range page.Sessions {
+			if session.Mode != "review" {
+				t.Fatalf("history filter returned another mode: %+v", page.Sessions)
+			}
+		}
+		assertStatus(t, jsonRequest(t, data.admin, server.URL, http.MethodGet,
+			"/api/v1/practice-sessions?mode=unknown", nil, ""), http.StatusBadRequest)
+	})
 }
 
 func TestAdminLearningMetricsIntegration(t *testing.T) {
@@ -2199,6 +2224,11 @@ func seedIntegrationData(t *testing.T, pool *pgxpool.Pool) integrationData {
 		} else {
 			data.knowledgePoint2 = id
 		}
+	}
+	// AI 全局记忆只从已有课程树的叶知识点取候选；让第一个测试知识点成为第二个的子节点，
+	// 同时保留两个知识点各自的题目覆盖，避免集成夹具退化成没有可出题候选的平面根节点。
+	if _, err := tx.Exec(ctx, `UPDATE knowledge_points SET parent_id = $1 WHERE id = $2`, data.knowledgePoint2, data.knowledgePoint1); err != nil {
+		t.Fatal(err)
 	}
 
 	var materialID, materialVersionID string

@@ -176,4 +176,5 @@ export const practiceModeText: Record<string, string> = {
   comprehensive: '综合练习',
   knowledge: '知识点练习',
   wrong_items: '错题重练',
+  review: '到期复习',
 }

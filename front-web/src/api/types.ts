@@ -248,6 +248,7 @@ export interface ResultSession {
 export interface SessionListItem {
   id: string
   status: SessionStatus
+  mode: 'comprehensive' | 'knowledge' | 'wrong_items' | 'review' | 'ai_generated'
   totalCount: number
   createdAt: string
   submittedAt: string | null
