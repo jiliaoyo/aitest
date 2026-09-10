@@ -61,6 +61,8 @@ async function submit(): Promise<void> {
     </form>
     <p style="margin-top: 14px">
       已有账号？<RouterLink to="/login">直接登录</RouterLink>
+      ·
+      <RouterLink to="/">先了解网站功能</RouterLink>
     </p>
   </div>
 </template>

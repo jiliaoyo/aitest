@@ -10,7 +10,7 @@ const router = createRouter({
     { path: '/forgot-password', component: () => import('@/features/auth/ForgotPasswordPage.vue') },
     { path: '/reset-password', component: () => import('@/features/auth/ResetPasswordPage.vue') },
     // 学习端
-    { path: '/', component: () => import('@/features/dashboard/DashboardPage.vue') },
+    { path: '/', component: () => import('@/features/misc/HomePage.vue') },
     { path: '/practice/new', component: () => import('@/features/practice/CreatePracticePage.vue') },
     { path: '/practice/:sessionId', component: () => import('@/features/practice/PracticePage.vue') },
     { path: '/practice/:sessionId/result', component: () => import('@/features/practice/PracticeResultPage.vue') },
@@ -42,11 +42,11 @@ router.beforeEach(async (to) => {
   await ensureSessionReady()
   const loggedIn = sessionUser() !== null
 
-  const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password']
+  const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password']
   if (!loggedIn && !publicRoutes.includes(to.path)) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if (loggedIn && publicRoutes.includes(to.path)) {
+  if (loggedIn && publicRoutes.includes(to.path) && to.path !== '/') {
     return { path: '/' }
   }
   if (to.path.startsWith('/admin') && !isAdmin()) {

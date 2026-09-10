@@ -57,6 +57,8 @@ async function submit(): Promise<void> {
       <RouterLink to="/forgot-password">找回密码</RouterLink>
       ·
       <RouterLink to="/register">注册新账号</RouterLink>
+      ·
+      <RouterLink to="/">先了解网站功能</RouterLink>
     </p>
   </div>
 </template>
