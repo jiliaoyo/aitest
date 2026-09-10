@@ -17,7 +17,7 @@ describe('AI 个性化练习', () => {
   it('把当前级别和选定题型交给 AI 生成队列并进入生成批次', async () => {
     requestMock.mockImplementation(async (path: string, options?: { method?: string }) => {
       if (path === '/catalog') {
-        return { exams: [{ id: 'jlpt', code: 'JLPT', name: 'JLPT', levels: [{ id: 'n5', code: 'N5', name: 'N5' }, { id: 'n1', code: 'N1', name: 'N1' }], subjects: [{ id: 'grammar', code: 'grammar', name: '语法' }] }] }
+        return { exams: [{ id: 'jlpt', code: 'JLPT', name: 'JLPT', levels: [{ id: 'n5', code: 'N5', name: 'N5' }, { id: 'n2', code: 'N2', name: 'N2' }, { id: 'n1', code: 'N1', name: 'N1' }], subjects: [{ id: 'grammar', code: 'grammar', name: '语法' }] }] }
       }
       if (path.startsWith('/practice/sources')) return { sources: [] }
       if (path.startsWith('/practice/availability')) return { available: 20 }
@@ -39,7 +39,10 @@ describe('AI 个性化练习', () => {
 
     await wrapper.get('input[name="ai-generation-mode"][value="level"]').setValue(true)
     expect(wrapper.get('button[type="button"]').text()).toContain('根据当前级别生成题目')
+    await wrapper.get('#ai-level').setValue('n2')
+    expect(wrapper.get('#ai-category').text()).not.toContain('终助词')
     await wrapper.get('#ai-level').setValue('n1')
+    expect(wrapper.get('#ai-category').text()).toContain('终助词')
     await wrapper.get('#ai-category').setValue('grammar_case_particle')
     await wrapper.get('input[name="ai-question-type"][value="fill_blank"]').setValue(true)
     await wrapper.get('#ai-furigana').setValue(true)

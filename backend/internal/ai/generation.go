@@ -324,13 +324,58 @@ var generatedCategoryMinimumLevel = map[string]int{
 	"reading_style":        2,
 }
 
+func generatedCategorySet(categories ...string) map[string]struct{} {
+	set := make(map[string]struct{}, len(categories))
+	for _, category := range categories {
+		set[category] = struct{}{}
+	}
+	return set
+}
+
+// 级别白名单与前端分类列表保持一致；分类是出题范围，不是模型自由发挥的标签。
+var generatedCategoryAllowlist = map[string]map[string]struct{}{
+	"n5": generatedCategorySet(
+		"mixed", "grammar_sentence_pattern", "grammar_case_particle", "grammar_verb", "grammar_adjective", "grammar_tense_aspect", "grammar_auxiliary", "grammar_modality", "grammar_conjunctive_particle", "grammar_benefactive", "grammar_negation",
+		"vocabulary_kanji", "vocabulary_noun", "vocabulary_verb", "vocabulary_adjective", "vocabulary_adverb", "vocabulary_pronoun", "vocabulary_counter", "vocabulary_time_number", "vocabulary_collocation", "vocabulary_katakana", "vocabulary_usage",
+		"reading_information", "reading_main_idea", "reading_vocabulary", "reading_chart_notice",
+	),
+	"n4": generatedCategorySet(
+		"mixed", "grammar_sentence_pattern", "grammar_case_particle", "grammar_adverbial_particle", "grammar_final_particle", "grammar_auxiliary", "grammar_verb", "grammar_adjective", "grammar_adverb", "grammar_conjunctive_particle", "grammar_conjunction", "grammar_adnominal", "grammar_tense_aspect", "grammar_modality", "grammar_condition", "grammar_benefactive", "grammar_honorific", "grammar_negation",
+		"vocabulary_kanji", "vocabulary_noun", "vocabulary_verb", "vocabulary_adjective", "vocabulary_adverb", "vocabulary_conjunction", "vocabulary_pronoun", "vocabulary_counter", "vocabulary_time_number", "vocabulary_synonym", "vocabulary_collocation", "vocabulary_compound", "vocabulary_onoma", "vocabulary_katakana", "vocabulary_usage",
+		"reading_information", "reading_main_idea", "reading_reference", "reading_paraphrase", "reading_logic", "reading_vocabulary", "reading_chart_notice",
+	),
+	"n3": generatedCategorySet(
+		"mixed", "grammar_case_particle", "grammar_conjunctive_particle", "grammar_adverbial_particle", "grammar_final_particle", "grammar_auxiliary", "grammar_verb", "grammar_adjective", "grammar_adverb", "grammar_conjunction", "grammar_adnominal", "grammar_sentence_pattern", "grammar_tense_aspect", "grammar_modality", "grammar_condition", "grammar_voice", "grammar_benefactive", "grammar_honorific", "grammar_negation",
+		"vocabulary_kanji", "vocabulary_noun", "vocabulary_verb", "vocabulary_adjective", "vocabulary_adverb", "vocabulary_conjunction", "vocabulary_pronoun", "vocabulary_counter", "vocabulary_time_number", "vocabulary_synonym", "vocabulary_polysemy", "vocabulary_collocation", "vocabulary_compound", "vocabulary_onoma", "vocabulary_katakana", "vocabulary_honorific", "vocabulary_usage",
+		"reading_information", "reading_main_idea", "reading_reference", "reading_paraphrase", "reading_logic", "reading_inference", "reading_author", "reading_vocabulary", "reading_structure", "reading_chart_notice",
+	),
+	"n2": generatedCategorySet(
+		"mixed", "grammar_sentence_pattern", "grammar_case_particle", "grammar_conjunctive_particle", "grammar_adverbial_particle", "grammar_auxiliary", "grammar_verb", "grammar_adjective", "grammar_adverb", "grammar_conjunction", "grammar_tense_aspect", "grammar_modality", "grammar_condition", "grammar_voice", "grammar_benefactive", "grammar_honorific", "grammar_negation",
+		"vocabulary_kanji", "vocabulary_noun", "vocabulary_verb", "vocabulary_adjective", "vocabulary_adverb", "vocabulary_conjunction", "vocabulary_pronoun", "vocabulary_counter", "vocabulary_time_number", "vocabulary_synonym", "vocabulary_polysemy", "vocabulary_collocation", "vocabulary_compound", "vocabulary_affix", "vocabulary_katakana", "vocabulary_usage",
+		"reading_information", "reading_main_idea", "reading_reference", "reading_paraphrase", "reading_logic", "reading_inference", "reading_author", "reading_vocabulary", "reading_structure", "reading_chart_notice",
+	),
+	"n1": generatedCategorySet(
+		"mixed", "grammar_case_particle", "grammar_conjunctive_particle", "grammar_adverbial_particle", "grammar_final_particle", "grammar_auxiliary", "grammar_verb", "grammar_adjective", "grammar_adverb", "grammar_conjunction", "grammar_adnominal", "grammar_sentence_pattern", "grammar_tense_aspect", "grammar_modality", "grammar_condition", "grammar_voice", "grammar_benefactive", "grammar_honorific", "grammar_negation",
+		"vocabulary_kanji", "vocabulary_noun", "vocabulary_verb", "vocabulary_adjective", "vocabulary_adverb", "vocabulary_conjunction", "vocabulary_pronoun", "vocabulary_counter", "vocabulary_time_number", "vocabulary_synonym", "vocabulary_polysemy", "vocabulary_collocation", "vocabulary_compound", "vocabulary_affix", "vocabulary_onoma", "vocabulary_katakana", "vocabulary_honorific", "vocabulary_usage",
+		"reading_information", "reading_main_idea", "reading_reference", "reading_paraphrase", "reading_logic", "reading_inference", "reading_author", "reading_vocabulary", "reading_structure", "reading_chart_notice", "reading_style",
+	),
+}
+
 func validGeneratedCategoryForLevel(category, levelCode string) bool {
+	if allowed, ok := generatedCategoryAllowlist[strings.ToLower(levelCode)]; ok {
+		_, found := allowed[category]
+		return found
+	}
 	minimum, ok := generatedCategoryMinimumLevel[category]
 	if !ok || len(levelCode) < 2 || levelCode[0] != 'n' {
 		return true
 	}
 	level, err := strconv.Atoi(levelCode[1:])
 	return err != nil || level >= 1 && level <= 5 && level <= minimum
+}
+
+func validGeneratedCategoryForSubject(category, subjectCode string) bool {
+	return category == generatedCategoryMixed || subjectCode == "" || strings.HasPrefix(category, subjectCode+"_")
 }
 
 type generationCurriculum struct {
@@ -443,15 +488,18 @@ func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateReq
 		return httpapi.ValidationError(map[string]string{"category": fmt.Sprintf("%s 不适用于 %s 级别，请选择当前级别支持的分类", req.Category, strings.ToUpper(levelCode))})
 	}
 	if req.SubjectID != "" {
-		var scopeExists bool
+		var subjectCode string
 		if err := s.pool.QueryRow(ctx,
-			`SELECT EXISTS(
-			   SELECT 1 FROM exam_levels l JOIN subjects sub ON sub.exam_id = l.exam_id
-			   WHERE l.id::text = $1 AND sub.id::text = $2)`, req.LevelID, req.SubjectID).Scan(&scopeExists); err != nil {
+			`SELECT sub.code
+			 FROM exam_levels l JOIN subjects sub ON sub.exam_id = l.exam_id
+			 WHERE l.id::text = $1 AND sub.id::text = $2`, req.LevelID, req.SubjectID).Scan(&subjectCode); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return httpapi.ErrNotFound
+			}
 			return err
 		}
-		if !scopeExists {
-			return httpapi.ErrNotFound
+		if !validGeneratedCategoryForSubject(req.Category, subjectCode) {
+			return httpapi.ValidationError(map[string]string{"category": "出题分类与所选科目不一致"})
 		}
 	}
 	if len(req.KnowledgePointIDs) > 0 {

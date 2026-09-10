@@ -94,15 +94,16 @@ const levelCategoryAllowlist: Record<string, Record<string, AIGenerationCategory
     vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_conjunction', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_synonym', 'vocabulary_polysemy', 'vocabulary_collocation', 'vocabulary_compound', 'vocabulary_onoma', 'vocabulary_katakana', 'vocabulary_honorific', 'vocabulary_usage'],
     reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_reference', 'reading_paraphrase', 'reading_logic', 'reading_inference', 'reading_author', 'reading_vocabulary', 'reading_structure', 'reading_chart_notice'],
   },
-}
-
-const advancedCategories = Object.values(categoryGroups).flatMap((group) => group.options.map((option) => option.value))
-for (const level of ['n2', 'n1']) {
-  levelCategoryAllowlist[level] = {
-    grammar: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('grammar_')),
-    vocabulary: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('vocabulary_')),
-    reading: advancedCategories.filter((category) => category === 'mixed' || category.startsWith('reading_')),
-  }
+  n2: {
+    grammar: ['mixed', 'grammar_sentence_pattern', 'grammar_case_particle', 'grammar_conjunctive_particle', 'grammar_adverbial_particle', 'grammar_auxiliary', 'grammar_verb', 'grammar_adjective', 'grammar_adverb', 'grammar_conjunction', 'grammar_tense_aspect', 'grammar_modality', 'grammar_condition', 'grammar_voice', 'grammar_benefactive', 'grammar_honorific', 'grammar_negation'],
+    vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_conjunction', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_synonym', 'vocabulary_polysemy', 'vocabulary_collocation', 'vocabulary_compound', 'vocabulary_affix', 'vocabulary_katakana', 'vocabulary_usage'],
+    reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_reference', 'reading_paraphrase', 'reading_logic', 'reading_inference', 'reading_author', 'reading_vocabulary', 'reading_structure', 'reading_chart_notice'],
+  },
+  n1: {
+    grammar: ['mixed', 'grammar_case_particle', 'grammar_conjunctive_particle', 'grammar_adverbial_particle', 'grammar_final_particle', 'grammar_auxiliary', 'grammar_verb', 'grammar_adjective', 'grammar_adverb', 'grammar_conjunction', 'grammar_adnominal', 'grammar_sentence_pattern', 'grammar_tense_aspect', 'grammar_modality', 'grammar_condition', 'grammar_voice', 'grammar_benefactive', 'grammar_honorific', 'grammar_negation'],
+    vocabulary: ['mixed', 'vocabulary_kanji', 'vocabulary_noun', 'vocabulary_verb', 'vocabulary_adjective', 'vocabulary_adverb', 'vocabulary_conjunction', 'vocabulary_pronoun', 'vocabulary_counter', 'vocabulary_time_number', 'vocabulary_synonym', 'vocabulary_polysemy', 'vocabulary_collocation', 'vocabulary_compound', 'vocabulary_affix', 'vocabulary_onoma', 'vocabulary_katakana', 'vocabulary_honorific', 'vocabulary_usage'],
+    reading: ['mixed', 'reading_information', 'reading_main_idea', 'reading_reference', 'reading_paraphrase', 'reading_logic', 'reading_inference', 'reading_author', 'reading_vocabulary', 'reading_structure', 'reading_chart_notice', 'reading_style'],
+  },
 }
 
 export function aiCategoryGroupsForSubject(subjectCode: string, levelCode = ''): AIGenerationCategoryGroup[] {

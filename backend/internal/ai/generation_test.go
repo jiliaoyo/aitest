@@ -358,8 +358,20 @@ func TestValidGeneratedCategoryForLevel(t *testing.T) {
 	if validGeneratedCategoryForLevel("grammar_condition", "n5") {
 		t.Fatal("N5 should not expose condition category")
 	}
+	if validGeneratedCategoryForLevel("grammar_voice", "n5") || validGeneratedCategoryForLevel("reading_style", "n2") {
+		t.Fatal("lower levels should not accept higher-level categories")
+	}
 	if !validGeneratedCategoryForLevel("grammar_condition", "n4") || !validGeneratedCategoryForLevel("grammar_voice", "n3") {
 		t.Fatal("level-specific category should be allowed at its minimum level")
+	}
+	if !validGeneratedCategoryForLevel("reading_style", "n1") {
+		t.Fatal("N1 should accept the advanced reading category")
+	}
+}
+
+func TestValidGeneratedCategoryForSubject(t *testing.T) {
+	if validGeneratedCategoryForSubject("vocabulary_kanji", "grammar") || !validGeneratedCategoryForSubject("grammar_case_particle", "grammar") || !validGeneratedCategoryForSubject("mixed", "grammar") {
+		t.Fatal("category and subject validation mismatch")
 	}
 }
 
