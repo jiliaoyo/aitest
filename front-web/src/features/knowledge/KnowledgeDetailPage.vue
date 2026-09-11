@@ -189,8 +189,8 @@ async function generateAIPractice(): Promise<void> {
 
       <div class="metrics">
         <div class="metric">
-          <p class="value">{{ detail.stats?.confirmedAnswered ?? 0 }}</p>
-          <p class="label">已确认作答（官方/已审核答案）</p>
+          <p class="value">{{ (detail.stats?.confirmedAnswered ?? 0) + (detail.stats?.aiAnswered ?? 0) }}</p>
+          <p class="label">累计纳入学习记忆</p>
         </div>
         <div class="metric">
           <p class="value">{{ formatPercent(accuracy) }}</p>
@@ -206,7 +206,7 @@ async function generateAIPractice(): Promise<void> {
         近 30 天作答 {{ detail.stats.recentAnswered }} 题 · 最近练习
         {{ detail.stats.lastPracticedAt ? formatDateTime(detail.stats.lastPracticedAt) : '—' }}
         <template v-if="detail.stats.aiAnswered > 0">
-          · AI 判定 {{ detail.stats.aiAnswered }} 题（正确 {{ detail.stats.aiCorrect }}，不计入正式正确率）
+          · AI 来源结果 {{ detail.stats.aiAnswered }} 题（正确 {{ detail.stats.aiCorrect }}，可能有误）
         </template>
       </p>
       <p v-else class="muted">还没有本知识点的练习数据。</p>

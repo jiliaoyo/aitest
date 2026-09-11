@@ -1,6 +1,6 @@
 package learning
 
-// KPStats 是单个知识点针对当前用户的聚合统计；数字全部由后端计算。
+// KPStats 是单个知识点针对当前用户的聚合统计；近期与连续错误合并使用权威和 AI 结果，累计数仍分层。
 type KPStats struct {
 	ConfirmedAnswered int     `json:"confirmedAnswered"`
 	ConfirmedCorrect  int     `json:"confirmedCorrect"`
@@ -84,6 +84,8 @@ type LearningMemory struct {
 type AIMemorySnapshot struct {
 	ConfirmedAnswered int                 `json:"confirmedAnswered"`
 	ConfirmedCorrect  int                 `json:"confirmedCorrect"`
+	AIAnswered        int                 `json:"aiAnswered"`
+	AICorrect         int                 `json:"aiCorrect"`
 	WeakPoints        []AIMemoryWeakPoint `json:"weakPoints"`
 }
 
@@ -103,6 +105,8 @@ type AIGenerationKnowledgePoint struct {
 	Examples          string  `json:"examples"`
 	ConfirmedAnswered int     `json:"confirmedAnswered"`
 	ConfirmedCorrect  int     `json:"confirmedCorrect"`
+	AIAnswered        int     `json:"aiAnswered"`
+	AICorrect         int     `json:"aiCorrect"`
 	RecentAnswered    int     `json:"recentAnswered"`
 	RecentCorrect     int     `json:"recentCorrect"`
 	RecentWrongCount  int     `json:"recentWrongCount"`
@@ -114,6 +118,8 @@ type AIGenerationKnowledgePoint struct {
 type AIGenerationMemory struct {
 	ConfirmedAnswered int                          `json:"confirmedAnswered"`
 	ConfirmedCorrect  int                          `json:"confirmedCorrect"`
+	AIAnswered        int                          `json:"aiAnswered"`
+	AICorrect         int                          `json:"aiCorrect"`
 	KnowledgePoints   []AIGenerationKnowledgePoint `json:"knowledgePoints"`
 }
 

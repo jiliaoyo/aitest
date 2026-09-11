@@ -72,22 +72,22 @@ async function routeReplacePractice(): Promise<void> {
 
 // 批次为 grading 时每 3 秒轮询；页面不可见时暂停，恢复可见后立即请求一次。
 function schedulePolling(): void {
-  const grading = result.value?.status === 'grading'
-  if (grading && timer === null) {
+  const waiting = result.value?.status === 'grading' || result.value?.aiAnalysis.status === 'pending'
+  if (waiting && timer === null) {
     timer = setInterval(() => {
       if (!document.hidden) {
         void load(true)
       }
     }, 3000)
   }
-  if (!grading && timer !== null) {
+  if (!waiting && timer !== null) {
     clearInterval(timer)
     timer = null
   }
 }
 
 function onVisibility(): void {
-  if (!document.hidden && result.value?.status === 'grading') {
+  if (!document.hidden && (result.value?.status === 'grading' || result.value?.aiAnalysis.status === 'pending')) {
     void load(true)
   }
 }
@@ -149,8 +149,8 @@ const retryButtonLabel = computed(() => {
       </div>
       <p class="muted mono">提交于 {{ formatDateTime(result.submittedAt) }}</p>
 
-      <div v-if="result.status === 'grading'" class="card" role="status">
-        <p>确定性判分已完成，AI 分析进行中…已确定的成绩如下，你可以离开页面稍后回来。</p>
+      <div v-if="result.status === 'grading' || result.aiAnalysis.status === 'pending'" class="card" role="status">
+        <p>已有的成绩已记录，AI 分析进行中…你可以离开页面稍后回来。</p>
         <p v-if="pollingError" class="muted" role="status">{{ pollingError }}</p>
       </div>
 
@@ -162,7 +162,7 @@ const retryButtonLabel = computed(() => {
         </div>
         <div class="metric">
           <p class="value">{{ summary?.ai.completed ?? 0 }}</p>
-          <p class="label">AI 判定完成<template v-if="aiDone > 0">（共 {{ aiDone }} 题走 AI）</template></p>
+          <p class="label">AI 来源结果<template v-if="aiDone > 0">（共 {{ aiDone }} 题）</template></p>
           <p class="muted mono">其中正确 {{ summary?.ai.correct ?? 0 }} · 不计入正式正确率</p>
         </div>
         <div class="metric">

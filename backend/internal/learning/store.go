@@ -220,6 +220,8 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 	}
 	snapshot.ConfirmedAnswered = totals.ConfirmedAnswered
 	snapshot.ConfirmedCorrect = totals.ConfirmedCorrect
+	snapshot.AIAnswered = totals.AIAnswered
+	snapshot.AICorrect = totals.AICorrect
 	rows, err := store.CollectRows[recommendationRow](ctx, s.db,
 		`SELECT kp.id::text, kp.name, kp.level_id::text, kp.subject_id::text,
 		        st.recent_answered, st.recent_correct,
@@ -254,6 +256,8 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		}
 		memory.ConfirmedAnswered = totals.ConfirmedAnswered
 		memory.ConfirmedCorrect = totals.ConfirmedCorrect
+		memory.AIAnswered = totals.AIAnswered
+		memory.AICorrect = totals.AICorrect
 	}
 	if knowledgePointIDs == nil {
 		knowledgePointIDs = []string{}
@@ -263,6 +267,8 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 			SELECT kp.id::text, kp.name, kp.subject_id::text, kp.description, kp.common_mistakes, kp.examples,
 			       coalesce(st.confirmed_answered, 0) AS confirmed_answered,
 			       coalesce(st.confirmed_correct, 0) AS confirmed_correct,
+			       coalesce(st.ai_answered, 0) AS ai_answered,
+			       coalesce(st.ai_correct, 0) AS ai_correct,
 			       coalesce(st.recent_answered, 0) AS recent_answered,
 			       coalesce(st.recent_correct, 0) AS recent_correct,
 			       greatest(coalesce(st.recent_answered, 0) - coalesce(st.recent_correct, 0), 0) AS recent_wrong_count,
@@ -289,19 +295,20 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 				       0.45 * CASE WHEN recent_answered = 0 THEN 0.0 ELSE
 					       ((recent_wrong_count + 1.0) / (recent_answered + 2.0))
 					       * least(recent_answered, 10)::float8 / 10.0 END
-				     + 0.25 * CASE WHEN confirmed_answered = 0 THEN 0.0 ELSE
-					       ((confirmed_answered - confirmed_correct + 1.0) / (confirmed_answered + 2.0))
-					       * least(confirmed_answered, 20)::float8 / 20.0 END
+				     + 0.25 * CASE WHEN confirmed_answered + ai_answered = 0 THEN 0.0 ELSE
+					       ((confirmed_answered + ai_answered - confirmed_correct - ai_correct + 1.0)
+					        / (confirmed_answered + ai_answered + 2.0))
+					       * least(confirmed_answered + ai_answered, 20)::float8 / 20.0 END
 				     + 0.20 * least(consecutive_wrong, 5)::float8 / 5.0
 				     + 0.10 * CASE WHEN days_since_practice IS NULL THEN 0.0
 					       ELSE least(days_since_practice::float8 / 90.0, 1.0) END
-				     + 0.12 * CASE WHEN confirmed_answered = 0 THEN 1.0
-					       WHEN confirmed_answered < 5 THEN 0.5 ELSE 0.0 END
+				     + 0.12 * CASE WHEN confirmed_answered + ai_answered = 0 THEN 1.0
+					       WHEN confirmed_answered + ai_answered < 5 THEN 0.5 ELSE 0.0 END
 				       )::float8 END AS priority_score
 			FROM base
 		)
 		SELECT id, name, subject_id, description, common_mistakes, examples,
-		       confirmed_answered, confirmed_correct, recent_answered, recent_correct,
+		       confirmed_answered, confirmed_correct, ai_answered, ai_correct, recent_answered, recent_correct,
 		       recent_wrong_count, consecutive_wrong, days_since_practice, priority_score
 		FROM scored
 		ORDER BY CASE WHEN $5 = 'level' THEN random() END,
@@ -327,27 +334,33 @@ func (s *Store) accountTotals(ctx context.Context, userID string) (accountTotals
 	var totals accountTotals
 	err := s.db.QueryRow(ctx, `
 WITH eligible AS (
-  SELECT pi.id AS item_id, gr.id AS result_id, gr.source, gr.status, gr.answer_authority, gr.updated_at
+  SELECT pi.id AS item_id, gr.id AS result_id, gr.status, gr.updated_at,
+         CASE WHEN gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL THEN 'confirmed'
+              ELSE 'ai' END AS result_kind
   FROM grading_results gr
   JOIN practice_items pi ON pi.id = gr.item_id
   JOIN practice_sessions ps ON ps.id = pi.session_id
+  JOIN question_versions v ON v.id = pi.question_version_id
+  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+  LEFT JOIN sources src ON src.id = ss.source_id
   LEFT JOIN user_learning_memory mem ON mem.user_id = ps.user_id
   WHERE ps.user_id = $1 AND ps.status IN ('grading', 'completed', 'analysis_failed')
     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
     AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
           AND gr.status IN ('correct', 'incorrect', 'unanswered'))
-      OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect')))
+      OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+      OR (src.kind = 'ai_generated' AND gr.status = 'unanswered'))
 ), chosen AS (
-  SELECT DISTINCT ON (item_id) source, status
+  SELECT DISTINCT ON (item_id) result_kind, status
   FROM eligible
   ORDER BY item_id,
-           CASE WHEN source = 'deterministic' AND answer_authority IS NOT NULL THEN 0 ELSE 1 END,
+           CASE WHEN result_kind = 'confirmed' THEN 0 ELSE 1 END,
            updated_at DESC, result_id DESC
 )
-SELECT count(*) FILTER (WHERE source = 'deterministic'),
-       count(*) FILTER (WHERE source = 'deterministic' AND status = 'correct'),
-       count(*) FILTER (WHERE source = 'ai'),
-       count(*) FILTER (WHERE source = 'ai' AND status = 'correct')
+SELECT count(*) FILTER (WHERE result_kind = 'confirmed'),
+       count(*) FILTER (WHERE result_kind = 'confirmed' AND status = 'correct'),
+       count(*) FILTER (WHERE result_kind = 'ai'),
+       count(*) FILTER (WHERE result_kind = 'ai' AND status = 'correct')
 FROM chosen`, userID).Scan(&totals.ConfirmedAnswered, &totals.ConfirmedCorrect, &totals.AIAnswered, &totals.AICorrect)
 	return totals, err
 }
@@ -364,7 +377,10 @@ func (s *Store) DeleteMemory(ctx context.Context, pool *pgxpool.Pool, userID str
 			     ai_advice_updated_at = NULL, updated_at = now()`, userID); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `DELETE FROM user_knowledge_stats WHERE user_id = $1`, userID)
+		if _, err := tx.Exec(ctx, `DELETE FROM user_knowledge_stats WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM user_question_reviews WHERE user_id = $1`, userID)
 		return err
 	})
 }
@@ -444,7 +460,7 @@ type recommendationRow struct {
 }
 
 // WeakKnowledgePoints 按规范 §14.2 的稳定规则排序薄弱知识点：
-// 近 30 天已确认作答 ≥ 5 题 → 近期正确率升序 → 连续错误降序 → 最近练习时间升序。
+// 近 30 天有效作答（权威结果与 AI 结果分层存储）≥ 5 题 → 近期正确率升序 → 连续错误降序 → 最近练习时间升序。
 func (s *Store) WeakKnowledgePoints(ctx context.Context, userID string, limit int) ([]recommendationRow, error) {
 	return store.CollectRows[recommendationRow](ctx, s.db,
 		`SELECT kp.id::text, kp.name, kp.level_id::text, kp.subject_id::text, st.recent_answered, st.recent_correct,
@@ -460,7 +476,7 @@ func (s *Store) WeakKnowledgePoints(ctx context.Context, userID string, limit in
 // ---------- 统计重算（缓存可重建；原始作答是唯一事实来源） ----------
 
 // RebuildUserStats 从 grading_results 全量重算用户知识点统计并整体替换缓存。
-// 正式统计只聚合 official / human_verified 的确定性判分；AI 判定单独计数。
+// 正式累计只聚合 official / human_verified，AI 结果单独计数；近期表现与连续错误使用两层的去重结果。
 func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID string) error {
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
 		return s.RebuildUserStatsTx(ctx, tx, userID)
@@ -474,24 +490,39 @@ type reviewEventRow struct {
 	Status     string
 }
 
-// RebuildQuestionReviews 从确定性作答事实重建复习计划；重复任务只会得到同一结果。
+// RebuildQuestionReviews 从权威题和账号私有 AI 题的作答事实重建复习计划；重复任务只会得到同一结果。
 func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, userID string) error {
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
 		if err := jobs.GuardLease(ctx, tx); err != nil {
 			return err
 		}
 		rows, err := store.CollectRows[reviewEventRow](ctx, tx, `
-			SELECT gr.id::text, pi.question_id::text, ps.submitted_at, gr.status
-			FROM grading_results gr
-			JOIN practice_items pi ON pi.id = gr.item_id
-			JOIN practice_sessions ps ON ps.id = pi.session_id
-			LEFT JOIN user_learning_memory mem ON mem.user_id = $1
-			WHERE ps.user_id = $1 AND ps.submitted_at IS NOT NULL
-			  AND ps.status IN ('grading', 'completed', 'analysis_failed')
-			  AND gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
-			  AND gr.status IN ('correct', 'incorrect', 'unanswered')
-			  AND (mem.reset_at IS NULL OR ps.submitted_at > mem.reset_at)
-			ORDER BY pi.question_id, ps.submitted_at, pi.position, gr.id`, userID)
+			WITH eligible AS (
+			  SELECT gr.id, pi.id AS item_id, pi.question_id, ps.submitted_at, pi.position,
+			         gr.status, gr.updated_at,
+			         CASE WHEN gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL THEN 0 ELSE 1 END AS priority
+			  FROM grading_results gr
+			  JOIN practice_items pi ON pi.id = gr.item_id
+			  JOIN practice_sessions ps ON ps.id = pi.session_id
+			  JOIN question_versions v ON v.id = pi.question_version_id
+			  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+			  LEFT JOIN sources src ON src.id = ss.source_id
+			  LEFT JOIN user_learning_memory mem ON mem.user_id = $1
+			  WHERE ps.user_id = $1 AND ps.submitted_at IS NOT NULL
+			    AND ps.status IN ('grading', 'completed', 'analysis_failed')
+			    AND (mem.reset_at IS NULL OR ps.submitted_at > mem.reset_at)
+			    AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+			          AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+			      OR (src.kind = 'ai_generated' AND gr.status IN ('correct', 'incorrect', 'unanswered')
+			          AND (gr.source = 'ai' OR gr.status = 'unanswered')))
+			), chosen AS (
+			  SELECT DISTINCT ON (item_id) id, question_id, submitted_at, position, status
+			  FROM eligible
+			  ORDER BY item_id, priority, updated_at DESC, id DESC
+			)
+			SELECT id::text, question_id::text, submitted_at, status
+			FROM chosen
+			ORDER BY question_id, submitted_at, position, id`, userID)
 		if err != nil {
 			return err
 		}
@@ -520,9 +551,16 @@ func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) 
 	err := s.db.QueryRow(ctx, `
 		SELECT count(*)::int
 		FROM user_question_reviews r
+		JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
+		JOIN practice_items history_item ON history_item.id = last_result.item_id
+		JOIN practice_sessions history_session
+		  ON history_session.id = history_item.session_id AND history_session.user_id = r.user_id
+		JOIN question_versions history_version ON history_version.id = history_item.question_version_id
+		LEFT JOIN source_sections history_section ON history_section.id = history_version.source_section_id
+		LEFT JOIN sources history_source ON history_source.id = history_section.source_id
 		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
-		JOIN question_versions v ON v.id = q.published_version_id
-		WHERE r.user_id = $1 AND r.next_review_at <= now()`, userID).Scan(&count)
+		WHERE r.user_id = $1 AND r.next_review_at <= now()
+		  AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`, userID).Scan(&count)
 	return count, err
 }
 
@@ -545,66 +583,82 @@ func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string
 		return err
 	}
 	_, err := tx.Exec(ctx, `
-WITH joined AS (
-  SELECT qvkp.knowledge_point_id AS kp_id,
-         gr.status, gr.source, gr.answer_authority,
+WITH eligible AS (
+  SELECT pi.id AS item_id, pi.question_version_id, pi.position AS item_position,
+         gr.id AS result_id, gr.status, gr.updated_at,
          COALESCE(ps.submitted_at, ps.created_at) AS at_time,
-         pi.position AS item_position, gr.id AS result_id
+         CASE WHEN gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL THEN 'confirmed'
+              ELSE 'ai' END AS result_kind
   FROM grading_results gr
   JOIN practice_items pi ON pi.id = gr.item_id
   JOIN practice_sessions ps ON ps.id = pi.session_id
-  JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = pi.question_version_id
+  JOIN question_versions v ON v.id = pi.question_version_id
+  LEFT JOIN source_sections ss ON ss.id = v.source_section_id
+  LEFT JOIN sources src ON src.id = ss.source_id
   LEFT JOIN user_learning_memory mem ON mem.user_id = $1
   WHERE ps.user_id = $1 AND ps.status IN ('grading', 'completed', 'analysis_failed')
     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
-),
-confirmed AS (
-  SELECT * FROM joined
-  WHERE source = 'deterministic' AND answer_authority IS NOT NULL
-    AND status IN ('correct', 'incorrect', 'unanswered')
-),
-ordered AS (
+    AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
+          AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+      OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect', 'unanswered'))
+      OR (src.kind = 'ai_generated' AND gr.status = 'unanswered'))
+), chosen_results AS (
+  SELECT DISTINCT ON (item_id) question_version_id, item_position, result_id, status, at_time, result_kind
+  FROM eligible
+  ORDER BY item_id, CASE WHEN result_kind = 'confirmed' THEN 0 ELSE 1 END, updated_at DESC, result_id DESC
+), joined AS (
+  SELECT qvkp.knowledge_point_id AS kp_id, chosen_results.*
+  FROM chosen_results
+  JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = chosen_results.question_version_id
+), confirmed AS (
+  SELECT * FROM joined WHERE result_kind = 'confirmed'
+), ai_results AS (
+  SELECT * FROM joined WHERE result_kind = 'ai'
+), ordered AS (
   SELECT kp_id, status, at_time,
          ROW_NUMBER() OVER (
            PARTITION BY kp_id
            ORDER BY at_time DESC, item_position DESC, result_id DESC
          ) AS rn
-  FROM confirmed
+  FROM joined
 ),
 streak AS (
   SELECT kp_id,
          COALESCE(MIN(rn) FILTER (WHERE status = 'correct') - 1, COUNT(*)) AS consecutive_wrong
   FROM ordered GROUP BY kp_id
 ),
-agg AS (
+confirmed_agg AS (
   SELECT kp_id,
          COUNT(*) AS confirmed_answered,
-         COUNT(*) FILTER (WHERE status = 'correct') AS confirmed_correct,
+         COUNT(*) FILTER (WHERE status = 'correct') AS confirmed_correct
+  FROM confirmed GROUP BY kp_id
+),
+activity_agg AS (
+  SELECT kp_id,
          COUNT(*) FILTER (WHERE at_time >= now() - interval '30 days') AS recent_answered,
          COUNT(*) FILTER (WHERE status = 'correct' AND at_time >= now() - interval '30 days') AS recent_correct,
          MAX(at_time) AS last_practiced_at
-  FROM confirmed GROUP BY kp_id
+  FROM joined GROUP BY kp_id
 ),
 ai_agg AS (
   SELECT kp_id,
-         COUNT(*) FILTER (WHERE status IN ('correct', 'incorrect')) AS ai_answered,
+         COUNT(*) AS ai_answered,
          COUNT(*) FILTER (WHERE status = 'correct') AS ai_correct
-  FROM joined WHERE source = 'ai' GROUP BY kp_id
+  FROM ai_results GROUP BY kp_id
 ),
 all_kp AS (
-  SELECT kp_id FROM agg
-  UNION
-  SELECT kp_id FROM ai_agg
+  SELECT kp_id FROM activity_agg
 )
 INSERT INTO user_knowledge_stats
   (user_id, knowledge_point_id, confirmed_answered, confirmed_correct,
    recent_answered, recent_correct, ai_answered, ai_correct, consecutive_wrong, last_practiced_at)
-SELECT $1, all_kp.kp_id, coalesce(agg.confirmed_answered, 0), coalesce(agg.confirmed_correct, 0),
-       coalesce(agg.recent_answered, 0), coalesce(agg.recent_correct, 0),
+SELECT $1, all_kp.kp_id, coalesce(confirmed.confirmed_answered, 0), coalesce(confirmed.confirmed_correct, 0),
+       coalesce(activity.recent_answered, 0), coalesce(activity.recent_correct, 0),
        coalesce(ai.ai_answered, 0), coalesce(ai.ai_correct, 0),
-       coalesce(stk.consecutive_wrong, 0), agg.last_practiced_at
+       coalesce(stk.consecutive_wrong, 0), activity.last_practiced_at
 FROM all_kp
-LEFT JOIN agg ON agg.kp_id = all_kp.kp_id
+LEFT JOIN confirmed_agg confirmed ON confirmed.kp_id = all_kp.kp_id
+LEFT JOIN activity_agg activity ON activity.kp_id = all_kp.kp_id
 LEFT JOIN streak stk ON stk.kp_id = all_kp.kp_id
 LEFT JOIN ai_agg ai ON ai.kp_id = all_kp.kp_id`, userID)
 	return err
@@ -701,7 +755,7 @@ func (s *Store) WrongItems(ctx context.Context, userID, levelID, knowledgePointI
 		     AND (mem.reset_at IS NULL OR COALESCE(ps.submitted_at, ps.created_at) > mem.reset_at)
 		     AND ((gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL
 		           AND gr.status IN ('correct', 'incorrect', 'unanswered'))
-		       OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect')))
+		       OR (gr.source = 'ai' AND gr.status IN ('correct', 'incorrect', 'unanswered')))
 		 ), ranked AS (
 		   SELECT eligible.*,
 		          row_number() OVER (PARTITION BY question_id ORDER BY at_time DESC, position DESC, result_id DESC) AS rn,

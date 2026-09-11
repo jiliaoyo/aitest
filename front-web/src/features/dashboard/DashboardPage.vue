@@ -72,7 +72,7 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
       <div class="page-header">
         <div>
           <h1>学习概览</h1>
-          <p class="muted">基于你的真实作答统计生成，AI 只负责把数字转述成建议。</p>
+          <p class="muted">基于你的全部真实作答生成，权威结果与 AI 来源结果会分层展示。</p>
         </div>
         <RouterLink class="primary" to="/practice/new" custom v-slot="{ navigate }">
           <button class="primary" @click="navigate">开始新练习</button>
@@ -123,7 +123,7 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
       <section v-if="dashboard.reviewDueCount > 0" aria-labelledby="review-title">
         <h2 id="review-title" style="font-size: 17px">到期复习</h2>
         <div class="card">
-          <p class="muted">有 {{ dashboard.reviewDueCount }} 道权威错题或未答题到期，按当前级别安排复习。</p>
+          <p class="muted">有 {{ dashboard.reviewDueCount }} 道题到期，包含题库题和你做过的 AI 生成题。</p>
           <button class="primary" @click="router.push('/practice/new?mode=review')">复习到期题</button>
         </div>
       </section>
@@ -132,10 +132,13 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
         <h2 id="memory-title" style="font-size: 17px">全局做题记忆</h2>
         <div class="card">
           <p class="mono">
-            已确认作答 {{ dashboard.memory.confirmedAnswered }} 题，正确 {{ dashboard.memory.confirmedCorrect }} 题
+            累计纳入学习记忆 {{ dashboard.memory.confirmedAnswered + dashboard.memory.aiAnswered }} 题
+          </p>
+          <p class="muted">
+            其中权威或人工审核结果 {{ dashboard.memory.confirmedAnswered }} 题，正确 {{ dashboard.memory.confirmedCorrect }} 题。
           </p>
           <p v-if="dashboard.memory.aiAnswered > 0" class="muted">
-            另有 AI 判定 {{ dashboard.memory.aiAnswered }} 题（不计入正式正确率）。
+            AI 来源结果 {{ dashboard.memory.aiAnswered }} 题，正确 {{ dashboard.memory.aiCorrect }} 题（可能有误，不计入正式正确率）。
           </p>
           <p v-if="dashboard.memory.aiAnswered > 0 && dashboard.memory.estimatedAccuracy != null" class="muted">
             含 AI 判定的估算正确率 {{ formatPercent(dashboard.memory.estimatedAccuracy) }}（可能有误）

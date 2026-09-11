@@ -59,10 +59,10 @@ watch(search, () => {
 
 function mastery(k: KnowledgePointItem): string {
   const stats = k.stats
-  if (!stats || stats.confirmedAnswered === 0) return '未练习'
+  if (!stats || stats.confirmedAnswered + stats.aiAnswered === 0) return '未练习'
   if (stats.consecutiveWrong >= 3) return '连续出错'
-  const acc = stats.confirmedCorrect / stats.confirmedAnswered
-  if (acc >= 0.8) return '掌握较好'
+  const acc = (stats.confirmedCorrect + stats.aiCorrect) / (stats.confirmedAnswered + stats.aiAnswered)
+  if (acc >= 0.8) return stats.confirmedAnswered === 0 ? '掌握较好（AI 参考）' : '掌握较好'
   return '需要巩固'
 }
 </script>

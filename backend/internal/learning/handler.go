@@ -13,6 +13,9 @@ import (
 	"github.com/aishuati/backend/internal/httpapi"
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
 	"github.com/aishuati/backend/internal/jobs"
+	"github.com/aishuati/backend/internal/practice"
+	"github.com/aishuati/backend/internal/store"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -29,21 +32,57 @@ func NewHandler(pool *pgxpool.Pool, logger *slog.Logger) *Handler {
 // Handlers 返回统计重算任务处理器，供 worker 注册。
 func (h *Handler) Handlers() map[string]jobs.Handler {
 	return map[string]jobs.Handler{
-		"rebuild_user_knowledge_stats": h.handleRebuildStats,
+		"rebuild_user_knowledge_stats":    h.handleRebuildStats,
+		"rebuild_user_learning_memory_v2": h.handleRebuildStatsV2,
 	}
 }
 
 func (h *Handler) handleRebuildStats(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
+	userID, err := rebuildUserID(payload)
+	if err != nil {
+		return err
+	}
+	return h.rebuildUser(ctx, userID)
+}
+
+func (h *Handler) handleRebuildStatsV2(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
+	userID, err := rebuildUserID(payload)
+	if err != nil {
+		return err
+	}
+	var recovered int
+	err = store.WithTx(ctx, h.pool, func(tx pgx.Tx) error {
+		if err := jobs.GuardLease(ctx, tx); err != nil {
+			return err
+		}
+		count, recoverErr := practice.NewStore(tx).RecoverAIGeneratedObjectiveGrades(ctx, tx, userID)
+		recovered = count
+		return recoverErr
+	})
+	if err != nil {
+		return err
+	}
+	if recovered > 0 {
+		h.logger.Info("ai_learning_history_recovered", "user_id", userID, "grades", recovered)
+	}
+	return h.rebuildUser(ctx, userID)
+}
+
+func rebuildUserID(payload json.RawMessage) (string, error) {
 	var req struct {
 		UserID string `json:"userId"`
 	}
 	if err := json.Unmarshal(payload, &req); err != nil || req.UserID == "" {
-		return fmt.Errorf("rebuild stats payload 不合法")
+		return "", fmt.Errorf("rebuild stats payload 不合法")
 	}
-	if err := h.store.RebuildUserStats(ctx, h.pool, req.UserID); err != nil {
+	return req.UserID, nil
+}
+
+func (h *Handler) rebuildUser(ctx context.Context, userID string) error {
+	if err := h.store.RebuildUserStats(ctx, h.pool, userID); err != nil {
 		return err
 	}
-	return h.store.RebuildQuestionReviews(ctx, h.pool, req.UserID)
+	return h.store.RebuildQuestionReviews(ctx, h.pool, userID)
 }
 
 // RegisterRoutes 挂载学习端档案路由与举报管理路由；mux/adminMux 传 nil 表示不挂载。
@@ -137,7 +176,7 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 			acc := float64(w.RecentCorrect) / float64(w.RecentAnswered)
 			rec.Accuracy = &acc
 		}
-		rec.Reason = fmt.Sprintf("最近 30 天该知识点已确认作答 %d 题、错了 %d 题，连续错误 %d 次，建议专项练习 10 题。",
+		rec.Reason = fmt.Sprintf("最近 30 天该知识点作答 %d 题、错了 %d 题，连续错误 %d 次，建议专项练习 10 题。",
 			w.RecentAnswered, rec.RecentWrongCount, w.ConsecutiveWrong)
 		d.Recommendations = append(d.Recommendations, rec)
 	}

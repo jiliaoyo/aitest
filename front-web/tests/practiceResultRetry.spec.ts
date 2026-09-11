@@ -81,9 +81,9 @@ describe('结果页 AI 重试', () => {
     const deferredPoll = deferred<ResultSession>()
     requestMock.mockImplementation(async () => {
       calls++
-      if (calls === 1) return pendingResult
+      if (calls === 1) return { ...pendingResult, status: 'completed' }
       if (calls === 2) return deferredPoll.promise
-      return pendingResult
+      return { ...pendingResult, status: 'completed' }
     })
     const router = createRouter({
       history: createMemoryHistory(),
@@ -97,7 +97,7 @@ describe('结果页 AI 重试', () => {
     await vi.advanceTimersByTimeAsync(3000)
     await vi.advanceTimersByTimeAsync(3000)
     expect(calls).toBe(2)
-    expect(wrapper.text()).toContain('确定性判分已完成')
+    expect(wrapper.text()).toContain('成绩已记录，AI 分析进行中')
 
     deferredPoll.resolve({ ...pendingResult, status: 'completed', aiAnalysis: { status: 'completed', text: '完成' } })
     await flushPromises()

@@ -61,7 +61,7 @@ async function loadKnowledgePoints(): Promise<void> {
     const params = new URLSearchParams({ limit: '100' })
     if (levelFilter.value) params.set('levelId', levelFilter.value)
     const res = await request<{ knowledgePoints: KnowledgePointItem[] }>(`/knowledge-points?${params}`)
-    kps.value = res.knowledgePoints.filter((k) => (k.stats?.confirmedAnswered ?? 0) > 0)
+    kps.value = res.knowledgePoints.filter((k) => (k.stats?.confirmedAnswered ?? 0) + (k.stats?.aiAnswered ?? 0) > 0)
   } catch {
     // 筛选列表加载失败不阻塞主列表
   }

@@ -21,9 +21,7 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v3"
-	previousBatchPromptVersion = "practice_batch_analysis.v2"
-	legacyBatchPromptVersion   = "practice_batch_analysis.v1"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v4"
 )
 
 //go:embed prompts/practice_grade.v1.md
@@ -32,7 +30,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v3.md
+//go:embed prompts/practice_batch_analysis.v4.md
 var batchAnalysisPrompt string
 
 func aiObjectJSONSchema(properties map[string]any, required []string) map[string]any {
@@ -361,9 +359,14 @@ func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, boo
 	return json.RawMessage(answer), text, true
 }
 
-// v2/v3 只调整账号级建议，历史版本生成的题目解析仍然有效，避免无谓重算缓存。
+// 历史版本只调整账号级建议，已生成的题目解析仍然有效，避免无谓重算缓存。
 func validQuestionExplanationPrompt(version string) bool {
-	return version == batchAnalysisPromptVersion || version == previousBatchPromptVersion || version == legacyBatchPromptVersion
+	switch version {
+	case batchAnalysisPromptVersion, "practice_batch_analysis.v3", "practice_batch_analysis.v2", "practice_batch_analysis.v1":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {

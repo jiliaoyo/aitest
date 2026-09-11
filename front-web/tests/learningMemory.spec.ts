@@ -43,7 +43,9 @@ describe('账号学习记忆', () => {
     await router.isReady()
     const wrapper = mount(DashboardPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('继续练习助词的场所用法。'))
-    expect(wrapper.text()).toContain('已确认作答 12 题，正确 7 题')
+    expect(wrapper.text()).toContain('累计纳入学习记忆 13 题')
+    expect(wrapper.text()).toContain('权威或人工审核结果 12 题，正确 7 题')
+    expect(wrapper.text()).toContain('AI 来源结果 1 题，正确 1 题')
     expect(wrapper.text()).toContain('含 AI 判定的估算正确率 61.5%（可能有误）')
   })
 

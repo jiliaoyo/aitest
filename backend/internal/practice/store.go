@@ -41,23 +41,33 @@ func (s *Store) InsertItems(ctx context.Context, tx pgx.Tx, sessionID string, it
 	return nil
 }
 
-func (s *Store) ReviewQuestionIDs(ctx context.Context, userID, levelID, subjectID string) ([]string, error) {
-	rows, err := store.CollectRows[struct{ ID string }](ctx, s.db, `
-		SELECT r.question_id::text
-		FROM user_question_reviews r
-		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
-		JOIN question_versions v ON v.id = q.published_version_id
-		WHERE r.user_id = $1 AND r.next_review_at <= now()
-		  AND v.level_id::text = $2 AND ($3 = '' OR v.subject_id::text = $3)
-		ORDER BY r.next_review_at, r.question_id`, userID, levelID, subjectID)
-	if err != nil {
-		return nil, err
-	}
-	ids := make([]string, 0, len(rows))
-	for _, row := range rows {
-		ids = append(ids, row.ID)
-	}
-	return ids, nil
+// DueReviewItems 使用普通题的当前发布版本，AI 私有题则复用用户实际作答的历史版本。
+func (s *Store) DueReviewItems(ctx context.Context, userID, levelID, subjectID string, limit int) ([]ItemSeed, error) {
+	return store.CollectRows[ItemSeed](ctx, s.db, `
+		WITH due AS (
+		  SELECT r.question_id,
+		         CASE WHEN history_source.kind = 'ai_generated'
+		              THEN history_item.question_version_id
+		              ELSE q.published_version_id END AS version_id,
+		         r.next_review_at
+		  FROM user_question_reviews r
+		  JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
+		  JOIN practice_items history_item ON history_item.id = last_result.item_id
+		  JOIN practice_sessions history_session
+		    ON history_session.id = history_item.session_id AND history_session.user_id = r.user_id
+		  JOIN question_versions history_version ON history_version.id = history_item.question_version_id
+		  LEFT JOIN source_sections history_section ON history_section.id = history_version.source_section_id
+		  LEFT JOIN sources history_source ON history_source.id = history_section.source_id
+		  JOIN questions q ON q.id = r.question_id
+		  WHERE r.user_id = $1 AND r.next_review_at <= now() AND q.retired_at IS NULL
+		    AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)
+		)
+		SELECT due.question_id::text, due.version_id::text
+		FROM due
+		JOIN question_versions v ON v.id = due.version_id
+		WHERE v.level_id::text = $2 AND ($3 = '' OR v.subject_id::text = $3)
+		ORDER BY due.next_review_at, due.question_id
+		LIMIT CASE WHEN $4 > 0 THEN $4 ELSE NULL END`, userID, levelID, subjectID, limit)
 }
 
 type ItemSeed struct {
@@ -201,25 +211,71 @@ func (s *Store) UpsertAnswer(ctx context.Context, tx pgx.Tx, sessionID, itemID, 
 // ---------- 提交与判分 ----------
 
 type gradeItemRow struct {
-	ItemID       string
-	Position     int
-	Type         string
-	OptionsText  *string
-	KeyValue     *string
-	KeyAuthority *string
-	Explanation  *string
+	ItemID               string
+	Position             int
+	Type                 string
+	OptionsText          *string
+	KeyValue             *string
+	KeyAuthority         *string
+	Explanation          *string
+	GeneratedValue       *string
+	GeneratedExplanation *string
 }
 
 // GradeSourceItems 加载批次内全部题目及标准答案（仅提交事务内使用）。
 func (s *Store) GradeSourceItems(ctx context.Context, tx pgx.Tx, sessionID string) ([]gradeItemRow, error) {
 	return store.CollectRows[gradeItemRow](ctx, tx,
 		`SELECT pi.id::text, pi.position, v.type, v.options::text,
-		        ak.value::text, ak.authority, ak.explanation
+		        ak.value::text, ak.authority, ak.explanation,
+		        aga.value::text, aga.explanation
 		 FROM practice_items pi
 		 JOIN question_versions v ON v.id = pi.question_version_id
 		 LEFT JOIN answer_keys ak ON ak.question_version_id = v.id
+		 LEFT JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
 		 WHERE pi.session_id = $1
 		 ORDER BY pi.position`, sessionID)
+}
+
+type recoverAIGeneratedGradeRow struct {
+	ResultID    string
+	Type        string
+	UserValue   *string
+	AnswerValue string
+	Explanation string
+}
+
+// RecoverAIGeneratedObjectiveGrades 用生成时私下保存的答案恢复旧版失败的 AI 客观题判分。
+func (s *Store) RecoverAIGeneratedObjectiveGrades(ctx context.Context, tx pgx.Tx, userID string) (int, error) {
+	rows, err := store.CollectRows[recoverAIGeneratedGradeRow](ctx, tx, `
+		SELECT gr.id::text, v.type, coalesce(ua.value, gr.user_value)::text, aga.value::text, aga.explanation
+		FROM grading_results gr
+		JOIN practice_items pi ON pi.id = gr.item_id
+		JOIN practice_sessions ps ON ps.id = pi.session_id
+		JOIN question_versions v ON v.id = pi.question_version_id
+		JOIN ai_generated_question_answers aga ON aga.question_version_id = v.id
+		LEFT JOIN user_answers ua ON ua.item_id = pi.id
+		WHERE ps.user_id = $1 AND ps.status IN ('completed', 'analysis_failed')
+		  AND gr.source = 'ai' AND gr.status = 'failed'
+		  AND v.type IN ('single_choice', 'multiple_choice', 'fill_blank')`, userID)
+	if err != nil {
+		return 0, err
+	}
+	for _, row := range rows {
+		var userValue json.RawMessage
+		if row.UserValue != nil {
+			userValue = jsonRaw(*row.UserValue)
+		}
+		outcome := Grade(row.Type, userValue, &StandardKey{Value: jsonRaw(row.AnswerValue)})
+		if _, err := tx.Exec(ctx, `
+			UPDATE grading_results
+			SET status = $2, correct_value = $3, explanation = $4,
+			    explanation_source = 'ai', updated_at = now()
+			WHERE id = $1 AND source = 'ai' AND status = 'failed'`,
+			row.ResultID, outcome.Status, outcome.CorrectValue, row.Explanation); err != nil {
+			return 0, err
+		}
+	}
+	return len(rows), nil
 }
 
 func (s *Store) InsertGrading(ctx context.Context, tx pgx.Tx, g GradingInsert) error {
@@ -373,7 +429,7 @@ func (s *Store) Summary(ctx context.Context, sessionID string) (summaryRow, erro
 		`SELECT
 		   count(*) FILTER (WHERE source = 'deterministic' AND answer_authority IS NOT NULL AND status IN ('correct','incorrect','unanswered')),
 		   count(*) FILTER (WHERE source = 'deterministic' AND answer_authority IS NOT NULL AND status = 'correct'),
-		   count(*) FILTER (WHERE source = 'ai' AND status IN ('correct','incorrect')),
+		   count(*) FILTER (WHERE source = 'ai' AND status IN ('correct','incorrect','unanswered')),
 		   count(*) FILTER (WHERE source = 'ai' AND status = 'correct'),
 		   count(*) FILTER (WHERE source = 'ai' AND status = 'pending'),
 		   count(*) FILTER (WHERE source = 'ai' AND status = 'failed')

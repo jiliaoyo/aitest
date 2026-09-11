@@ -52,6 +52,10 @@ func (s *Service) Availability(ctx context.Context, userID string, req CreateReq
 	if err != nil {
 		return 0, err
 	}
+	if req.Mode == "review" {
+		items, err := s.store.DueReviewItems(ctx, userID, req.LevelID, req.SubjectID, 0)
+		return len(items), err
+	}
 	return s.contentStore.CountPublishedVersions(ctx, f)
 }
 
@@ -124,14 +128,6 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 		if req.LevelID == "" {
 			return f, httpapi.ValidationError(map[string]string{"levelId": "请选择级别"})
 		}
-		ids, err := s.store.ReviewQuestionIDs(ctx, userID, req.LevelID, req.SubjectID)
-		if err != nil {
-			return f, err
-		}
-		if len(ids) == 0 {
-			return f, httpapi.E(http.StatusConflict, "no_due_reviews", "当前没有到期复习题")
-		}
-		f.QuestionIDs = ids
 		f.ExcludeRecent = false
 	default:
 		return f, httpapi.ValidationError(map[string]string{"mode": "练习范围不合法"})
@@ -151,13 +147,25 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 	}
 	var sessionID string
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
-		selected, err := s.contentStore.With(tx).SelectPublishedVersions(ctx, tx, f)
+		seeds := make([]ItemSeed, 0, req.Count)
+		if scopeMode == "review" {
+			seeds, err = s.store.With(tx).DueReviewItems(ctx, userID, req.LevelID, req.SubjectID, req.Count)
+		} else {
+			var selected []content.SelectedQuestion
+			selected, err = s.contentStore.With(tx).SelectPublishedVersions(ctx, tx, f)
+			for _, item := range selected {
+				seeds = append(seeds, ItemSeed{QuestionID: item.QuestionID, VersionID: item.VersionID})
+			}
+		}
 		if err != nil {
 			return err
 		}
-		if len(selected) < req.Count {
+		if len(seeds) < req.Count {
+			if scopeMode == "review" && len(seeds) == 0 {
+				return httpapi.E(http.StatusConflict, "no_due_reviews", "当前没有到期复习题")
+			}
 			return httpapi.WithDetails(httpapi.E(http.StatusConflict, "insufficient_questions",
-				"当前范围的可用题目不足"), map[string]any{"available": len(selected)})
+				"当前范围的可用题目不足"), map[string]any{"available": len(seeds)})
 		}
 		scope, _ := json.Marshal(map[string]any{
 			"mode":              scopeMode,
@@ -177,10 +185,6 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 		sessionID, err = s.store.With(tx).InsertSession(ctx, tx, userID, req.LevelID, subjectIDPtr, scope, req.Count)
 		if err != nil {
 			return err
-		}
-		seeds := make([]ItemSeed, 0, len(selected))
-		for _, sel := range selected {
-			seeds = append(seeds, ItemSeed{QuestionID: sel.QuestionID, VersionID: sel.VersionID})
 		}
 		return s.store.With(tx).InsertItems(ctx, tx, sessionID, seeds)
 	})
@@ -311,7 +315,7 @@ type errSameKey struct{}
 
 func (errSameKey) Error() string { return "same idempotency key" }
 
-// Submit 在一个事务内完成：锁定批次 → 幂等校验 → 覆盖最终答案 → 确定性判分 → AI 任务入队。
+// Submit 在一个事务内完成：锁定批次 → 幂等校验 → 覆盖最终答案 → 可直接判分的题目判分 → AI 任务入队。
 func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHash string, req SubmitRequest) (int, error) {
 	if idemKey == "" {
 		return 0, httpapi.E(http.StatusBadRequest, "missing_idempotency_key", "缺少 Idempotency-Key 请求头")
@@ -391,8 +395,12 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 				userValue = answer.Value
 			}
 			var key *StandardKey
+			gradingSource := SourceDeterministic
 			if row.KeyValue != nil && row.KeyAuthority != nil {
 				key = &StandardKey{Value: jsonRaw(*row.KeyValue), Authority: *row.KeyAuthority}
+			} else if row.GeneratedValue != nil {
+				key = &StandardKey{Value: jsonRaw(*row.GeneratedValue)}
+				gradingSource = SourceAI
 			}
 			outcome := Grade(row.Type, userValue, key)
 			if outcome.Status == StatusPending {
@@ -411,7 +419,11 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 				authority = &a
 			}
 			var explanation, explanationSource *string
-			if row.Explanation != nil && *row.Explanation != "" {
+			if gradingSource == SourceAI && row.GeneratedExplanation != nil && *row.GeneratedExplanation != "" {
+				explanation = row.GeneratedExplanation
+				source := SourceAI
+				explanationSource = &source
+			} else if row.Explanation != nil && *row.Explanation != "" {
 				explanation = row.Explanation
 				if authority != nil {
 					explanationSource = authority
@@ -419,7 +431,7 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 			}
 			if err := st.InsertGrading(ctx, tx, GradingInsert{
 				SessionID: sessionID, ItemID: row.ItemID,
-				Source: SourceDeterministic,
+				Source: gradingSource,
 				Status: outcome.Status, Authority: authority,
 				CorrectValue: outcome.CorrectValue, UserValue: userValue,
 				Explanation: explanation, ExplanationSource: explanationSource,

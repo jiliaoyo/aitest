@@ -72,8 +72,9 @@ type resultResponse struct {
 			Total   int `json:"total"`
 		} `json:"confirmed"`
 		AI struct {
-			Correct int `json:"correct"`
-			Pending int `json:"pending"`
+			Correct   int `json:"correct"`
+			Completed int `json:"completed"`
+			Pending   int `json:"pending"`
 		} `json:"ai"`
 	} `json:"summary"`
 	Items []struct {
@@ -1097,14 +1098,21 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 		answers := make([]submittedAnswer, 0, len(preGenerated.Items))
 		for _, item := range preGenerated.Items {
-			answers = append(answers, submittedAnswer{ItemID: item.ID, Value: json.RawMessage(`{"optionIds":["a"]}`)})
+			var generatedAnswer string
+			if err := pool.QueryRow(context.Background(), `SELECT aga.value::text
+				FROM practice_items pi
+				JOIN ai_generated_question_answers aga ON aga.question_version_id = pi.question_version_id
+				WHERE pi.id = $1`, item.ID).Scan(&generatedAnswer); err != nil {
+				t.Fatal(err)
+			}
+			answers = append(answers, submittedAnswer{ItemID: item.ID, Value: json.RawMessage(generatedAnswer)})
 		}
 		var result resultResponse
 		decodeResponse(t, rawRequest(t, data.learnerB, server.URL, http.MethodPost,
 			"/api/v1/practice-sessions/"+generated.ID+"/submit", submitJSON(t, answers), map[string]string{"Idempotency-Key": "ai-generated-1"}), &result)
-		if result.Summary.Confirmed.Total != 0 || result.Summary.AI.Pending != 10 || countRows(t, pool,
+		if result.Summary.Confirmed.Total != 0 || result.Summary.AI.Completed != 10 || result.Summary.AI.Pending != 0 || countRows(t, pool,
 			`SELECT count(*) FROM jobs WHERE kind = 'analyze_practice_session_ai' AND payload->>'sessionId' = $1`, generated.ID) != 1 {
-			t.Fatalf("generated batch should use one AI analysis and no confirmed score: %+v", result)
+			t.Fatalf("generated objective answers should be compared locally and remain AI-layered: %+v", result)
 		}
 		rebuildJobsBefore := countRows(t, pool,
 			`SELECT count(*) FROM jobs WHERE kind = 'rebuild_user_knowledge_stats' AND payload->>'userId' = $1`,
@@ -1117,12 +1125,8 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 		}
 		if got := countRows(t, pool,
 			`SELECT count(*) FROM jobs WHERE kind = 'rebuild_user_knowledge_stats' AND payload->>'userId' = $1`,
-			dataUserID(t, pool, "learner-b@example.com")); got != rebuildJobsBefore+1 {
-			t.Fatalf("successful AI grading should enqueue one stats rebuild: before=%d after=%d", rebuildJobsBefore, got)
-		}
-		if err := learning.NewStore(pool).RebuildUserStats(context.Background(), pool,
-			dataUserID(t, pool, "learner-b@example.com")); err != nil {
-			t.Fatal(err)
+			dataUserID(t, pool, "learner-b@example.com")); got != rebuildJobsBefore {
+			t.Fatalf("locally graded AI objective questions should not enqueue a duplicate rebuild: before=%d after=%d", rebuildJobsBefore, got)
 		}
 		if got := countRows(t, pool,
 			`SELECT coalesce(sum(ai_answered), 0) FROM user_knowledge_stats WHERE user_id = $1`,
@@ -1379,7 +1383,7 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 		statuses []string
 		want     int
 	}{
-		{name: "末尾连续两次错误", statuses: []string{"incorrect", "correct", "incorrect", "incorrect"}, want: 2},
+		{name: "AI 后续答对也会清除连续错误", statuses: []string{"incorrect", "correct", "incorrect", "incorrect"}, want: 0},
 		{name: "最新一次正确", statuses: []string{"incorrect", "incorrect", "correct"}, want: 0},
 		{name: "全部错误", statuses: []string{"incorrect", "unanswered", "incorrect"}, want: 3},
 		{name: "全部正确", statuses: []string{"correct", "correct"}, want: 0},
@@ -1390,7 +1394,7 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 				addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
 					"deterministic", status, stringPtr("official"), baseTime.Add(time.Duration(i)*time.Minute))
 			}
-			if tc.name == "末尾连续两次错误" {
+			if tc.name == "AI 后续答对也会清除连续错误" {
 				addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
 					"ai", "correct", nil, baseTime.Add(10*time.Minute))
 			}
@@ -1451,6 +1455,122 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 		}
 		if repeatStage != 1 {
 			t.Fatalf("rebuilding the same facts must not advance review stage: %d", repeatStage)
+		}
+	})
+
+	t.Run("纯 AI 作答可生成今日建议与到期复习", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "ai-only-memory@example.com")
+		var sourceID, sectionID, questionID, versionID string
+		if err := pool.QueryRow(ctx, `INSERT INTO sources (name, kind, created_by)
+			VALUES ('AI 记忆测试', 'ai_generated', $1) RETURNING id::text`, userID).Scan(&sourceID); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `INSERT INTO source_sections (source_id, name, sort_order)
+			VALUES ($1, '根据全局记忆生成', 1) RETURNING id::text`, sourceID).Scan(&sectionID); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `INSERT INTO questions (status, has_answer, created_by)
+			VALUES ('draft', false, $1) RETURNING id::text`, userID).Scan(&questionID); err != nil {
+			t.Fatal(err)
+		}
+		if err := pool.QueryRow(ctx, `INSERT INTO question_versions
+			(question_id, version_no, type, stem, options, level_id, subject_id, source_section_id, difficulty, created_by)
+			VALUES ($1, 1, 'single_choice', 'AI 复习题：＿＿＿。',
+			        '[{"id":"a","label":"A","text":"正解"},{"id":"b","label":"B","text":"其他"}]',
+			        $2, $3, $4, 3, $5) RETURNING id::text`,
+			questionID, data.levelID, data.subjectID, sectionID, userID).Scan(&versionID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE questions SET current_version_id = $2 WHERE id = $1`, questionID, versionID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO question_version_knowledge_points (question_version_id, knowledge_point_id)
+			VALUES ($1, $2)`, versionID, data.knowledgePoint1); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `INSERT INTO ai_generated_question_answers
+			(question_version_id, value, explanation, prompt_version, model)
+			VALUES ($1, '{"optionIds":["a"]}', '测试解析', 'test', 'test')`, versionID); err != nil {
+			t.Fatal(err)
+		}
+		firstAttempt := time.Now().UTC().Add(-72 * time.Hour).Truncate(time.Second)
+		for i := 0; i < 5; i++ {
+			attemptedAt := firstAttempt.Add(time.Duration(i) * time.Minute)
+			var sessionID, itemID string
+			status := "incorrect"
+			if i == 0 {
+				status = "failed"
+			}
+			if err := pool.QueryRow(ctx, `INSERT INTO practice_sessions
+				(user_id, status, level_id, subject_id, scope, requested_count, submitted_at, completed_at, created_at)
+				VALUES ($1, 'completed', $2, $3, '{"mode":"ai_generated"}', 1, $4, $4, $4) RETURNING id::text`,
+				userID, data.levelID, data.subjectID, attemptedAt).Scan(&sessionID); err != nil {
+				t.Fatal(err)
+			}
+			if err := pool.QueryRow(ctx, `INSERT INTO practice_items
+				(session_id, question_id, question_version_id, position) VALUES ($1, $2, $3, 1) RETURNING id::text`,
+				sessionID, questionID, versionID).Scan(&itemID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := pool.Exec(ctx, `INSERT INTO grading_results
+				(session_id, item_id, source, status, correct_value, user_value, explanation_source)
+				VALUES ($1, $2, 'ai', $3, '{"optionIds":["a"]}', '{"optionIds":["b"]}', 'ai')`, sessionID, itemID, status); err != nil {
+				t.Fatal(err)
+			}
+			if i == 0 {
+				if _, err := pool.Exec(ctx, `INSERT INTO user_answers (session_id, item_id, user_id, value)
+					VALUES ($1, $2, $3, '{"optionIds":["b"]}')`, sessionID, itemID, userID); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+
+		backfill := learning.NewHandler(pool, slog.Default()).Handlers()["rebuild_user_learning_memory_v2"]
+		if err := backfill(ctx, 1, 20, json.RawMessage(`{"userId":"`+userID+`"}`)); err != nil {
+			t.Fatal(err)
+		}
+		if failed := countRows(t, pool, `SELECT count(*) FROM grading_results gr
+			JOIN practice_items pi ON pi.id = gr.item_id JOIN practice_sessions ps ON ps.id = pi.session_id
+			WHERE ps.user_id = $1 AND gr.status = 'failed'`, userID); failed != 0 {
+			t.Fatalf("historical AI objective grades were not recovered: %d", failed)
+		}
+		memory, err := learningStore.MemoryForUser(ctx, userID)
+		if err != nil || memory.ConfirmedAnswered != 0 || memory.AIAnswered != 5 || memory.AICorrect != 0 {
+			t.Fatalf("AI-only memory=%+v err=%v", memory, err)
+		}
+		generationMemory, err := learningStore.GenerationMemoryForAI(ctx, userID, data.levelID, data.subjectID, nil, "memory")
+		if err != nil || generationMemory.AIAnswered != 5 || len(generationMemory.KnowledgePoints) == 0 || generationMemory.KnowledgePoints[0].AIAnswered != 5 {
+			t.Fatalf("AI-only generation memory=%+v err=%v", generationMemory, err)
+		}
+		weak, err := learningStore.WeakKnowledgePoints(ctx, userID, 3)
+		if err != nil || len(weak) != 1 || weak[0].ID != data.knowledgePoint1 || weak[0].RecentAnswered != 5 || weak[0].ConsecutiveWrong != 5 {
+			t.Fatalf("AI-only recommendation facts=%+v err=%v", weak, err)
+		}
+		service := practice.NewService(pool, content.NewStore(pool))
+		available, err := service.Availability(ctx, userID, practice.CreateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Mode: "review", Count: 1,
+		})
+		if err != nil || available != 1 {
+			t.Fatalf("AI review availability=%d err=%v", available, err)
+		}
+		created, err := service.CreateSession(ctx, userID, practice.CreateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Mode: "review", Count: 1,
+		})
+		if err != nil || created.TotalCount != 1 {
+			t.Fatalf("AI review session=%+v err=%v", created, err)
+		}
+		var selectedVersionID string
+		if err := pool.QueryRow(ctx, `SELECT question_version_id::text FROM practice_items WHERE session_id = $1`, created.ID).Scan(&selectedVersionID); err != nil {
+			t.Fatal(err)
+		}
+		if selectedVersionID != versionID {
+			t.Fatalf("AI review version=%s want=%s", selectedVersionID, versionID)
+		}
+		if err := learningStore.DeleteMemory(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		if due, err := learningStore.DueReviewCount(ctx, userID); err != nil || due != 0 {
+			t.Fatalf("deleting memory should clear AI review plan: due=%d err=%v", due, err)
 		}
 	})
 
@@ -1540,11 +1660,11 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 			t.Fatalf("unexpected account totals: %+v", memory)
 		}
 		snapshot, err := learningStore.MemorySnapshotForAI(ctx, userID)
-		if err != nil || snapshot.ConfirmedAnswered != 5 || snapshot.ConfirmedCorrect != 2 {
+		if err != nil || snapshot.ConfirmedAnswered != 5 || snapshot.ConfirmedCorrect != 2 || snapshot.AIAnswered != 1 || snapshot.AICorrect != 1 {
 			t.Fatalf("unexpected AI memory totals: %+v, err=%v", snapshot, err)
 		}
 		generation, err := learningStore.GenerationMemoryForAI(ctx, userID, data.levelID, data.subjectID, nil, "memory")
-		if err != nil || generation.ConfirmedAnswered != 5 || generation.ConfirmedCorrect != 2 {
+		if err != nil || generation.ConfirmedAnswered != 5 || generation.ConfirmedCorrect != 2 || generation.AIAnswered != 1 || generation.AICorrect != 1 {
 			t.Fatalf("unexpected generation totals: %+v, err=%v", generation, err)
 		}
 		var kpCount int

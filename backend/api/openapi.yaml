@@ -942,10 +942,10 @@ components:
                 accuracy: { type: number, nullable: true }
             ai:
               type: object
-              description: AI 判定单独计数，不混入正式正确率
+              description: AI 来源结果单独计数，不混入正式正确率
               properties:
                 correct: { type: integer }
-                completed: { type: integer }
+                completed: { type: integer, description: 已有结果或用户未作答的数量 }
                 pending: { type: integer }
                 failed: { type: integer }
         aiAnalysis:
@@ -1056,11 +1056,11 @@ components:
           properties:
             confirmedAnswered: { type: integer }
             confirmedCorrect: { type: integer }
-            recentAnswered: { type: integer }
-            recentCorrect: { type: integer }
-            aiAnswered: { type: integer }
-            aiCorrect: { type: integer }
-            consecutiveWrong: { type: integer }
+            recentAnswered: { type: integer, description: 近 30 天权威与 AI 来源的去重结果数 }
+            recentCorrect: { type: integer, description: 近 30 天权威与 AI 来源的正确结果数 }
+            aiAnswered: { type: integer, description: AI 来源结果数 }
+            aiCorrect: { type: integer, description: AI 来源正确结果数 }
+            consecutiveWrong: { type: integer, description: 按时间合并权威与 AI 来源结果后的连续错误数 }
             lastPracticedAt: { type: string, nullable: true }
     KnowledgePointDetail:
       allOf:
@@ -1297,7 +1297,7 @@ components:
               knowledgePointIds: { type: array, items: { type: string } }
         comprehensive: { type: object, nullable: true }
         statsEmpty: { type: boolean }
-        reviewDueCount: { type: integer, description: 当前用户已到期的确定性复习题数量 }
+        reviewDueCount: { type: integer, description: 当前用户已到期的题库题与账号私有 AI 复习题数量 }
         memory: { $ref: '#/components/schemas/LearningMemory' }
     LearningMemory:
       type: object
@@ -1305,8 +1305,8 @@ components:
       properties:
         confirmedAnswered: { type: integer }
         confirmedCorrect: { type: integer }
-        aiAnswered: { type: integer, description: AI 判定数量，不计入正式正确率 }
-        aiCorrect: { type: integer, description: AI 判定正确数量，不计入正式正确率 }
+        aiAnswered: { type: integer, description: AI 来源结果数量，不计入正式正确率 }
+        aiCorrect: { type: integer, description: AI 来源正确结果数量，不计入正式正确率 }
         estimatedAccuracy: { type: number, nullable: true, description: 含 AI 判定的估算正确率，可能有误，不计入正式正确率 }
         statsUpdatedAt: { type: string, nullable: true }
         advice:
