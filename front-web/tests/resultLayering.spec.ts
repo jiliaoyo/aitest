@@ -60,7 +60,10 @@ describe('结果分层展示', () => {
     expect(text).toContain('AI 解析（可能有误）')
     expect(text).toContain('正确')
     expect(wrapper.get('details').attributes('open')).toBeUndefined()
-    expect(wrapper.find('.ai-text').element.textContent).toContain('原文翻译：这家店离车站很近。\n答案依据：AI 第二句。')
+    expect(wrapper.get('details').text()).toContain('这家店离车站很近。')
+    expect(wrapper.get('details').text()).not.toContain('答案依据')
+    expect(wrapper.find('.ai-text').element.textContent).toContain('答案依据：AI 第二句。')
+    expect(wrapper.find('.ai-text').element.textContent).not.toContain('原文翻译')
   })
 
   it('pending 题不显示标准答案，避免 AI 未完成时误导', () => {

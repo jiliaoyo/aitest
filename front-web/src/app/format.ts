@@ -80,6 +80,17 @@ export function formatAIText(value: string): string {
     .trim()
 }
 
+export function splitAIExplanation(value: string): { translation: string; analysis: string } {
+  const text = formatAIText(value)
+  const prefix = '原文翻译：'
+  const analysisAt = text.indexOf('\n答案依据：')
+  if (!text.startsWith(prefix) || analysisAt < 0) return { translation: '', analysis: text }
+  return {
+    translation: text.slice(prefix.length, analysisAt).trim(),
+    analysis: text.slice(analysisAt + 1).trim(),
+  }
+}
+
 export const sessionStatusText: Record<string, string> = {
   generating: 'AI 出题中',
   active: '答题中',

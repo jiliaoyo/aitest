@@ -28,6 +28,9 @@ func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
 	if validAIExplanation("答案依据：缺少原文翻译。") {
 		t.Fatal("explanation without original translation accepted")
 	}
+	if validAIExplanation("原文翻译：只有翻译，没有解析。") {
+		t.Fatal("explanation without visible analysis accepted")
+	}
 	if validQuestionExplanationPrompt("practice_batch_analysis.v4") {
 		t.Fatal("old cached explanation without translation accepted")
 	}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ResultItem as ResultItemDTO } from '@/api/types'
-import { authorityText, explanationSourceText, formatAIText, formatAnswerValue, gradingStatusText, questionTypeText } from '@/app/format'
+import { authorityText, explanationSourceText, formatAnswerValue, gradingStatusText, questionTypeText, splitAIExplanation } from '@/app/format'
 import ReportDialog from '@/features/issues/ReportDialog.vue'
 
 // 逐题解析：正式分层（确定性）与 AI 判定分开呈现，来源标签始终可见。
@@ -33,6 +33,7 @@ const statusTone = computed(() =>
           : 'danger',
 )
 const isAI = computed(() => props.item.gradingSource === 'ai')
+const aiExplanation = computed(() => splitAIExplanation(props.item.explanation?.source === 'ai' ? props.item.explanation.text : ''))
 const reportItemID = computed(() => props.item.id)
 </script>
 
@@ -70,12 +71,14 @@ const reportItemID = computed(() => props.item.id)
       </template>
     </dl>
 
-    <details v-if="item.explanation?.source === 'ai'" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
-      <summary style="min-height: 44px; cursor: pointer">
-        <span class="tag" data-tone="neutral">{{ explanationSourceText[item.explanation.source] }}</span>
-      </summary>
-      <p class="ai-text" style="margin: 0" lang="zh-CN">{{ formatAIText(item.explanation.text) }}</p>
-    </details>
+    <div v-if="item.explanation?.source === 'ai'" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px" lang="zh-CN">
+      <p class="tag" data-tone="neutral" style="margin-bottom: 6px">{{ explanationSourceText[item.explanation.source] }}</p>
+      <details v-if="aiExplanation.translation">
+        <summary style="min-height: 44px; cursor: pointer">原文翻译</summary>
+        <p style="margin: 0 0 10px">{{ aiExplanation.translation }}</p>
+      </details>
+      <p v-if="aiExplanation.analysis" class="ai-text" style="margin: 0">{{ aiExplanation.analysis }}</p>
+    </div>
     <div v-else-if="item.explanation" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
       <p class="tag" data-tone="neutral" style="margin-bottom: 6px">
         {{ explanationSourceText[item.explanation.source] ?? item.explanation.source }}

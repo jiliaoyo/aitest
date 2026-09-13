@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAIText, formatAnswerValue } from '@/app/format'
+import { formatAIText, formatAnswerValue, splitAIExplanation } from '@/app/format'
 
 describe('AI 文本排版', () => {
   it('把历史单行总结和字面量换行转换为可读段落', () => {
@@ -10,6 +10,14 @@ describe('AI 文本排版', () => {
     expect(formatAIText('答案依据：助词表示目的。知识点：に 的目的用法。常见误区：不要和で混淆。')).toBe(
       '答案依据：\n助词表示目的。\n知识点：\nに 的目的用法。\n常见误区：\n不要和で混淆。',
     )
+  })
+
+  it('把原文翻译与默认展开的解析分开', () => {
+    expect(splitAIExplanation('原文翻译：这家店离车站很近。\n答案依据：考查助词。')).toEqual({
+      translation: '这家店离车站很近。',
+      analysis: '答案依据：考查助词。',
+    })
+    expect(splitAIExplanation('旧版解析。')).toEqual({ translation: '', analysis: '旧版解析。' })
   })
 })
 

@@ -9,10 +9,13 @@ import (
 )
 
 const aiTranslationPrefix = "原文翻译："
+const aiAnalysisPrefix = "\n答案依据："
 
 func validAIExplanation(text string) bool {
 	text = strings.TrimSpace(text)
-	return strings.HasPrefix(text, aiTranslationPrefix) && len([]rune(text)) <= 2000
+	translationEnd := strings.Index(text, aiAnalysisPrefix)
+	return strings.HasPrefix(text, aiTranslationPrefix) && translationEnd > len(aiTranslationPrefix) &&
+		strings.TrimSpace(text[translationEnd+len(aiAnalysisPrefix):]) != "" && len([]rune(text)) <= 2000
 }
 
 // validateAICorrectAnswer checks the answer's meaning against the immutable question version.

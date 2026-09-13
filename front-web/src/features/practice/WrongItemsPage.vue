@@ -5,7 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { Exam, KnowledgePointItem, Level, WrongItem } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
-import { authorityText, formatAIText, formatAnswerValue, gradingStatusText } from '@/app/format'
+import { authorityText, formatAnswerValue, gradingStatusText, splitAIExplanation } from '@/app/format'
 
 const router = useRouter()
 
@@ -206,12 +206,16 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           你的答案：{{ item.userAnswer ? formatAnswerValue(item.userAnswer, item.options ?? []) : '未作答' }} ·
           {{ correctLabel(item) }}：{{ formatAnswerValue(item.correctAnswer, item.options ?? []) }}
         </p>
-        <details v-if="item.explanation?.source === 'ai'" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
-          <summary style="min-height: 44px; cursor: pointer">
-            <span class="tag">AI 解析（可能有误）</span>
-          </summary>
-          <p class="ai-text" style="margin: 0" lang="zh-CN">{{ formatAIText(item.explanation.text) }}</p>
-        </details>
+        <div v-if="item.explanation?.source === 'ai'" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px" lang="zh-CN">
+          <p class="tag" style="margin-bottom: 6px">AI 解析（可能有误）</p>
+          <details v-if="splitAIExplanation(item.explanation.text).translation">
+            <summary style="min-height: 44px; cursor: pointer">原文翻译</summary>
+            <p style="margin: 0 0 10px">{{ splitAIExplanation(item.explanation.text).translation }}</p>
+          </details>
+          <p v-if="splitAIExplanation(item.explanation.text).analysis" class="ai-text" style="margin: 0">
+            {{ splitAIExplanation(item.explanation.text).analysis }}
+          </p>
+        </div>
         <div v-else-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
