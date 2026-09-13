@@ -17,7 +17,7 @@ vi.mock('@/api/client', () => ({
 }))
 
 vi.mock('@/app/session', () => ({
-  sessionUser: () => ({ email: 'learner@example.com', defaultLevelId: null, showFurigana: true }),
+  sessionUser: () => ({ email: 'learner@example.com', defaultLevelId: null, showFurigana: true, furiganaSize: 70 }),
   setSessionUser: setSessionUserMock,
   isAdmin: () => false,
   clearSession: vi.fn(),
@@ -102,7 +102,7 @@ describe('账号学习记忆', () => {
   })
 
   it('默认开启汉字上方假名并保存到账号', async () => {
-    const updatedUser = { id: 'user-1', email: 'learner@example.com', role: 'learner', defaultLevelId: null, showFurigana: false }
+    const updatedUser = { id: 'user-1', email: 'learner@example.com', role: 'learner', defaultLevelId: null, showFurigana: false, furiganaSize: 85 }
     requestMock.mockImplementation(async (path: string) => {
       if (path === '/catalog') return { exams: [] }
       if (path === '/me') return { user: updatedUser }
@@ -118,12 +118,14 @@ describe('账号学习记忆', () => {
     await flushPromises()
 
     expect((wrapper.get('#show-furigana').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.get('#furigana-size').element as HTMLInputElement).value).toBe('70')
+    await wrapper.get('#furigana-size').setValue(85)
     await wrapper.get('#show-furigana').setValue(false)
     await wrapper.get('form.card').trigger('submit')
     await flushPromises()
 
     expect(requestMock).toHaveBeenCalledWith('/me', {
-      method: 'PATCH', body: { defaultLevelId: null, showFurigana: false },
+      method: 'PATCH', body: { defaultLevelId: null, showFurigana: false, furiganaSize: 85 },
     })
     expect(setSessionUserMock).toHaveBeenCalledWith(updatedUser)
   })

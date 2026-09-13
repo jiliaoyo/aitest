@@ -140,8 +140,13 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.store.RevokeSession(ctx, HashToken(token))
 }
 
-func (s *Service) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool) error {
-	return s.store.UpdatePreferences(ctx, userID, levelID, showFurigana)
+func validFuriganaSize(size int) bool { return size >= 50 && size <= 100 }
+
+func (s *Service) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool, furiganaSize *int) error {
+	if furiganaSize != nil && !validFuriganaSize(*furiganaSize) {
+		return httpapi.ValidationError(map[string]string{"furiganaSize": "假名字号必须在 50% 到 100% 之间"})
+	}
+	return s.store.UpdatePreferences(ctx, userID, levelID, showFurigana, furiganaSize)
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID, currentToken, currentPassword, newPassword string) error {

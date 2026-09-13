@@ -38,3 +38,16 @@ func TestValidatePasswordRejectsBcryptTooLongPassword(t *testing.T) {
 		t.Fatal("expected field validation for a short password")
 	}
 }
+
+func TestValidFuriganaSize(t *testing.T) {
+	for _, size := range []int{50, 70, 100} {
+		if !validFuriganaSize(size) {
+			t.Fatalf("expected %d to be valid", size)
+		}
+	}
+	for _, size := range []int{49, 101} {
+		if validFuriganaSize(size) {
+			t.Fatalf("expected %d to be invalid", size)
+		}
+	}
+}

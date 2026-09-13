@@ -18,9 +18,9 @@ func (s *Store) CreateUser(ctx context.Context, email, emailNormalized, password
 	err := s.db.QueryRow(ctx,
 		`INSERT INTO users (email, email_normalized, password_hash, role)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, email, role, default_level_id, show_furigana`,
+		 RETURNING id, email, role, default_level_id, show_furigana, furigana_size`,
 		email, emailNormalized, passwordHash, string(role),
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana, &u.FuriganaSize)
 	return u, err
 }
 
@@ -35,17 +35,20 @@ func (s *Store) UserByEmail(ctx context.Context, emailNormalized string) (id, ha
 func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
 	var u User
 	err := s.db.QueryRow(ctx,
-		`SELECT id, email, role, default_level_id, show_furigana FROM users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
+		`SELECT id, email, role, default_level_id, show_furigana, furigana_size FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana, &u.FuriganaSize)
 	return u, err
 }
 
-func (s *Store) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool) error {
+func (s *Store) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool, furiganaSize *int) error {
 	_, err := s.db.Exec(ctx,
 		`UPDATE users
-		 SET default_level_id = $2, show_furigana = coalesce($3, show_furigana), updated_at = now()
+		 SET default_level_id = $2,
+		     show_furigana = coalesce($3, show_furigana),
+		     furigana_size = coalesce($4, furigana_size),
+		     updated_at = now()
 		 WHERE id = $1`,
-		userID, levelID, showFurigana)
+		userID, levelID, showFurigana, furiganaSize)
 	return err
 }
 
@@ -71,11 +74,11 @@ func (s *Store) CreateSession(ctx context.Context, userID, tokenHash string, ttl
 func (s *Store) SessionUser(ctx context.Context, tokenHash string) (User, error) {
 	var u User
 	err := s.db.QueryRow(ctx,
-		`SELECT u.id, u.email, u.role, u.default_level_id, u.show_furigana
+		`SELECT u.id, u.email, u.role, u.default_level_id, u.show_furigana, u.furigana_size
 		 FROM auth_sessions s JOIN users u ON u.id = s.user_id
 		 WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
 		tokenHash,
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana, &u.FuriganaSize)
 	return u, err
 }
 

@@ -120,10 +120,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [defaultLevelId, showFurigana]
+              required: [defaultLevelId, showFurigana, furiganaSize]
               properties:
                 defaultLevelId: { type: string, nullable: true }
                 showFurigana: { type: boolean }
+                furiganaSize: { type: integer, minimum: 50, maximum: 100, default: 70 }
       responses:
         '200': { $ref: '#/components/responses/MeResponse' }
   /catalog:
@@ -858,6 +859,7 @@ components:
             role: { type: string, enum: [learner, admin] }
             defaultLevelId: { type: string, nullable: true }
             showFurigana: { type: boolean, default: true }
+            furiganaSize: { type: integer, minimum: 50, maximum: 100, default: 70 }
     Exam:
       type: object
       properties:

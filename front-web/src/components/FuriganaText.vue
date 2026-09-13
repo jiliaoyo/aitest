@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { sessionUser } from '@/app/session'
 
-const props = defineProps<{ text: string }>()
+const props = defineProps<{ text: string; size?: number }>()
 const pattern = /([\p{Script=Han}々〆ヵヶ]+)[（(]([ぁ-ゖァ-ヺー]+)[）)]/gu
 
 const parts = computed(() => {
@@ -17,11 +17,12 @@ const parts = computed(() => {
   if (offset < props.text.length) result.push({ text: props.text.slice(offset) })
   return result.length ? result : [{ text: props.text }]
 })
+const fontSize = computed(() => `${props.size ?? sessionUser()?.furiganaSize ?? 70}%`)
 </script>
 
 <template>
   <template v-for="(part, index) in parts" :key="index">
-    <ruby v-if="part.reading">{{ part.text }}<rp>（</rp><rt>{{ part.reading }}</rt><rp>）</rp></ruby>
+    <ruby v-if="part.reading">{{ part.text }}<rp>（</rp><rt :style="{ fontSize }">{{ part.reading }}</rt><rp>）</rp></ruby>
     <template v-else>{{ part.text }}</template>
   </template>
 </template>

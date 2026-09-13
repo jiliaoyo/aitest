@@ -13,6 +13,7 @@ export interface Me {
   role: Role
   defaultLevelId: string | null
   showFurigana: boolean
+  furiganaSize: number
 }
 
 // ---- catalog ----

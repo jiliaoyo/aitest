@@ -4,12 +4,13 @@ import { useRouter } from 'vue-router'
 import { request, ApiError, fieldErrors } from '@/api/client'
 import type { Exam, Me } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 import { clearSession, sessionUser, setSessionUser } from '@/app/session'
 
 const router = useRouter()
 
 const exams = ref<Exam[]>([])
-const form = reactive({ defaultLevelId: '', showFurigana: true })
+const form = reactive({ defaultLevelId: '', showFurigana: true, furiganaSize: 70 })
 const saving = ref(false)
 const saved = ref(false)
 const errorMessage = ref('')
@@ -26,6 +27,7 @@ onMounted(async () => {
   const me = sessionUser()
   if (me?.defaultLevelId) form.defaultLevelId = me.defaultLevelId
   if (me?.showFurigana === false) form.showFurigana = false
+  if (me?.furiganaSize) form.furiganaSize = me.furiganaSize
   try {
     const res = await request<{ exams: Exam[] }>('/catalog')
     exams.value = res.exams
@@ -41,7 +43,7 @@ async function save(): Promise<void> {
   try {
     const res = await request<{ user: Me }>('/me', {
       method: 'PATCH',
-      body: { defaultLevelId: form.defaultLevelId || null, showFurigana: form.showFurigana },
+      body: { defaultLevelId: form.defaultLevelId || null, showFurigana: form.showFurigana, furiganaSize: form.furiganaSize },
     })
     setSessionUser(res.user)
     saved.value = true
@@ -123,6 +125,20 @@ async function changePassword(): Promise<void> {
           <small class="muted" style="display: block">关闭后保留题目原有的括号假名。</small>
         </span>
       </label>
+      <div class="field">
+        <label for="furigana-size">假名字号：{{ form.furiganaSize }}%</label>
+        <input
+          id="furigana-size"
+          v-model.number="form.furiganaSize"
+          type="range"
+          min="50"
+          max="100"
+          step="5"
+          :disabled="!form.showFurigana"
+          style="width: 100%; min-height: 44px"
+        />
+        <p class="muted" lang="ja" style="font-size: 18px">预览：<FuriganaText text="日本語（にほんご）を勉強（べんきょう）します。" :size="form.furiganaSize" /></p>
+      </div>
       <p v-if="saved" class="tag" data-tone="success" role="status" style="margin-bottom: 10px">已保存</p>
       <p v-if="errorMessage" class="error-summary" role="alert">{{ errorMessage }}</p>
       <button class="primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存' }}</button>

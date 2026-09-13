@@ -179,12 +179,13 @@ func (h *Handler) updateMe(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DefaultLevelID *string `json:"defaultLevelId"`
 		ShowFurigana   *bool   `json:"showFurigana"`
+		FuriganaSize   *int    `json:"furiganaSize"`
 	}
 	if err := httpapi.DecodeJSON(w, r, &req); err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	if err := h.service.UpdatePreferences(r.Context(), userID, req.DefaultLevelID, req.ShowFurigana); err != nil {
+	if err := h.service.UpdatePreferences(r.Context(), userID, req.DefaultLevelID, req.ShowFurigana, req.FuriganaSize); err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}

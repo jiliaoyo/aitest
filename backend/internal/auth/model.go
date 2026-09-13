@@ -15,6 +15,7 @@ type User struct {
 	Role           Role    `json:"role"`
 	DefaultLevelID *string `json:"defaultLevelId"`
 	ShowFurigana   bool    `json:"showFurigana"`
+	FuriganaSize   int     `json:"furiganaSize"`
 }
 
 func NormalizeEmail(email string) string {
