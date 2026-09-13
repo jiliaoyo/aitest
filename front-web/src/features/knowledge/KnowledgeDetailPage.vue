@@ -5,6 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { AIGeneratedSession, AIGenerationCategory, AIGenerationDifficulty, AIGenerationQuestionType, KnowledgePointDetail } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 import { formatPercent, formatDateTime } from '@/app/format'
 import { aiCategoryGroupsForSubject, aiSubjectCode } from '@/app/aiGeneration'
 
@@ -172,15 +173,15 @@ async function generateAIPractice(): Promise<void> {
       <div v-if="detail.description || detail.commonMistakes || detail.examples" class="card">
         <section v-if="detail.description">
           <h2 style="font-size: 16px">说明</h2>
-          <p style="white-space: pre-wrap">{{ detail.description }}</p>
+          <p style="white-space: pre-wrap"><FuriganaText :text="detail.description" /></p>
         </section>
         <section v-if="detail.commonMistakes" style="margin-top: 12px">
           <h2 style="font-size: 16px">常见误区</h2>
-          <p style="white-space: pre-wrap">{{ detail.commonMistakes }}</p>
+          <p style="white-space: pre-wrap"><FuriganaText :text="detail.commonMistakes" /></p>
         </section>
         <section v-if="detail.examples" style="margin-top: 12px">
           <h2 style="font-size: 16px">例句</h2>
-          <p class="material-text" lang="ja" style="white-space: pre-wrap; margin: 0">{{ detail.examples }}</p>
+          <p class="material-text" lang="ja" style="white-space: pre-wrap; margin: 0"><FuriganaText :text="detail.examples" /></p>
         </section>
       </div>
       <div v-else class="card">

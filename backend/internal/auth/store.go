@@ -18,9 +18,9 @@ func (s *Store) CreateUser(ctx context.Context, email, emailNormalized, password
 	err := s.db.QueryRow(ctx,
 		`INSERT INTO users (email, email_normalized, password_hash, role)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, email, role, default_level_id`,
+		 RETURNING id, email, role, default_level_id, show_furigana`,
 		email, emailNormalized, passwordHash, string(role),
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID)
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
 	return u, err
 }
 
@@ -35,15 +35,17 @@ func (s *Store) UserByEmail(ctx context.Context, emailNormalized string) (id, ha
 func (s *Store) UserByID(ctx context.Context, id string) (User, error) {
 	var u User
 	err := s.db.QueryRow(ctx,
-		`SELECT id, email, role, default_level_id FROM users WHERE id = $1`, id,
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID)
+		`SELECT id, email, role, default_level_id, show_furigana FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
 	return u, err
 }
 
-func (s *Store) SetDefaultLevel(ctx context.Context, userID string, levelID *string) error {
+func (s *Store) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool) error {
 	_, err := s.db.Exec(ctx,
-		`UPDATE users SET default_level_id = $2, updated_at = now() WHERE id = $1`,
-		userID, levelID)
+		`UPDATE users
+		 SET default_level_id = $2, show_furigana = coalesce($3, show_furigana), updated_at = now()
+		 WHERE id = $1`,
+		userID, levelID, showFurigana)
 	return err
 }
 
@@ -69,11 +71,11 @@ func (s *Store) CreateSession(ctx context.Context, userID, tokenHash string, ttl
 func (s *Store) SessionUser(ctx context.Context, tokenHash string) (User, error) {
 	var u User
 	err := s.db.QueryRow(ctx,
-		`SELECT u.id, u.email, u.role, u.default_level_id
+		`SELECT u.id, u.email, u.role, u.default_level_id, u.show_furigana
 		 FROM auth_sessions s JOIN users u ON u.id = s.user_id
 		 WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()`,
 		tokenHash,
-	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID)
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana)
 	return u, err
 }
 

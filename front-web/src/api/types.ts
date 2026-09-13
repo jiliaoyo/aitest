@@ -12,6 +12,7 @@ export interface Me {
   email: string
   role: Role
   defaultLevelId: string | null
+  showFurigana: boolean
 }
 
 // ---- catalog ----

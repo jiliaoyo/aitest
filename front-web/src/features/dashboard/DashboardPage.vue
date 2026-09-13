@@ -5,6 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { DashboardDTO } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatAIText, formatDateTime, formatPercent } from '@/app/format'
 
@@ -145,7 +146,7 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
           </p>
           <div v-if="dashboard.memory.advice.status === 'completed' && dashboard.memory.advice.text">
             <p><strong>AI 学习建议（基于累计进度）</strong></p>
-            <p class="muted ai-text">{{ formatAIText(dashboard.memory.advice.text) }}</p>
+            <p class="muted ai-text"><FuriganaText :text="formatAIText(dashboard.memory.advice.text)" /></p>
           </div>
           <p v-else-if="dashboard.memory.advice.status === 'pending'" class="muted" role="status">
             AI 正在根据最新进度整理建议。

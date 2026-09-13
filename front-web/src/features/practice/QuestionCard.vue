@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { AnswerValue, PreSubmitItem } from '@/api/types'
 import { questionTypeText } from '@/app/format'
+import FuriganaText from '@/components/FuriganaText.vue'
 import MaterialPanel from './MaterialPanel.vue'
 
 // 按题型渲染原生表单控件；只展示答题前 DTO 字段，不含任何答案线索。
@@ -65,7 +66,7 @@ function inputText(event: Event): void {
       @toggle="emit('toggle-material')"
     />
 
-    <p class="stem" style="font-size: 17px; margin: 14px 0 18px; white-space: pre-wrap" lang="ja">{{ item.stem }}</p>
+    <p class="stem" style="font-size: 17px; margin: 14px 0 18px; white-space: pre-wrap" lang="ja"><FuriganaText :text="item.stem" /></p>
 
     <fieldset style="border: 0; padding: 0; margin: 0">
       <legend class="visually-hidden-ish" style="position: absolute; width: 1px; height: 1px; overflow: hidden">
@@ -81,14 +82,14 @@ function inputText(event: Event): void {
             :checked="selectedIds.includes(opt.id)"
             @change="selectSingle(opt.id)"
           />
-          <span><span class="mono">{{ opt.label }}.</span> {{ opt.text }}</span>
+          <span><span class="mono">{{ opt.label }}.</span> <FuriganaText :text="opt.text" /></span>
         </label>
       </template>
 
       <template v-else-if="item.type === 'multiple_choice'">
         <label v-for="opt in item.options" :key="opt.id" class="option-row" lang="ja">
           <input type="checkbox" :checked="selectedIds.includes(opt.id)" @change="toggleMulti(opt.id)" />
-          <span><span class="mono">{{ opt.label }}.</span> {{ opt.text }}</span>
+          <span><span class="mono">{{ opt.label }}.</span> <FuriganaText :text="opt.text" /></span>
         </label>
       </template>
 

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { ResultItem as ResultItemDTO } from '@/api/types'
 import { authorityText, explanationSourceText, formatAnswerValue, gradingStatusText, questionTypeText, splitAIExplanation } from '@/app/format'
 import ReportDialog from '@/features/issues/ReportDialog.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 
 // 逐题解析：正式分层（确定性）与 AI 判定分开呈现，来源标签始终可见。
 const props = defineProps<{ item: ResultItemDTO }>()
@@ -50,17 +51,17 @@ const reportItemID = computed(() => props.item.id)
     </header>
 
     <section v-if="item.material" class="card" style="background: var(--fg-soft); padding: 14px; margin-top: 12px">
-      <p class="muted" style="font-size: 13px; margin: 0 0 6px">共享材料{{ item.material.title ? ` · ${item.material.title}` : '' }}</p>
-      <p class="material-text" style="margin: 0; white-space: pre-wrap" lang="ja">{{ item.material.content }}</p>
+      <p class="muted" style="font-size: 13px; margin: 0 0 6px">共享材料<template v-if="item.material.title"> · <FuriganaText :text="item.material.title" /></template></p>
+      <p class="material-text" style="margin: 0; white-space: pre-wrap" lang="ja"><FuriganaText :text="item.material.content" /></p>
     </section>
 
-    <p style="font-size: 16px; margin: 14px 0 8px; white-space: pre-wrap" lang="ja">{{ item.stem }}</p>
+    <p style="font-size: 16px; margin: 14px 0 8px; white-space: pre-wrap" lang="ja"><FuriganaText :text="item.stem" /></p>
 
     <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px">
       <dt class="muted">你的答案</dt>
-      <dd class="mono" style="margin: 0">{{ userText }}</dd>
+      <dd class="mono" style="margin: 0"><FuriganaText :text="userText" /></dd>
       <dt class="muted">{{ correctLabel }}</dt>
-      <dd class="mono" style="margin: 0">{{ correctText }}</dd>
+      <dd class="mono" style="margin: 0"><FuriganaText :text="correctText" /></dd>
       <template v-if="item.knowledgePoints.length">
         <dt class="muted">知识点</dt>
         <dd style="margin: 0; display: flex; gap: 8px; flex-wrap: wrap">
@@ -75,15 +76,15 @@ const reportItemID = computed(() => props.item.id)
       <p class="tag" data-tone="neutral" style="margin-bottom: 6px">{{ explanationSourceText[item.explanation.source] }}</p>
       <details v-if="aiExplanation.translation">
         <summary style="min-height: 44px; cursor: pointer">原文翻译</summary>
-        <p style="margin: 0 0 10px">{{ aiExplanation.translation }}</p>
+        <p style="margin: 0 0 10px"><FuriganaText :text="aiExplanation.translation" /></p>
       </details>
-      <p v-if="aiExplanation.analysis" class="ai-text" style="margin: 0">{{ aiExplanation.analysis }}</p>
+      <p v-if="aiExplanation.analysis" class="ai-text" style="margin: 0"><FuriganaText :text="aiExplanation.analysis" /></p>
     </div>
     <div v-else-if="item.explanation" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
       <p class="tag" data-tone="neutral" style="margin-bottom: 6px">
         {{ explanationSourceText[item.explanation.source] ?? item.explanation.source }}
       </p>
-      <p style="margin: 0" lang="zh-CN">{{ item.explanation.text }}</p>
+      <p style="margin: 0" lang="zh-CN"><FuriganaText :text="item.explanation.text" /></p>
     </div>
     <p v-else-if="item.gradingStatus === 'failed'" class="muted" style="margin-top: 10px">
       分析失败，稍后可重试；确定性成绩不受影响。

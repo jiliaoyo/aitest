@@ -10,6 +10,10 @@ export function sessionUser(): Readonly<typeof user.value> {
   return user.value
 }
 
+export function setSessionUser(value: Me): void {
+  user.value = value
+}
+
 export function isAdmin(): boolean {
   return user.value?.role === 'admin'
 }

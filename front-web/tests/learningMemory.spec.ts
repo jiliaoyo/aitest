@@ -5,6 +5,7 @@ import DashboardPage from '@/features/dashboard/DashboardPage.vue'
 import SettingsPage from '@/features/settings/SettingsPage.vue'
 
 const requestMock = vi.hoisted(() => vi.fn())
+const setSessionUserMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/api/client', () => ({
   request: requestMock,
@@ -16,13 +17,15 @@ vi.mock('@/api/client', () => ({
 }))
 
 vi.mock('@/app/session', () => ({
-  sessionUser: () => ({ email: 'learner@example.com', defaultLevelId: null }),
+  sessionUser: () => ({ email: 'learner@example.com', defaultLevelId: null, showFurigana: true }),
+  setSessionUser: setSessionUserMock,
   isAdmin: () => false,
   clearSession: vi.fn(),
 }))
 
 afterEach(() => {
   requestMock.mockReset()
+  setSessionUserMock.mockReset()
   vi.restoreAllMocks()
 })
 
@@ -96,5 +99,32 @@ describe('账号学习记忆', () => {
       method: 'POST', body: { currentPassword: 'old-password', newPassword: 'new-password' },
     })
     expect(wrapper.text()).toContain('密码已修改')
+  })
+
+  it('默认开启汉字上方假名并保存到账号', async () => {
+    const updatedUser = { id: 'user-1', email: 'learner@example.com', role: 'learner', defaultLevelId: null, showFurigana: false }
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/catalog') return { exams: [] }
+      if (path === '/me') return { user: updatedUser }
+      return undefined
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/settings', component: SettingsPage }],
+    })
+    await router.push('/settings')
+    await router.isReady()
+    const wrapper = mount(SettingsPage, { global: { plugins: [router] } })
+    await flushPromises()
+
+    expect((wrapper.get('#show-furigana').element as HTMLInputElement).checked).toBe(true)
+    await wrapper.get('#show-furigana').setValue(false)
+    await wrapper.get('form.card').trigger('submit')
+    await flushPromises()
+
+    expect(requestMock).toHaveBeenCalledWith('/me', {
+      method: 'PATCH', body: { defaultLevelId: null, showFurigana: false },
+    })
+    expect(setSessionUserMock).toHaveBeenCalledWith(updatedUser)
   })
 })

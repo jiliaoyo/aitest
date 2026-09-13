@@ -5,6 +5,7 @@ import { request, ApiError } from '@/api/client'
 import type { Exam, KnowledgePointItem, Level, WrongItem } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 import { authorityText, formatAnswerValue, gradingStatusText, splitAIExplanation } from '@/app/format'
 
 const router = useRouter()
@@ -199,28 +200,28 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           <span v-if="item.knowledgePoints.length" class="muted">{{ item.knowledgePoints.map((k) => k.name).join('、') }}</span>
         </header>
         <section v-if="item.material" class="card" style="background: var(--fg-soft); padding: 14px; margin-top: 10px">
-          <p class="material-text" style="margin: 0; white-space: pre-wrap">{{ item.material.content }}</p>
+          <p class="material-text" style="margin: 0; white-space: pre-wrap"><FuriganaText :text="item.material.content" /></p>
         </section>
-        <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap">{{ item.stem }}</p>
+        <p style="font-size: 16px; margin: 12px 0 8px; white-space: pre-wrap"><FuriganaText :text="item.stem" /></p>
         <p class="mono" style="margin: 0">
-          你的答案：{{ item.userAnswer ? formatAnswerValue(item.userAnswer, item.options ?? []) : '未作答' }} ·
-          {{ correctLabel(item) }}：{{ formatAnswerValue(item.correctAnswer, item.options ?? []) }}
+          你的答案：<FuriganaText :text="item.userAnswer ? formatAnswerValue(item.userAnswer, item.options ?? []) : '未作答'" /> ·
+          {{ correctLabel(item) }}：<FuriganaText :text="formatAnswerValue(item.correctAnswer, item.options ?? [])" />
         </p>
         <div v-if="item.explanation?.source === 'ai'" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px" lang="zh-CN">
           <p class="tag" style="margin-bottom: 6px">AI 解析（可能有误）</p>
           <details v-if="splitAIExplanation(item.explanation.text).translation">
             <summary style="min-height: 44px; cursor: pointer">原文翻译</summary>
-            <p style="margin: 0 0 10px">{{ splitAIExplanation(item.explanation.text).translation }}</p>
+            <p style="margin: 0 0 10px"><FuriganaText :text="splitAIExplanation(item.explanation.text).translation" /></p>
           </details>
           <p v-if="splitAIExplanation(item.explanation.text).analysis" class="ai-text" style="margin: 0">
-            {{ splitAIExplanation(item.explanation.text).analysis }}
+            <FuriganaText :text="splitAIExplanation(item.explanation.text).analysis" />
           </p>
         </div>
         <div v-else-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
             {{ item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
           </p>
-          <p style="margin: 0" lang="zh-CN">{{ item.explanation.text }}</p>
+          <p style="margin: 0" lang="zh-CN"><FuriganaText :text="item.explanation.text" /></p>
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 14px">
           <button class="ghost danger" type="button" :disabled="deletingItemID === item.itemId" @click="removeWrongItem(item)">

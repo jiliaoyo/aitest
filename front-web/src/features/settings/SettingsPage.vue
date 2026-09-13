@@ -4,12 +4,12 @@ import { useRouter } from 'vue-router'
 import { request, ApiError, fieldErrors } from '@/api/client'
 import type { Exam, Me } from '@/api/types'
 import AppShell from '@/components/AppShell.vue'
-import { clearSession, sessionUser } from '@/app/session'
+import { clearSession, sessionUser, setSessionUser } from '@/app/session'
 
 const router = useRouter()
 
 const exams = ref<Exam[]>([])
-const form = reactive({ defaultLevelId: '' })
+const form = reactive({ defaultLevelId: '', showFurigana: true })
 const saving = ref(false)
 const saved = ref(false)
 const errorMessage = ref('')
@@ -25,6 +25,7 @@ const passwordError = ref('')
 onMounted(async () => {
   const me = sessionUser()
   if (me?.defaultLevelId) form.defaultLevelId = me.defaultLevelId
+  if (me?.showFurigana === false) form.showFurigana = false
   try {
     const res = await request<{ exams: Exam[] }>('/catalog')
     exams.value = res.exams
@@ -38,10 +39,11 @@ async function save(): Promise<void> {
   saved.value = false
   errorMessage.value = ''
   try {
-    await request<Me>('/me', {
+    const res = await request<{ user: Me }>('/me', {
       method: 'PATCH',
-      body: { defaultLevelId: form.defaultLevelId || null },
+      body: { defaultLevelId: form.defaultLevelId || null, showFurigana: form.showFurigana },
     })
+    setSessionUser(res.user)
     saved.value = true
   } catch (err) {
     errorMessage.value = Object.values(fieldErrors(err))[0] ?? (err instanceof ApiError ? err.message : '保存失败')
@@ -114,6 +116,13 @@ async function changePassword(): Promise<void> {
         </select>
         <p class="muted" style="font-size: 13px">用于学习概览的推荐与快捷创建。</p>
       </div>
+      <label class="option-row" style="margin-bottom: 14px">
+        <input id="show-furigana" v-model="form.showFurigana" type="checkbox" />
+        <span>
+          把汉字读音显示在汉字上方
+          <small class="muted" style="display: block">关闭后保留题目原有的括号假名。</small>
+        </span>
+      </label>
       <p v-if="saved" class="tag" data-tone="success" role="status" style="margin-bottom: 10px">已保存</p>
       <p v-if="errorMessage" class="error-summary" role="alert">{{ errorMessage }}</p>
       <button class="primary" type="submit" :disabled="saving">{{ saving ? '保存中…' : '保存' }}</button>

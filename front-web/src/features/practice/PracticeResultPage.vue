@@ -8,6 +8,7 @@ import AppStatus from '@/components/AppStatus.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { aiAnalysisStatusText, formatAIText, formatDateTime, formatPercent } from '@/app/format'
 import ResultItem from './ResultItem.vue'
+import FuriganaText from '@/components/FuriganaText.vue'
 
 const route = useRoute()
 const sessionID = computed(() => route.params.sessionId as string)
@@ -189,7 +190,7 @@ const retryButtonLabel = computed(() => {
         <p v-else-if="result.aiAnalysis.status === 'not_requested'" class="muted" style="margin: 12px 0 0">
           该批次没有生成 AI 总结。
         </p>
-        <p v-else class="ai-text" style="margin: 12px 0 0">{{ formatAIText(result.aiAnalysis.text) }}</p>
+        <p v-else class="ai-text" style="margin: 12px 0 0"><FuriganaText :text="formatAIText(result.aiAnalysis.text)" /></p>
       </section>
 
       <section aria-label="逐题解析" style="display: flex; flex-direction: column; gap: 18px">

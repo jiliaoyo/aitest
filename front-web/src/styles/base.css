@@ -191,6 +191,15 @@ button.ghost {
   line-height: 1.8;
 }
 
+ruby {
+  ruby-align: center;
+}
+
+rt {
+  color: var(--muted);
+  font-size: 0.55em;
+}
+
 table.data {
   width: 100%;
   border-collapse: collapse;

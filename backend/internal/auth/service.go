@@ -140,8 +140,8 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.store.RevokeSession(ctx, HashToken(token))
 }
 
-func (s *Service) SetDefaultLevel(ctx context.Context, userID string, levelID *string) error {
-	return s.store.SetDefaultLevel(ctx, userID, levelID)
+func (s *Service) UpdatePreferences(ctx context.Context, userID string, levelID *string, showFurigana *bool) error {
+	return s.store.UpdatePreferences(ctx, userID, levelID, showFurigana)
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID, currentToken, currentPassword, newPassword string) error {

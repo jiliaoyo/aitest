@@ -108,19 +108,22 @@ paths:
   /me:
     get:
       tags: [auth]
-      summary: 当前账号、角色与默认级别
+      summary: 当前账号、角色与个人设置
       responses:
         '200': { $ref: '#/components/responses/MeResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     patch:
       tags: [auth]
-      summary: 更新默认级别
+      summary: 更新个人设置
       requestBody:
         content:
           application/json:
             schema:
               type: object
-              properties: { defaultLevelId: { type: string, nullable: true } }
+              required: [defaultLevelId, showFurigana]
+              properties:
+                defaultLevelId: { type: string, nullable: true }
+                showFurigana: { type: boolean }
       responses:
         '200': { $ref: '#/components/responses/MeResponse' }
   /catalog:
@@ -854,6 +857,7 @@ components:
             email: { type: string }
             role: { type: string, enum: [learner, admin] }
             defaultLevelId: { type: string, nullable: true }
+            showFurigana: { type: boolean, default: true }
     Exam:
       type: object
       properties:
