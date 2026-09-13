@@ -106,7 +106,7 @@ func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) 
 		generatedQuestionForReuseTest("駅＿＿＿本を読みます。", "一"),
 	}
 	existing := generatedQuestionReuseKey("level", "subject", questions[0])
-	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, []string{existing})
+	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, []string{existing}, nil)
 	if err != nil || len(filtered) != 1 || filtered[0].Stem != "駅＿＿＿本を読みます。" || len(duplicates) != 1 {
 		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v, error: %v", filtered, duplicates, err)
 	}
@@ -116,7 +116,7 @@ func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) 
 	}
 }
 
-func TestGeneratedQuestionDeduplicationKeepsValidQuestions(t *testing.T) {
+func TestGeneratedQuestionDeduplicationRejectsSameStemWithDifferentOptions(t *testing.T) {
 	first := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
 	variant := generatedQuestionForReuseTest(first.Stem, "五")
 	first.Explanation, variant.Explanation = "这是第一题解析。", "这是第二题解析。"
@@ -125,9 +125,35 @@ func TestGeneratedQuestionDeduplicationKeepsValidQuestions(t *testing.T) {
 	if err := validateGeneratedQuestions(questions, 3, generatedDifficultyNormal, generatedQuestionTypeMixed, nil); err != nil {
 		t.Fatalf("valid questions with a repeated stem should reach full-question deduplication: %v", err)
 	}
-	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, nil)
-	if err != nil || len(filtered) != 2 || len(duplicates) != 1 {
+	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, nil, nil)
+	if err != nil || len(filtered) != 1 || len(duplicates) != 2 {
 		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v, error: %v", filtered, duplicates, err)
+	}
+}
+
+func TestGeneratedQuestionDeduplicationRejectsTemplateSwap(t *testing.T) {
+	questions := []generatedQuestion{
+		generatedQuestionForReuseTest("教室＿＿＿日本語を勉強します。", "一"),
+		generatedQuestionForReuseTest("駅＿＿＿本を読みます。", "一"),
+	}
+	filtered, duplicates, err := filterGeneratedQuestionDuplicates(questions, "level", "subject", nil, nil,
+		[]string{"図書館＿＿＿日本語を勉強します。"})
+	if err != nil || len(filtered) != 1 || filtered[0].Stem != "駅＿＿＿本を読みます。" || len(duplicates) != 1 {
+		t.Fatalf("unexpected filtered questions: %+v, duplicates: %v, error: %v", filtered, duplicates, err)
+	}
+}
+
+func TestGeneratedDiversityPlanRotatesContextsAndKnowledgePoints(t *testing.T) {
+	points := []learning.AIGenerationKnowledgePoint{{ID: "kp-1"}, {ID: "kp-2"}, {ID: "kp-3"}}
+	plan := generatedDiversityPlan(10, 0, "00", points, true)
+	contexts := map[string]bool{}
+	pointCounts := map[string]int{}
+	for _, slot := range plan {
+		contexts[slot.Context] = true
+		pointCounts[slot.KnowledgePointID]++
+	}
+	if len(contexts) != 10 || pointCounts["kp-1"] != 4 || pointCounts["kp-2"] != 3 || pointCounts["kp-3"] != 3 {
+		t.Fatalf("unexpected diversity plan: %+v", plan)
 	}
 }
 

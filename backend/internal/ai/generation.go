@@ -12,10 +12,13 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/aishuati/backend/internal/content"
 	"github.com/aishuati/backend/internal/httpapi"
@@ -26,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v16"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v16.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v17"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v17.retry"
 
 const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
 
@@ -57,7 +60,9 @@ const (
 )
 
 const maxRecentGeneratedStemsInPrompt = 20
+const maxRecentGeneratedStemsForSimilarity = 200
 const maxGenerationCalls = 6
+const generatedStemSimilarityThreshold = 0.62
 
 var errGenerationBudgetExceeded = errors.New("AI 生成批次已达到模型调用上限")
 
@@ -556,8 +561,62 @@ type questionGenerationInput struct {
 	RetryFeedback    string                      `json:"retryFeedback,omitempty"`
 	AvoidStems       []string                    `json:"avoidStems,omitempty"`
 	QuestionTypePlan map[string]int              `json:"questionTypePlan,omitempty"`
+	DiversityPlan    []generatedDiversitySlot    `json:"diversityPlan,omitempty"`
 	CurriculumScope  string                      `json:"curriculumScope,omitempty"`
 	LearningMemory   learning.AIGenerationMemory `json:"learningMemory"`
+}
+
+type generatedDiversitySlot struct {
+	Context          string `json:"context"`
+	Presentation     string `json:"presentation"`
+	KnowledgePointID string `json:"knowledgePointId,omitempty"`
+}
+
+var generatedDiversityContexts = []string{
+	"家庭与日常生活", "学校与学习", "工作与职场", "购物与餐饮", "交通与出行",
+	"旅行与住宿", "公共服务", "健康与运动", "天气与休闲", "朋友与社交",
+}
+
+var generatedDiversityPresentations = []string{
+	"单句叙述", "两人对话", "短信或邮件", "通知或告示",
+	"计划或日程", "请求或建议", "经历或回忆", "比较或选择",
+}
+
+func generatedDiversityPlan(count, start int, seed string, points []learning.AIGenerationKnowledgePoint, assignKnowledgePoints bool) []generatedDiversitySlot {
+	if count <= 0 {
+		return nil
+	}
+	offset := 0
+	if decoded, err := hex.DecodeString(seed); err == nil && len(decoded) > 0 {
+		offset = int(decoded[0])
+	}
+	plan := make([]generatedDiversitySlot, count)
+	for i := range plan {
+		position := start + i
+		plan[i] = generatedDiversitySlot{
+			Context:      generatedDiversityContexts[(offset+position)%len(generatedDiversityContexts)],
+			Presentation: generatedDiversityPresentations[(offset/len(generatedDiversityContexts)+position*3)%len(generatedDiversityPresentations)],
+		}
+		if assignKnowledgePoints && len(points) > 0 {
+			plan[i].KnowledgePointID = points[position%len(points)].ID
+		}
+	}
+	return plan
+}
+
+func validateGeneratedDiversityPlan(questions []generatedQuestion, plan []generatedDiversitySlot) error {
+	if len(plan) == 0 {
+		return nil
+	}
+	if len(questions) != len(plan) {
+		return errors.New("AI 多样性计划与题量不一致")
+	}
+	for i, slot := range plan {
+		if slot.KnowledgePointID != "" && !slices.Contains(questions[i].KnowledgePointIDs, slot.KnowledgePointID) {
+			return fmt.Errorf("AI 第 %d 题未覆盖多样性计划指定的知识点", i+1)
+		}
+	}
+	return nil
 }
 
 type generatedOption struct {
@@ -828,10 +887,11 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if len(memory.KnowledgePoints) == 0 {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("没有可用于 AI 出题的已审核知识点"))
 	}
-	avoidStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, maxRecentGeneratedStemsInPrompt)
+	recentStems, err := s.loadGeneratedStems(ctx, s.pool, row.UserID, row.LevelID, subjectID, maxRecentGeneratedStemsForSimilarity)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取历史 AI 题干失败: %w", err))
 	}
+	avoidStems := append([]string(nil), recentStems[:min(len(recentStems), maxRecentGeneratedStemsInPrompt)]...)
 	// 全量指纹只用于服务端精确去重，不放进提示词，避免历史增长后消耗大量 token。
 	existingKeys, err := s.loadGeneratedQuestionKeys(ctx, s.pool, row.UserID, row.LevelID, subjectID)
 	if err != nil {
@@ -852,9 +912,14 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		if err != nil {
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
+		var diversityPlan []generatedDiversitySlot
+		if !isReadingGeneration(row.SubjectCode, category) {
+			diversityPlan = generatedDiversityPlan(remaining, len(generatedQuestions), seed, memory.KnowledgePoints,
+				category == generatedCategoryMixed)
+		}
 		systemPrompt := questionGenerationPrompt + questionGenerationPromptAddendum
 		feedback := ""
-		temperature := 0.4
+		temperature := 0.7
 		promptVersion := questionGenerationPromptVersion
 		if generationAttempt > 0 {
 			promptVersion = questionGenerationRetryPromptVersion
@@ -871,7 +936,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		inputJSON, _ := json.Marshal(questionGenerationInput{
 			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, SubjectCode: row.SubjectCode, Difficulty: difficulty,
 			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
-			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, QuestionTypePlan: questionTypePlan,
+			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, QuestionTypePlan: questionTypePlan, DiversityPlan: diversityPlan,
 			CurriculumScope: generationCurriculumScope(row.LevelCode), LearningMemory: memory,
 		})
 		reserved, err := s.reserveGenerationCall(ctx, req.SessionID)
@@ -921,6 +986,13 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			retryNote = ""
 			continue
 		}
+		if err := validateGeneratedDiversityPlan(questions, diversityPlan); err != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", err)
+			s.recordGenerationError(ctx, req.SessionID, err)
+			validationErr = err
+			retryNote = ""
+			continue
+		}
 		if err := validateGeneratedQuestionTypePlan(questions, questionType, questionTypePlan); err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			s.recordGenerationError(ctx, req.SessionID, err)
@@ -950,7 +1022,9 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		blockedKeys = append(blockedKeys, generatedKeys...)
-		uniqueQuestions, duplicates, err := filterGeneratedQuestionDuplicates(questions, row.LevelID, subjectID, generatedQuestionPoints, blockedKeys)
+		blockedStems := append([]string(nil), recentStems...)
+		blockedStems = append(blockedStems, generatedQuestionStems(generatedQuestions)...)
+		uniqueQuestions, duplicates, err := filterGeneratedQuestionDuplicates(questions, row.LevelID, subjectID, generatedQuestionPoints, blockedKeys, blockedStems)
 		if err != nil {
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			s.recordGenerationError(ctx, req.SessionID, err)
@@ -1111,6 +1185,58 @@ func normalizeGeneratedStem(stem string) string {
 	return strings.Join(strings.Fields(stem), "")
 }
 
+var generatedFuriganaPattern = regexp.MustCompile(`（[ぁ-ゖゝゞー]+）`)
+var generatedBlankReplacer = strings.NewReplacer("＿＿＿", "□", "___", "□", "（　）", "□", "（ ）", "□", "()", "□")
+
+func normalizeGeneratedStemForSimilarity(stem string) []rune {
+	stem = generatedBlankReplacer.Replace(generatedFuriganaPattern.ReplaceAllString(stem, ""))
+	var normalized strings.Builder
+	for _, r := range strings.ToLower(stem) {
+		if r == '□' || unicode.IsLetter(r) || unicode.IsNumber(r) {
+			normalized.WriteRune(r)
+		}
+	}
+	return []rune(normalized.String())
+}
+
+// ponytail: character bigrams catch cheap template swaps; use semantic embeddings only if measured false negatives justify the cost.
+func generatedStemSimilarity(first, second string) float64 {
+	a, b := normalizeGeneratedStemForSimilarity(first), normalizeGeneratedStemForSimilarity(second)
+	if len(a) == 0 || len(b) == 0 {
+		return 0
+	}
+	if string(a) == string(b) {
+		return 1
+	}
+	if len(a) < 8 || len(b) < 8 {
+		return 0
+	}
+	shingles := func(value []rune) map[string]struct{} {
+		out := make(map[string]struct{}, len(value)-1)
+		for i := 0; i < len(value)-1; i++ {
+			out[string(value[i:i+2])] = struct{}{}
+		}
+		return out
+	}
+	firstShingles, secondShingles := shingles(a), shingles(b)
+	intersection := 0
+	for shingle := range firstShingles {
+		if _, ok := secondShingles[shingle]; ok {
+			intersection++
+		}
+	}
+	return float64(2*intersection) / float64(len(firstShingles)+len(secondShingles))
+}
+
+func generatedStemTooSimilar(stem string, existing []string) bool {
+	for _, candidate := range existing {
+		if generatedStemSimilarity(stem, candidate) >= generatedStemSimilarityThreshold {
+			return true
+		}
+	}
+	return false
+}
+
 func generatedQuestionReuseKey(levelID, subjectID string, question generatedQuestion) string {
 	correctOptionIDs := map[string]struct{}{}
 	var optionAnswer struct {
@@ -1211,7 +1337,7 @@ func generatedQuestionKeys(levelID, subjectID string, questions []generatedQuest
 	return keys, nil
 }
 
-func filterGeneratedQuestionDuplicates(questions []generatedQuestion, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, existingKeys []string) ([]generatedQuestion, []string, error) {
+func filterGeneratedQuestionDuplicates(questions []generatedQuestion, levelID, subjectID string, points []learning.AIGenerationKnowledgePoint, existingKeys, existingStems []string) ([]generatedQuestion, []string, error) {
 	keys := make(map[string]struct{}, len(existingKeys))
 	for _, key := range existingKeys {
 		keys[key] = struct{}{}
@@ -1225,7 +1351,9 @@ func filterGeneratedQuestionDuplicates(questions []generatedQuestion, levelID, s
 			return nil, nil, err
 		}
 		key := generatedQuestionReuseKey(levelID, questionSubjectID, question)
-		if _, ok := keys[key]; ok {
+		_, exactDuplicate := keys[key]
+		nearDuplicate := question.Material == nil && generatedStemTooSimilar(question.Stem, existingStems)
+		if exactDuplicate || nearDuplicate {
 			if _, seen := seenDuplicates[key]; !seen {
 				duplicates = append(duplicates, strings.TrimSpace(question.Stem))
 				seenDuplicates[key] = struct{}{}
@@ -1234,6 +1362,7 @@ func filterGeneratedQuestionDuplicates(questions []generatedQuestion, levelID, s
 		}
 		filtered = append(filtered, question)
 		keys[key] = struct{}{}
+		existingStems = append(existingStems, question.Stem)
 	}
 	return filtered, duplicates, nil
 }
@@ -1449,10 +1578,14 @@ func (s *Service) persistGeneratedQuestions(ctx context.Context, sessionID, user
 		if err != nil {
 			return fmt.Errorf("检查历史 AI 题目失败: %w", err)
 		}
-		if _, duplicates, err := filterGeneratedQuestionDuplicates(questions, levelID, subjectID, points, existingKeys); err != nil {
+		recentStems, err := s.loadGeneratedStems(ctx, tx, userID, levelID, subjectID, maxRecentGeneratedStemsForSimilarity)
+		if err != nil {
+			return fmt.Errorf("读取近期 AI 题干失败: %w", err)
+		}
+		if _, duplicates, err := filterGeneratedQuestionDuplicates(questions, levelID, subjectID, points, existingKeys, recentStems); err != nil {
 			return err
 		} else if len(duplicates) > 0 {
-			return fmt.Errorf("AI 题目与历史完全重复：%s", strings.Join(duplicates, "；"))
+			return fmt.Errorf("AI 题目与历史重复或高度相似：%s", strings.Join(duplicates, "；"))
 		}
 		sectionName := "根据全局记忆生成"
 		if generationMode == generationModeLevel {
