@@ -3,9 +3,17 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/aishuati/backend/internal/content"
 )
+
+const aiTranslationPrefix = "原文翻译："
+
+func validAIExplanation(text string) bool {
+	text = strings.TrimSpace(text)
+	return strings.HasPrefix(text, aiTranslationPrefix) && len([]rune(text)) <= 2000
+}
 
 // validateAICorrectAnswer checks the answer's meaning against the immutable question version.
 // AI may explain or propose an answer, but it cannot invent an option ID or a malformed value.

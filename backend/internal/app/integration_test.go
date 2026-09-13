@@ -933,11 +933,11 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 				if item.NeedsGrading {
 					grades = append(grades, map[string]any{
 						"itemId": item.ItemID, "correctness": "cannot_determine",
-						"correctAnswer": nil, "explanation": "无法可靠判定。",
+						"correctAnswer": nil, "explanation": "原文翻译：这是测试题。\n答案依据：无法可靠判定。",
 					})
 				}
 				if item.NeedsExplanation {
-					explanations = append(explanations, map[string]string{"itemId": item.ItemID, "text": "根据权威答案判断。"})
+					explanations = append(explanations, map[string]string{"itemId": item.ItemID, "text": "原文翻译：这是测试题。\n答案依据：根据权威答案判断。"})
 				}
 			}
 			memoryAdvice := ""
@@ -1045,7 +1045,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 							{"id": "c", "label": "C", "text": "选项三"}, {"id": "d", "label": "D", "text": "选项四"},
 						},
 						"correctAnswer": map[string]any{"optionIds": []string{"a"}},
-						"explanation":   "这是测试解析。", "knowledgePointIds": []string{pointID}, "difficulty": 3,
+						"explanation":   "原文翻译：这是测试题。\n答案依据：这是测试解析。", "knowledgePointIds": []string{pointID}, "difficulty": 3,
 					}
 				}
 				output = map[string]any{"questions": questions}
@@ -1055,7 +1055,7 @@ func TestPracticeHTTPIntegration(t *testing.T) {
 					if item.NeedsGrading {
 						grades = append(grades, map[string]any{
 							"itemId": item.ItemID, "correctness": "correct",
-							"correctAnswer": map[string]any{"optionIds": []string{"a"}}, "explanation": "根据生成时的答案判断。",
+							"correctAnswer": map[string]any{"optionIds": []string{"a"}}, "explanation": "原文翻译：这是测试题。\n答案依据：根据生成时的答案判断。",
 						})
 					}
 				}

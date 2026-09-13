@@ -29,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v18"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v18.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v19"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v19.retry"
 
 const questionGenerationRetryInstructions = `上一轮部分或全部候选题没有通过服务端逐题校验。本轮只生成输入 JSON 中 count 指定的剩余题目；请优先修正下面的服务端错误，并再次逐题检查题型、答案结构和解析。`
 
@@ -1197,8 +1197,11 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 				return fmt.Errorf("AI 第 %d 题简答参考答案不合法", i+1)
 			}
 		}
-		if !difficultyMatches(difficulty, question.Difficulty) || strings.TrimSpace(question.Explanation) == "" || len([]rune(question.Explanation)) > 2000 {
-			return fmt.Errorf("AI 第 %d 题难度或解析不合法", i+1)
+		if !difficultyMatches(difficulty, question.Difficulty) {
+			return fmt.Errorf("AI 第 %d 题难度不合法", i+1)
+		}
+		if !validAIExplanation(question.Explanation) {
+			return fmt.Errorf("AI 第 %d 题解析必须以“%s”开头且不超过 2000 字", i+1, aiTranslationPrefix)
 		}
 		for _, pointID := range question.KnowledgePointIDs {
 			if !allowed[pointID] {

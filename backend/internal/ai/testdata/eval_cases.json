@@ -999,7 +999,7 @@
           "a"
         ]
       },
-      "explanation": "解析",
+      "explanation": "原文翻译：这是测试题。\n答案依据：解析。",
       "knowledgePointIds": [
         "kp-1"
       ],
@@ -1048,7 +1048,7 @@
           "b"
         ]
       },
-      "explanation": "解析",
+      "explanation": "原文翻译：这是测试题。\n答案依据：解析。",
       "knowledgePointIds": [
         "kp-1"
       ],

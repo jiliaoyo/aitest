@@ -206,11 +206,17 @@ async function removeWrongItem(item: WrongItem): Promise<void> {
           你的答案：{{ item.userAnswer ? formatAnswerValue(item.userAnswer, item.options ?? []) : '未作答' }} ·
           {{ correctLabel(item) }}：{{ formatAnswerValue(item.correctAnswer, item.options ?? []) }}
         </p>
-        <div v-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
+        <details v-if="item.explanation?.source === 'ai'" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
+          <summary style="min-height: 44px; cursor: pointer">
+            <span class="tag">AI 解析（可能有误）</span>
+          </summary>
+          <p class="ai-text" style="margin: 0" lang="zh-CN">{{ formatAIText(item.explanation.text) }}</p>
+        </details>
+        <div v-else-if="item.explanation" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px">
           <p class="tag" style="margin-bottom: 6px">
-            {{ item.explanation.source === 'ai' ? 'AI 解析（可能有误）' : item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
+            {{ item.explanation.source === 'official' ? '官方解析' : '人工解析' }}
           </p>
-          <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
+          <p style="margin: 0" lang="zh-CN">{{ item.explanation.text }}</p>
         </div>
         <div style="display: flex; justify-content: flex-end; margin-top: 14px">
           <button class="ghost danger" type="button" :disabled="deletingItemID === item.itemId" @click="removeWrongItem(item)">

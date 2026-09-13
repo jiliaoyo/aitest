@@ -70,11 +70,17 @@ const reportItemID = computed(() => props.item.id)
       </template>
     </dl>
 
-    <div v-if="item.explanation" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
+    <details v-if="item.explanation?.source === 'ai'" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
+      <summary style="min-height: 44px; cursor: pointer">
+        <span class="tag" data-tone="neutral">{{ explanationSourceText[item.explanation.source] }}</span>
+      </summary>
+      <p class="ai-text" style="margin: 0" lang="zh-CN">{{ formatAIText(item.explanation.text) }}</p>
+    </details>
+    <div v-else-if="item.explanation" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px">
       <p class="tag" data-tone="neutral" style="margin-bottom: 6px">
         {{ explanationSourceText[item.explanation.source] ?? item.explanation.source }}
       </p>
-      <p class="ai-text" style="margin: 0">{{ item.explanation.source === 'ai' ? formatAIText(item.explanation.text) : item.explanation.text }}</p>
+      <p style="margin: 0" lang="zh-CN">{{ item.explanation.text }}</p>
     </div>
     <p v-else-if="item.gradingStatus === 'failed'" class="muted" style="margin-top: 10px">
       分析失败，稍后可重试；确定性成绩不受影响。

@@ -7,6 +7,8 @@ import (
 	"github.com/aishuati/backend/internal/learning"
 )
 
+const testAIExplanation = "原文翻译：这是测试题。\n答案依据：根据题目判断。"
+
 func TestValidateGeneratedQuestionsRejectsUnapprovedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
 		Type: "single_choice", Stem: "これは＿＿＿練習問題です。", Difficulty: 3,
@@ -15,7 +17,7 @@ func TestValidateGeneratedQuestionsRejectsUnapprovedKnowledgePoint(t *testing.T)
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
 		},
 		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`),
-		Explanation:   "根据该知识点判断。", KnowledgePointIDs: []string{"unapproved"},
+		Explanation:   testAIExplanation, KnowledgePointIDs: []string{"unapproved"},
 	}
 	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyMixed, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err == nil {
 		t.Fatal("expected unapproved knowledge point to be rejected")
@@ -30,7 +32,7 @@ func TestValidateGeneratedQuestionsAcceptsReviewedKnowledgePoint(t *testing.T) {
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
 		},
 		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`),
-		Explanation:   "根据该知识点判断。", KnowledgePointIDs: []string{"approved"},
+		Explanation:   testAIExplanation, KnowledgePointIDs: []string{"approved"},
 	}
 	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyMixed, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err != nil {
 		t.Fatalf("valid generated question rejected: %v", err)
@@ -45,7 +47,7 @@ func TestValidateGeneratedQuestionsRejectsChoiceWithoutBlank(t *testing.T) {
 			{ID: "c", Label: "C", Text: "に"}, {ID: "d", Label: "D", Text: "へ"},
 		},
 		CorrectAnswer: json.RawMessage(`{"optionIds":["b"]}`),
-		Explanation:   "这是测试解析。", KnowledgePointIDs: []string{"approved"},
+		Explanation:   testAIExplanation, KnowledgePointIDs: []string{"approved"},
 	}
 	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err == nil {
 		t.Fatal("choice question without a blank should be rejected")
@@ -119,7 +121,7 @@ func TestFilterGeneratedQuestionDuplicatesReturnsOnlyExactMatches(t *testing.T) 
 func TestGeneratedQuestionDeduplicationRejectsSameStemWithDifferentOptions(t *testing.T) {
 	first := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
 	variant := generatedQuestionForReuseTest(first.Stem, "五")
-	first.Explanation, variant.Explanation = "这是第一题解析。", "这是第二题解析。"
+	first.Explanation, variant.Explanation = testAIExplanation, testAIExplanation
 	questions := []generatedQuestion{first, variant, first}
 
 	if err := validateGeneratedQuestions(questions, 3, generatedDifficultyNormal, generatedQuestionTypeMixed, nil); err != nil {
@@ -159,10 +161,10 @@ func TestGeneratedDiversityPlanRotatesContextsAndKnowledgePoints(t *testing.T) {
 
 func TestValidateGeneratedQuestionCandidatesKeepsValidQuestions(t *testing.T) {
 	valid := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
-	valid.Explanation = "这是正确候选题的解析。"
+	valid.Explanation = testAIExplanation
 	invalid := generatedQuestionForReuseTest("教室＿＿＿日本語を勉強します。", "一")
 	invalid.Options = invalid.Options[:3]
-	invalid.Explanation = "这是错误候选题的解析。"
+	invalid.Explanation = testAIExplanation
 
 	accepted, err := validateGeneratedQuestionCandidates([]generatedQuestion{valid, invalid}, 2,
 		generatedDifficultyNormal, "single_choice", nil, "n5", "grammar", "mixed", nil, nil)
@@ -179,7 +181,7 @@ func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 			{ID: "c", Label: "C", Text: "三"}, {ID: "d", Label: "D", Text: "四"},
 		},
 		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`),
-		Explanation:   "这是没有匹配知识点的测试解析。",
+		Explanation:   testAIExplanation,
 	}
 	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, generatedQuestionTypeMixed, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err != nil {
 		t.Fatalf("unmatched knowledge point should be allowed: %v", err)
@@ -213,7 +215,7 @@ func TestValidateGeneratedQuestionsAcceptsTextQuestionTypes(t *testing.T) {
 	} {
 		question := generatedQuestion{
 			Type: test.questionType, Stem: "日本語の練習問題です。", Difficulty: 3,
-			CorrectAnswer: json.RawMessage(test.correctAnswer), Explanation: "这是测试解析。", KnowledgePointIDs: []string{"approved"},
+			CorrectAnswer: json.RawMessage(test.correctAnswer), Explanation: testAIExplanation, KnowledgePointIDs: []string{"approved"},
 		}
 		if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, test.questionType, []learning.AIGenerationKnowledgePoint{{ID: "approved"}}); err != nil {
 			t.Fatalf("valid %s question rejected: %v", test.questionType, err)
@@ -288,7 +290,7 @@ func TestValidateGeneratedQuestionsAllowsNonBlankReadingChoice(t *testing.T) {
 			{ID: "a", Label: "A", Text: "正しい答え"}, {ID: "b", Label: "B", Text: "別の答え"},
 			{ID: "c", Label: "C", Text: "別の答え"}, {ID: "d", Label: "D", Text: "別の答え"},
 		},
-		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`), Explanation: "这是阅读题解析。",
+		CorrectAnswer: json.RawMessage(`{"optionIds":["a"]}`), Explanation: testAIExplanation,
 	}
 	if err := validateGeneratedQuestions([]generatedQuestion{question}, 1, generatedDifficultyNormal, "single_choice", nil, "reading", "mixed"); err != nil {
 		t.Fatalf("reading comprehension choice should not require a blank: %v", err)

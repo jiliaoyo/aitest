@@ -21,6 +21,18 @@ func TestValidateAICorrectAnswer(t *testing.T) {
 	}
 }
 
+func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
+	if !validAIExplanation("原文翻译：这是测试题。\n答案依据：测试。") {
+		t.Fatal("explanation with original translation rejected")
+	}
+	if validAIExplanation("答案依据：缺少原文翻译。") {
+		t.Fatal("explanation without original translation accepted")
+	}
+	if validQuestionExplanationPrompt("practice_batch_analysis.v4") {
+		t.Fatal("old cached explanation without translation accepted")
+	}
+}
+
 func TestGeneratedAnswerFallbackKeepsCandidateAnswer(t *testing.T) {
 	answer, explanation, ok := generatedAnswerFallback(batchAnalysisRow{
 		GeneratedAnswer:      stringPtr(`{"optionIds":["a"]}`),

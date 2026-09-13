@@ -21,7 +21,7 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v4"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v5"
 )
 
 //go:embed prompts/practice_grade.v1.md
@@ -30,7 +30,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v4.md
+//go:embed prompts/practice_batch_analysis.v5.md
 var batchAnalysisPrompt string
 
 func aiObjectJSONSchema(properties map[string]any, required []string) map[string]any {
@@ -359,14 +359,9 @@ func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, boo
 	return json.RawMessage(answer), text, true
 }
 
-// 历史版本只调整账号级建议，已生成的题目解析仍然有效，避免无谓重算缓存。
+// 旧版解析没有原文翻译，需要由当前版本重新生成。
 func validQuestionExplanationPrompt(version string) bool {
-	switch version {
-	case batchAnalysisPromptVersion, "practice_batch_analysis.v3", "practice_batch_analysis.v2", "practice_batch_analysis.v1":
-		return true
-	default:
-		return false
-	}
+	return version == batchAnalysisPromptVersion
 }
 
 func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts int, payload json.RawMessage) error {
@@ -506,7 +501,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	}
 	seenGrades := map[string]bool{}
 	for _, grade := range response.Grades {
-		if !allowedGrades[grade.ItemID] || seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || strings.TrimSpace(grade.Explanation) == "" || len([]rune(grade.Explanation)) > 2000 {
+		if !allowedGrades[grade.ItemID] || seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || !validAIExplanation(grade.Explanation) {
 			err := errors.New("AI 批次判定包含无效题目或结论")
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
@@ -536,7 +531,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	seenExplanations := map[string]bool{}
 	for _, explanation := range response.Explanations {
 		text := strings.TrimSpace(explanation.Text)
-		if !allowedExplanations[explanation.ItemID] || seenExplanations[explanation.ItemID] || text == "" || len([]rune(text)) > 2000 {
+		if !allowedExplanations[explanation.ItemID] || seenExplanations[explanation.ItemID] || !validAIExplanation(text) {
 			err := errors.New("AI 批次解析包含无效题目或文本")
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
