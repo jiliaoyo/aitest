@@ -29,10 +29,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v17"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v17.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v18"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v18.retry"
 
-const questionGenerationRetryInstructions = `上一轮输出没有通过服务端结构校验。本轮必须重新生成完整的一组题目，不能只返回修改后的题目；请优先修正下面的服务端错误，并再次逐题检查题量、题型、答案结构和解析。`
+const questionGenerationRetryInstructions = `上一轮部分或全部候选题没有通过服务端逐题校验。本轮只生成输入 JSON 中 count 指定的剩余题目；请优先修正下面的服务端错误，并再次逐题检查题型、答案结构和解析。`
 
 const questionGenerationPromptAddendum = `
 
@@ -972,45 +972,19 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			continue
 		}
 		questions := capGeneratedQuestions(response.Questions, remaining)
-		if err := normalizeGeneratedQuestionAnswers(questions); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
-			retryNote = ""
-			continue
+		questions, candidateValidationErr := validateGeneratedQuestionCandidates(questions, remaining, difficulty, questionType,
+			memory.KnowledgePoints, row.LevelCode, row.SubjectCode, category, diversityPlan, questionTypePlan)
+		// 阅读材料的数量、复用和题量分布是跨题约束，无法安全地逐题拆开。
+		if isReadingGeneration(row.SubjectCode, category) && candidateValidationErr == nil {
+			candidateValidationErr = validateGeneratedReadingQuestions(row.SubjectCode, category, questions)
 		}
-		if err := validateGeneratedQuestions(questions, remaining, difficulty, questionType, memory.KnowledgePoints, row.SubjectCode, category); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
-			retryNote = ""
-			continue
-		}
-		if err := validateGeneratedDiversityPlan(questions, diversityPlan); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
-			retryNote = ""
-			continue
-		}
-		if err := validateGeneratedQuestionTypePlan(questions, questionType, questionTypePlan); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
-			retryNote = ""
-			continue
-		}
-		if err := validateGeneratedQuestionLevel(row.LevelCode, row.SubjectCode, questions); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
-			retryNote = ""
-			continue
-		}
-		if err := validateGeneratedReadingQuestions(row.SubjectCode, category, questions); err != nil {
-			s.markBusinessFailure(ctx, runID, "business_semantic", err)
-			s.recordGenerationError(ctx, req.SessionID, err)
-			validationErr = err
+		if len(questions) == 0 || (isReadingGeneration(row.SubjectCode, category) && candidateValidationErr != nil) {
+			if candidateValidationErr == nil {
+				candidateValidationErr = errors.New("AI 本轮没有返回可验收的题目")
+			}
+			s.markBusinessFailure(ctx, runID, "business_semantic", candidateValidationErr)
+			s.recordGenerationError(ctx, req.SessionID, candidateValidationErr)
+			validationErr = candidateValidationErr
 			retryNote = ""
 			continue
 		}
@@ -1030,7 +1004,12 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			s.recordGenerationError(ctx, req.SessionID, err)
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
-		s.markBusinessSuccess(ctx, runID)
+		if candidateValidationErr != nil {
+			s.markBusinessFailure(ctx, runID, "business_semantic", candidateValidationErr)
+			s.recordGenerationError(ctx, req.SessionID, candidateValidationErr)
+		} else {
+			s.markBusinessSuccess(ctx, runID)
+		}
 		if len(duplicates) > 0 {
 			// 只把本轮实际命中的旧题干加入重试上下文，避免把全部历史题干发给模型。
 			avoidStems = appendUniqueGeneratedStems(avoidStems, duplicates)
@@ -1041,7 +1020,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		generatedQuestions = append(generatedQuestions, uniqueQuestions...)
 		avoidStems = appendUniqueGeneratedStems(avoidStems, generatedQuestionStems(uniqueQuestions))
 		lastPromptVersion = promptVersion
-		validationErr = nil
+		validationErr = candidateValidationErr
 	}
 	if len(generatedQuestions) != row.RequestedCount {
 		if validationErr == nil {
@@ -1070,6 +1049,55 @@ func capGeneratedQuestions(questions []generatedQuestion, expected int) []genera
 		return questions[:expected]
 	}
 	return questions
+}
+
+func validateGeneratedQuestionCandidates(questions []generatedQuestion, expected int, difficulty, questionType string,
+	points []learning.AIGenerationKnowledgePoint, levelCode, subjectCode, category string,
+	diversityPlan []generatedDiversitySlot, questionTypePlan map[string]int,
+) ([]generatedQuestion, error) {
+	accepted := make([]generatedQuestion, 0, len(questions))
+	typeCounts := make(map[string]int, len(questionTypePlan))
+	rejected := expected - len(questions)
+	var firstErr error
+	if rejected > 0 {
+		firstErr = fmt.Errorf("模型只返回了 %d/%d 道题", len(questions), expected)
+	}
+	for i := range questions {
+		candidate := questions[i : i+1]
+		err := normalizeGeneratedQuestionAnswers(candidate)
+		if err == nil {
+			err = validateGeneratedQuestions(candidate, 1, difficulty, questionType, points, subjectCode, category)
+		}
+		if err == nil && len(diversityPlan) > 0 {
+			if i >= len(diversityPlan) {
+				err = errors.New("缺少对应的多样性计划")
+			} else {
+				err = validateGeneratedDiversityPlan(candidate, diversityPlan[i:i+1])
+			}
+		}
+		if err == nil && questionType == generatedQuestionTypeMixed && len(questionTypePlan) > 0 && typeCounts[questions[i].Type] >= questionTypePlan[questions[i].Type] {
+			err = fmt.Errorf("题型 %s 超出本轮配额", questions[i].Type)
+		}
+		if err == nil {
+			err = validateGeneratedQuestionLevel(levelCode, subjectCode, candidate)
+		}
+		if err == nil {
+			err = validateGeneratedReadingQuestions(subjectCode, category, candidate)
+		}
+		if err != nil {
+			rejected++
+			if firstErr == nil {
+				firstErr = fmt.Errorf("第 %d 道候选题：%w", i+1, err)
+			}
+			continue
+		}
+		typeCounts[questions[i].Type]++
+		accepted = append(accepted, questions[i])
+	}
+	if rejected > 0 {
+		return accepted, fmt.Errorf("本轮 %d 道候选题未通过逐题验收，首个问题：%w", rejected, firstErr)
+	}
+	return accepted, nil
 }
 
 // normalizeGeneratedQuestionAnswers 兼容模型把答题 DTO 的 text 字段误用于简答题，

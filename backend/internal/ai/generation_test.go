@@ -157,6 +157,20 @@ func TestGeneratedDiversityPlanRotatesContextsAndKnowledgePoints(t *testing.T) {
 	}
 }
 
+func TestValidateGeneratedQuestionCandidatesKeepsValidQuestions(t *testing.T) {
+	valid := generatedQuestionForReuseTest("図書館＿＿＿日本語を勉強します。", "一")
+	valid.Explanation = "这是正确候选题的解析。"
+	invalid := generatedQuestionForReuseTest("教室＿＿＿日本語を勉強します。", "一")
+	invalid.Options = invalid.Options[:3]
+	invalid.Explanation = "这是错误候选题的解析。"
+
+	accepted, err := validateGeneratedQuestionCandidates([]generatedQuestion{valid, invalid}, 2,
+		generatedDifficultyNormal, "single_choice", nil, "n5", "grammar", "mixed", nil, nil)
+	if err == nil || len(accepted) != 1 || accepted[0].Stem != valid.Stem {
+		t.Fatalf("unexpected accepted questions: %+v, error: %v", accepted, err)
+	}
+}
+
 func TestValidateGeneratedQuestionsAllowsUnmatchedKnowledgePoint(t *testing.T) {
 	question := generatedQuestion{
 		Type: "single_choice", Stem: "これは＿＿＿知識点なしの練習問題です。", Difficulty: 3,
