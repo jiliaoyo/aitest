@@ -308,7 +308,7 @@ paths:
         '409':
           description: |
             insufficient_questions：可用题量不足（details.available 为实际数量，服务端不放宽条件）；
-            no_wrong_items：没有可重练的错题。
+            no_wrong_items：没有可重练的错题；review_in_progress：已有进行中的到期复习（details.sessionId 为批次 ID）。
           content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
     get:
       tags: [practice]
@@ -1010,7 +1010,7 @@ components:
         from: { type: string, format: date, description: 错题重练的作答开始日期 }
         to: { type: string, format: date, description: 错题重练的作答结束日期 }
         keyword: { type: string, maxLength: 100, description: 错题重练关键词 }
-        count: { type: integer, minimum: 1, maximum: 30, description: 普通题库练习允许 1 到 30 题 }
+        count: { type: integer, minimum: 1, maximum: 30, description: 普通练习允许 1 到 30 题；到期复习每批最多 10 题 }
     AIGeneratePracticeRequest:
       type: object
       properties:
@@ -1303,7 +1303,10 @@ components:
               knowledgePointIds: { type: array, items: { type: string } }
         comprehensive: { type: object, nullable: true }
         statsEmpty: { type: boolean }
-        reviewDueCount: { type: integer, description: 当前用户已到期的题库题与账号私有 AI 复习题数量 }
+        reviewDueCount: { type: integer, description: 当前默认级别（未设置时为全部级别）已到期题数量 }
+        reviewDueConfirmedCount: { type: integer, description: 权威或人工审核结果的到期题数量 }
+        reviewDueAiCount: { type: integer, description: AI 来源结果的到期题数量，可能有误 }
+        reviewOldestDueAt: { type: string, nullable: true, description: 当前范围最早到期时间 }
         memory: { $ref: '#/components/schemas/LearningMemory' }
     LearningMemory:
       type: object

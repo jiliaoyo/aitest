@@ -44,6 +44,7 @@ const (
 	SelectionOrderSource = "source_order"
 	SelectionOrderRandom = "random"
 	SelectionOrderUnseen = "unseen_first"
+	maxReviewBatchCount  = 10
 )
 
 // Availability 返回当前筛选下可用于练习的题目数量。
@@ -78,6 +79,9 @@ func (s *Service) selectionFilter(ctx context.Context, userID string, req Create
 	}
 	if req.SelectionOrder != SelectionOrderSource && req.SelectionOrder != SelectionOrderRandom && req.SelectionOrder != SelectionOrderUnseen {
 		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"selectionOrder": "出题顺序不合法"})
+	}
+	if req.Mode == "review" && req.Count > maxReviewBatchCount {
+		return content.SelectionFilter{}, httpapi.ValidationError(map[string]string{"count": "到期复习每批最多 10 题"})
 	}
 	f := content.SelectionFilter{
 		UserID:          userID,
@@ -149,6 +153,15 @@ func (s *Service) CreateSession(ctx context.Context, userID string, req CreateRe
 	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
 		seeds := make([]ItemSeed, 0, req.Count)
 		if scopeMode == "review" {
+			st := s.store.With(tx)
+			if err := st.LockUser(ctx, tx, userID); err != nil {
+				return err
+			}
+			if activeID, err := st.ActiveReviewSessionID(ctx, userID); err != nil {
+				return err
+			} else if activeID != "" {
+				return httpapi.WithDetails(httpapi.E(http.StatusConflict, "review_in_progress", "已有一批到期复习正在进行"), map[string]any{"sessionId": activeID})
+			}
 			seeds, err = s.store.With(tx).DueReviewItems(ctx, userID, req.LevelID, req.SubjectID, req.Count)
 		} else {
 			var selected []content.SelectedQuestion
@@ -448,7 +461,7 @@ func (s *Service) Submit(ctx context.Context, userID, sessionID, idemKey, bodyHa
 				return err
 			}
 		}
-		return jobs.EnqueueTx(ctx, tx, "rebuild_user_knowledge_stats", map[string]string{"userId": userID})
+		return jobs.EnqueueUserLearningRebuildTx(ctx, tx, userID)
 	})
 	if err == errSameResubmit {
 		return 0, nil

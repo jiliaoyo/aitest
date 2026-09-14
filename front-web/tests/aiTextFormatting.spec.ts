@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAIText, formatAnswerValue, splitAIExplanation } from '@/app/format'
+import { formatAIText, formatAnswerValue, formatOverdueDays, splitAIExplanation } from '@/app/format'
 
 describe('AI 文本排版', () => {
   it('把历史单行总结和字面量换行转换为可读段落', () => {
@@ -25,5 +25,14 @@ describe('答案格式', () => {
   it('保留题库中的填空可接受值和简答参考答案', () => {
     expect(formatAnswerValue({ acceptable: ['に', 'へ'] })).toBe('に、へ')
     expect(formatAnswerValue({ reference: '理由を説明する例文' })).toBe('理由を説明する例文')
+  })
+})
+
+describe('复习逾期展示', () => {
+  it('按整天计算逾期时长并处理今天与非法时间', () => {
+    const now = Date.parse('2026-09-14T12:00:00Z')
+    expect(formatOverdueDays('2026-09-14T00:00:00Z', now)).toBe('今天')
+    expect(formatOverdueDays('2026-09-11T12:00:00Z', now)).toBe('3 天')
+    expect(formatOverdueDays('not-a-date', now)).toBe('—')
   })
 })

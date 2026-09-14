@@ -7,7 +7,7 @@ import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import FuriganaText from '@/components/FuriganaText.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
-import { formatAIText, formatDateTime, formatPercent } from '@/app/format'
+import { formatAIText, formatDateTime, formatOverdueDays, formatPercent } from '@/app/format'
 import { sessionUser } from '@/app/session'
 
 const router = useRouter()
@@ -81,6 +81,12 @@ async function goReview(): Promise<void> {
     })
     await router.push(`/practice/${session.id}`)
   } catch (err) {
+    if (err instanceof ApiError && err.code === 'review_in_progress') {
+      const sessionId = typeof err.details?.sessionId === 'string' ? err.details.sessionId : ''
+      if (sessionId) await router.push(`/practice/${sessionId}`)
+      else reviewError.value = err.message
+      return
+    }
     if (err instanceof ApiError && (err.code === 'no_due_reviews' || err.code === 'insufficient_questions')) {
       await router.push(`/practice/new?mode=review&levelId=${encodeURIComponent(levelId)}`)
       return
@@ -157,7 +163,13 @@ async function goReview(): Promise<void> {
       <section v-if="dashboard.reviewDueCount > 0" aria-labelledby="review-title">
         <h2 id="review-title" style="font-size: 17px">到期复习</h2>
         <div class="card">
-          <p class="muted">有 {{ dashboard.reviewDueCount }} 道题到期，包含题库题和你做过的 AI 生成题。</p>
+          <p class="muted">
+            有 {{ dashboard.reviewDueCount }} 道题到期（权威/人工 {{ dashboard.reviewDueConfirmedCount ?? 0 }} 道，AI 判定（可能有误）
+            {{ dashboard.reviewDueAiCount ?? 0 }} 道）。
+            <template v-if="dashboard.reviewOldestDueAt">
+              最早一题已逾期 {{ formatOverdueDays(dashboard.reviewOldestDueAt) }}，本次按到期时间优先处理。
+            </template>
+          </p>
           <button class="primary" :disabled="reviewCreating" @click="goReview">
             {{ reviewCreating ? '准备复习…' : `复习 ${Math.min(dashboard.reviewDueCount, 10)} 题` }}
           </button>

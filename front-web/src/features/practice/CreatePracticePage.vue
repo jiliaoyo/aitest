@@ -71,7 +71,10 @@ async function loadCatalog(): Promise<void> {
       : sessionUser()?.defaultLevelId ?? res.exams[0]?.levels[0]?.id ?? ''
     subjectId.value = querySubject
     if (route.query.mode === 'knowledge') mode.value = 'knowledge'
-    if (route.query.mode === 'review') mode.value = 'review'
+    if (route.query.mode === 'review') {
+      mode.value = 'review'
+      count.value = Math.min(count.value, 10)
+    }
     if (typeof route.query.knowledgePointIds === 'string') {
       knowledgePointIds.value = route.query.knowledgePointIds.split(',').filter(Boolean)
     }
@@ -210,6 +213,10 @@ onBeforeUnmount(() => {
 
 const insufficient = computed(() => availability.value !== null && availability.value < count.value)
 const canUseAvailable = computed(() => !!levelId.value && availability.value !== null && availability.value > 0 && !availabilityLoading.value)
+const countOptions = computed(() => mode.value === 'review' ? [1, 2, 3, 4, 5, 10] : [5, 10, 20, 30])
+watch(mode, (value) => {
+  if (value === 'review') count.value = Math.min(count.value, 10)
+})
 const canCreate = computed(
   () =>
     !!levelId.value &&
@@ -238,6 +245,12 @@ async function create(requestedCount = count.value): Promise<void> {
     })
     await router.push(`/practice/${session.id}`)
   } catch (err) {
+    if (err instanceof ApiError && err.code === 'review_in_progress') {
+      const sessionId = typeof err.details?.sessionId === 'string' ? err.details.sessionId : ''
+      if (sessionId) await router.push(`/practice/${sessionId}`)
+      else createError.value = err.message
+      return
+    }
     if (err instanceof ApiError && err.code === 'insufficient_questions') {
       availability.value = Number((err.details as { available?: number } | undefined)?.available ?? 0)
     }
@@ -387,8 +400,9 @@ async function generateAIPractice(): Promise<void> {
 
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">题量</legend>
+          <p v-if="mode === 'review'" class="muted" style="margin: 0 0 8px">每批最多复习 10 题，按最早到期顺序处理。</p>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
-            <label v-for="c in [5, 10, 20, 30]" :key="c" class="option-row" style="margin-bottom: 0">
+            <label v-for="c in countOptions" :key="c" class="option-row" style="margin-bottom: 0">
               <input v-model.number="count" type="radio" name="count" :value="c" />
               <span class="mono">{{ c }} 题</span>
             </label>

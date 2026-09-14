@@ -150,11 +150,20 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Memory = memory
-	d.ReviewDueCount, err = h.store.DueReviewCount(ctx, userID)
+	defaultLevelID, err := h.store.DefaultLevelID(ctx, userID)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
+	reviewDue, err := h.store.DueReviewSummary(ctx, userID, defaultLevelID)
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	d.ReviewDueCount = reviewDue.Total
+	d.ReviewDueConfirmedCount = reviewDue.Confirmed
+	d.ReviewDueAICount = reviewDue.AI
+	d.ReviewOldestDueAt = reviewDue.OldestDueAt
 
 	weak, err := h.store.WeakKnowledgePoints(ctx, userID, 3)
 	if err != nil {

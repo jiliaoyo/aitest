@@ -476,6 +476,7 @@ func (s *Store) WeakKnowledgePoints(ctx context.Context, userID string, limit in
 // ---------- 统计重算（缓存可重建；原始作答是唯一事实来源） ----------
 
 // RebuildUserStats 从 grading_results 全量重算用户知识点统计并整体替换缓存。
+// ponytail: 保留全量重放保证重试幂等；历史量明显增长后再改为按用户游标增量重建。
 // 正式累计只聚合 official / human_verified，AI 结果单独计数；近期表现与连续错误使用两层的去重结果。
 func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID string) error {
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
@@ -486,8 +487,10 @@ func (s *Store) RebuildUserStats(ctx context.Context, pool *pgxpool.Pool, userID
 type reviewEventRow struct {
 	ResultID   string
 	QuestionID string
+	VersionID  string
 	At         time.Time
 	Status     string
+	Source     string
 }
 
 // RebuildQuestionReviews 从权威题和账号私有 AI 题的作答事实重建复习计划；重复任务只会得到同一结果。
@@ -498,8 +501,9 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 		}
 		rows, err := store.CollectRows[reviewEventRow](ctx, tx, `
 			WITH eligible AS (
-			  SELECT gr.id, pi.id AS item_id, pi.question_id, ps.submitted_at, pi.position,
+			  SELECT gr.id, pi.id AS item_id, pi.question_id, pi.question_version_id, ps.submitted_at, pi.position,
 			         gr.status, gr.updated_at,
+			         CASE WHEN gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL THEN 'confirmed' ELSE 'ai' END AS review_source,
 			         CASE WHEN gr.source = 'deterministic' AND gr.answer_authority IS NOT NULL THEN 0 ELSE 1 END AS priority
 			  FROM grading_results gr
 			  JOIN practice_items pi ON pi.id = gr.item_id
@@ -516,11 +520,11 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 			      OR (src.kind = 'ai_generated' AND gr.status IN ('correct', 'incorrect', 'unanswered')
 			          AND (gr.source = 'ai' OR gr.status = 'unanswered')))
 			), chosen AS (
-			  SELECT DISTINCT ON (item_id) id, question_id, submitted_at, position, status
+			  SELECT DISTINCT ON (item_id) id, question_id, question_version_id, submitted_at, position, status, review_source
 			  FROM eligible
 			  ORDER BY item_id, priority, updated_at DESC, id DESC
 			)
-			SELECT id::text, question_id::text, submitted_at, status
+			SELECT id::text, question_id::text, question_version_id::text, submitted_at, status, review_source
 			FROM chosen
 			ORDER BY question_id, submitted_at, position, id`, userID)
 		if err != nil {
@@ -528,7 +532,10 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 		}
 		events := make([]reviewEvent, 0, len(rows))
 		for _, row := range rows {
-			events = append(events, reviewEvent{ResultID: row.ResultID, QuestionID: row.QuestionID, At: row.At, Status: row.Status})
+			events = append(events, reviewEvent{
+				ResultID: row.ResultID, QuestionID: row.QuestionID, VersionID: row.VersionID,
+				At: row.At, Status: row.Status, Source: row.Source,
+			})
 		}
 		plans := buildReviewPlans(events)
 		if _, err := tx.Exec(ctx, `DELETE FROM user_question_reviews WHERE user_id = $1`, userID); err != nil {
@@ -546,10 +553,31 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 	})
 }
 
-func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) {
-	var count int
+type ReviewDueSummary struct {
+	Total       int
+	Confirmed   int
+	AI          int
+	OldestDueAt *string
+}
+
+func (s *Store) DefaultLevelID(ctx context.Context, userID string) (string, error) {
+	var levelID *string
+	if err := s.db.QueryRow(ctx, `SELECT default_level_id::text FROM users WHERE id = $1`, userID).Scan(&levelID); err != nil {
+		return "", err
+	}
+	if levelID == nil {
+		return "", nil
+	}
+	return *levelID, nil
+}
+
+func (s *Store) DueReviewSummary(ctx context.Context, userID, levelID string) (ReviewDueSummary, error) {
+	var summary ReviewDueSummary
 	err := s.db.QueryRow(ctx, `
-		SELECT count(*)::int
+		SELECT count(*)::int,
+		       count(*) FILTER (WHERE last_result.source = 'deterministic' AND last_result.answer_authority IS NOT NULL)::int,
+		       count(*) FILTER (WHERE NOT (last_result.source = 'deterministic' AND last_result.answer_authority IS NOT NULL))::int,
+		       min(r.next_review_at)::text
 		FROM user_question_reviews r
 		JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
 		JOIN practice_items history_item ON history_item.id = last_result.item_id
@@ -560,8 +588,15 @@ func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) 
 		LEFT JOIN sources history_source ON history_source.id = history_section.source_id
 		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
 		WHERE r.user_id = $1 AND r.next_review_at <= now()
-		  AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`, userID).Scan(&count)
-	return count, err
+		  AND ($2 = '' OR history_version.level_id::text = $2)
+		  AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`, userID, levelID).
+		Scan(&summary.Total, &summary.Confirmed, &summary.AI, &summary.OldestDueAt)
+	return summary, err
+}
+
+func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) {
+	summary, err := s.DueReviewSummary(ctx, userID, "")
+	return summary.Total, err
 }
 
 func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string) error {

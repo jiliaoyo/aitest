@@ -1458,6 +1458,84 @@ func TestLearningStatsAccountingIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("同一账号不会创建第二批进行中复习", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "review-in-progress@example.com")
+		reviewBase := time.Now().UTC().Add(-48 * time.Hour).Truncate(time.Second)
+		addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+			"deterministic", "incorrect", stringPtr("official"), reviewBase)
+		if err := learningStore.RebuildQuestionReviews(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE user_question_reviews SET next_review_at = now() - interval '1 hour' WHERE user_id = $1`, userID); err != nil {
+			t.Fatal(err)
+		}
+		service := practice.NewService(pool, content.NewStore(pool))
+		first, err := service.CreateSession(ctx, userID, practice.CreateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Mode: "review", Count: 1,
+		})
+		if err != nil || first.TotalCount != 1 {
+			t.Fatalf("first review session=%+v err=%v", first, err)
+		}
+		_, err = service.CreateSession(ctx, userID, practice.CreateRequest{
+			LevelID: data.levelID, SubjectID: data.subjectID, Mode: "review", Count: 1,
+		})
+		var apiErr *httpapi.APIError
+		if !errors.As(err, &apiErr) || apiErr.Code != "review_in_progress" {
+			t.Fatalf("second review session should point to existing batch: err=%v", err)
+		}
+	})
+
+	t.Run("复习沿用触发计划的题目版本", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "review-version@example.com")
+		version1 := publishedVersionID(t, pool, data.keyQuestionID)
+		reviewBase := time.Now().UTC().Add(-48 * time.Hour).Truncate(time.Second)
+		addLearningResult(t, pool, userID, data.levelID, data.subjectID, data.keyQuestionID,
+			"deterministic", "incorrect", stringPtr("official"), reviewBase)
+		if err := learningStore.RebuildQuestionReviews(ctx, pool, userID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE user_question_reviews SET next_review_at = now() - interval '1 hour' WHERE user_id = $1`, userID); err != nil {
+			t.Fatal(err)
+		}
+		var version2 string
+		if err := pool.QueryRow(ctx, `
+			INSERT INTO question_versions
+			  (question_id, version_no, type, stem, material_version_id, options, level_id, subject_id, source_section_id, difficulty, created_by, source_order)
+			SELECT question_id, version_no + 1, type, '新版本题干。', material_version_id, options, level_id, subject_id, source_section_id, difficulty, created_by, source_order
+			FROM question_versions WHERE id = $1
+			RETURNING id::text`, version1).Scan(&version2); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, `UPDATE questions SET current_version_id = $2, published_version_id = $2, published_at = now() WHERE id = $1`, data.keyQuestionID, version2); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if _, err := pool.Exec(context.Background(), `UPDATE questions SET current_version_id = $2, published_version_id = $2 WHERE id = $1`, data.keyQuestionID, version1); err != nil {
+				t.Errorf("restore published version: %v", err)
+			}
+		})
+		items, err := practice.NewStore(pool).DueReviewItems(ctx, userID, data.levelID, data.subjectID, 1)
+		if err != nil || len(items) != 1 || items[0].VersionID != version1 {
+			t.Fatalf("review should keep the version that caused the plan: items=%+v err=%v", items, err)
+		}
+	})
+
+	t.Run("学习统计重建任务按账号合并", func(t *testing.T) {
+		userID := cloneIntegrationLearner(t, pool, "rebuild-coalesce@example.com")
+		if err := store.WithTx(ctx, pool, func(tx pgx.Tx) error {
+			if err := jobs.EnqueueUserLearningRebuildTx(ctx, tx, userID); err != nil {
+				return err
+			}
+			return jobs.EnqueueUserLearningRebuildTx(ctx, tx, userID)
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if got := countRows(t, pool, `SELECT count(*) FROM jobs
+			WHERE kind = 'rebuild_user_knowledge_stats' AND status = 'queued' AND payload->>'userId' = $1`, userID); got != 1 {
+			t.Fatalf("queued learning rebuilds=%d, want 1", got)
+		}
+	})
+
 	t.Run("纯 AI 作答可生成今日建议与到期复习", func(t *testing.T) {
 		userID := cloneIntegrationLearner(t, pool, "ai-only-memory@example.com")
 		var sourceID, sectionID, questionID, versionID string

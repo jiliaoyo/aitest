@@ -295,6 +295,9 @@ export interface DashboardDTO {
   comprehensive?: Recommendation | null
   statsEmpty: boolean
   reviewDueCount: number
+  reviewDueConfirmedCount: number
+  reviewDueAiCount: number
+  reviewOldestDueAt?: string | null
   memory: LearningMemoryDTO
 }
 

@@ -63,4 +63,7 @@ func TestSelectionFilterAcceptsShortBatches(t *testing.T) {
 			t.Fatalf("count %d unexpectedly accepted", count)
 		}
 	}
+	if _, err := service.selectionFilter(context.Background(), "user", CreateRequest{LevelID: "n5", Mode: "review", Count: 11}); err == nil {
+		t.Fatal("review batches larger than 10 unexpectedly accepted")
+	}
 }

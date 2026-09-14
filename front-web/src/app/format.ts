@@ -43,6 +43,14 @@ export function formatDateTime(value: string | null | undefined): string {
   return dateTimeFmt.format(date)
 }
 
+export function formatOverdueDays(value: string | null | undefined, now = Date.now()): string {
+  if (!value) return '—'
+  const due = new Date(value).getTime()
+  if (!Number.isFinite(due)) return '—'
+  const days = Math.max(0, Math.floor((now - due) / 86400000))
+  return days === 0 ? '今天' : `${days} 天`
+}
+
 export function formatTime(value: string | null | undefined): string {
   if (!value) {
     return '—'

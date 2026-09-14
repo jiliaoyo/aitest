@@ -55,13 +55,16 @@ type ActiveSession struct {
 }
 
 type Dashboard struct {
-	ActiveSession   *ActiveSession   `json:"activeSession"`
-	RecentSessions  []RecentSession  `json:"recentSessions"`
-	Recommendations []Recommendation `json:"recommendations"`
-	Comprehensive   *Recommendation  `json:"comprehensive,omitempty"`
-	StatsEmpty      bool             `json:"statsEmpty"`
-	ReviewDueCount  int              `json:"reviewDueCount"`
-	Memory          LearningMemory   `json:"memory"`
+	ActiveSession           *ActiveSession   `json:"activeSession"`
+	RecentSessions          []RecentSession  `json:"recentSessions"`
+	Recommendations         []Recommendation `json:"recommendations"`
+	Comprehensive           *Recommendation  `json:"comprehensive,omitempty"`
+	StatsEmpty              bool             `json:"statsEmpty"`
+	ReviewDueCount          int              `json:"reviewDueCount"`
+	ReviewDueConfirmedCount int              `json:"reviewDueConfirmedCount"`
+	ReviewDueAICount        int              `json:"reviewDueAiCount"`
+	ReviewOldestDueAt       *string          `json:"reviewOldestDueAt,omitempty"`
+	Memory                  LearningMemory   `json:"memory"`
 }
 
 type MemoryAdvice struct {

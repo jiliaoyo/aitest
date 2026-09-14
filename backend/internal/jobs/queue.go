@@ -28,6 +28,20 @@ func EnqueueTx(ctx context.Context, tx pgx.Tx, kind string, payload any) error {
 	return err
 }
 
+// EnqueueUserLearningRebuildTx 合并同一账号尚未领取的统计重建任务。
+// 正在运行的任务不合并，避免新提交落在其事务快照之后而无人再次重建。
+func EnqueueUserLearningRebuildTx(ctx context.Context, tx pgx.Tx, userID string) error {
+	data, err := json.Marshal(map[string]string{"userId": userID})
+	if err != nil {
+		return fmt.Errorf("序列化学习统计任务 payload 失败: %w", err)
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO jobs (kind, payload)
+		VALUES ('rebuild_user_knowledge_stats', $1)
+		ON CONFLICT DO NOTHING`, data)
+	return err
+}
+
 type Job struct {
 	ID          string
 	Kind        string

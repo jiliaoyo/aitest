@@ -41,15 +41,35 @@ func (s *Store) InsertItems(ctx context.Context, tx pgx.Tx, sessionID string, it
 	return nil
 }
 
-// DueReviewItems 使用普通题的当前发布版本，AI 私有题则复用用户实际作答的历史版本。
+// LockUser 串行化同一账号的复习批次创建，避免并发请求选到同一组到期题。
+func (s *Store) LockUser(ctx context.Context, tx pgx.Tx, userID string) error {
+	var id string
+	return tx.QueryRow(ctx, `SELECT id::text FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&id)
+}
+
+func (s *Store) ActiveReviewSessionID(ctx context.Context, userID string) (string, error) {
+	var id string
+	err := s.db.QueryRow(ctx, `
+		SELECT id::text
+		FROM practice_sessions
+		WHERE user_id = $1 AND status IN ('active', 'grading') AND deleted_at IS NULL
+		  AND scope->>'mode' = 'review'
+		ORDER BY created_at DESC
+		LIMIT 1`, userID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	return id, err
+}
+
+// DueReviewItems 复用触发复习计划的最后一次有效作答版本，避免发布新版本后错配旧计划。
 func (s *Store) DueReviewItems(ctx context.Context, userID, levelID, subjectID string, limit int) ([]ItemSeed, error) {
 	return store.CollectRows[ItemSeed](ctx, s.db, `
 		WITH due AS (
 		  SELECT r.question_id,
-		         CASE WHEN history_source.kind = 'ai_generated'
-		              THEN history_item.question_version_id
-		              ELSE q.published_version_id END AS version_id,
-		         r.next_review_at
+		         history_item.question_version_id AS version_id,
+		         r.next_review_at,
+		         CASE WHEN history_source.kind = 'ai_generated' OR last_result.source = 'ai' THEN 1 ELSE 0 END AS source_priority
 		  FROM user_question_reviews r
 		  JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
 		  JOIN practice_items history_item ON history_item.id = last_result.item_id
@@ -66,7 +86,7 @@ func (s *Store) DueReviewItems(ctx context.Context, userID, levelID, subjectID s
 		FROM due
 		JOIN question_versions v ON v.id = due.version_id
 		WHERE v.level_id::text = $2 AND ($3 = '' OR v.subject_id::text = $3)
-		ORDER BY due.next_review_at, due.question_id
+		ORDER BY due.next_review_at, due.source_priority, due.question_id
 		LIMIT CASE WHEN $4 > 0 THEN $4 ELSE NULL END`, userID, levelID, subjectID, limit)
 }
 

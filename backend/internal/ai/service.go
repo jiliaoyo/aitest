@@ -285,7 +285,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 			`SELECT user_id::text FROM practice_sessions WHERE id = $1`, item.SessionID).Scan(&userID); err != nil {
 			return err
 		}
-		if err := jobs.EnqueueTx(ctx, tx, "rebuild_user_knowledge_stats", map[string]string{"userId": userID}); err != nil {
+		if err := jobs.EnqueueUserLearningRebuildTx(ctx, tx, userID); err != nil {
 			return err
 		}
 		return practice.NewStore(tx).CompleteIfDone(ctx, tx, item.SessionID)
@@ -627,7 +627,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 		}
 		for _, grade := range response.Grades {
 			if grade.Correctness == "correct" || grade.Correctness == "incorrect" {
-				return jobs.EnqueueTx(ctx, tx, "rebuild_user_knowledge_stats", map[string]string{"userId": userID})
+				return jobs.EnqueueUserLearningRebuildTx(ctx, tx, userID)
 			}
 		}
 		return nil

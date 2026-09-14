@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import DashboardPage from '@/features/dashboard/DashboardPage.vue'
 import KnowledgeDetailPage from '@/features/knowledge/KnowledgeDetailPage.vue'
+import { ApiError } from '@/api/client'
 
 const requestMock = vi.hoisted(() => vi.fn())
 
@@ -12,6 +13,13 @@ vi.mock('@/api/client', () => ({
     status = 500
     code = 'internal_error'
     requestId?: string
+    details?: Record<string, unknown>
+    constructor(body: { status?: number; code?: string; message?: string; details?: Record<string, unknown> }) {
+      super(body.message)
+      this.status = body.status ?? 500
+      this.code = body.code ?? 'internal_error'
+      this.details = body.details
+    }
   },
 }))
 
@@ -43,8 +51,41 @@ const emptyRecent = {
 describe('学习推荐闭环', () => {
   it('到期复习直接创建复习批次', async () => {
     requestMock.mockImplementation(async (path: string, options?: { method?: string }) => {
-      if (path === '/dashboard') return { ...emptyRecent, reviewDueCount: 3 }
+      if (path === '/dashboard') {
+        return {
+          ...emptyRecent,
+          reviewDueCount: 3,
+          reviewDueConfirmedCount: 2,
+          reviewDueAiCount: 1,
+          reviewOldestDueAt: '2026-09-11T12:00:00Z',
+        }
+      }
       if (path === '/practice-sessions' && options?.method === 'POST') return { id: 'review-session' }
+      return emptyRecent
+    })
+    const router = routerFor()
+    await router.push('/')
+    await router.isReady()
+    const wrapper = mount(DashboardPage, { global: { plugins: [router] } })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('复习 3 题'))
+    expect(wrapper.text()).toContain('权威/人工 2 道，AI 来源 1 道')
+
+    await wrapper.findAll('button').find((button) => button.text() === '复习 3 题')!.trigger('click')
+    await flushPromises()
+
+    expect(requestMock).toHaveBeenCalledWith('/practice-sessions', {
+      method: 'POST',
+      body: { levelId: 'level-1', mode: 'review', count: 3 },
+    })
+    expect(router.currentRoute.value.fullPath).toBe('/practice/review-session')
+  })
+
+  it('已有进行中的复习批次时直接回到原批次', async () => {
+    requestMock.mockImplementation(async (path: string, options?: { method?: string }) => {
+      if (path === '/dashboard') return { ...emptyRecent, reviewDueCount: 3 }
+      if (path === '/practice-sessions' && options?.method === 'POST') {
+        throw new ApiError({ status: 409, code: 'review_in_progress', message: '已有复习批次', details: { sessionId: 'existing-review' } })
+      }
       return emptyRecent
     })
     const router = routerFor()
@@ -56,11 +97,7 @@ describe('学习推荐闭环', () => {
     await wrapper.findAll('button').find((button) => button.text() === '复习 3 题')!.trigger('click')
     await flushPromises()
 
-    expect(requestMock).toHaveBeenCalledWith('/practice-sessions', {
-      method: 'POST',
-      body: { levelId: 'level-1', mode: 'review', count: 3 },
-    })
-    expect(router.currentRoute.value.fullPath).toBe('/practice/review-session')
+    expect(router.currentRoute.value.fullPath).toBe('/practice/existing-review')
   })
 
   it('推荐卡创建对应知识点专项练习', async () => {
