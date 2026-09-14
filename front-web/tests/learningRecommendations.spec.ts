@@ -57,6 +57,7 @@ describe('学习推荐闭环', () => {
           reviewDueCount: 3,
           reviewDueConfirmedCount: 2,
           reviewDueAiCount: 1,
+          reviewCompletedToday: 4,
           reviewOldestDueAt: '2026-09-11T12:00:00Z',
         }
       }
@@ -68,7 +69,8 @@ describe('学习推荐闭环', () => {
     await router.isReady()
     const wrapper = mount(DashboardPage, { global: { plugins: [router] } })
     await vi.waitFor(() => expect(wrapper.text()).toContain('复习 3 题'))
-    expect(wrapper.text()).toContain('权威/人工 2 道，AI 来源 1 道')
+    expect(wrapper.text()).toContain('权威/人工 2 道，AI 判定（可能有误） 1 道')
+    expect(wrapper.text()).toContain('今日目标：已复习 4 / 10 题')
 
     await wrapper.findAll('button').find((button) => button.text() === '复习 3 题')!.trigger('click')
     await flushPromises()

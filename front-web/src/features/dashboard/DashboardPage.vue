@@ -169,6 +169,7 @@ async function goReview(): Promise<void> {
             <template v-if="dashboard.reviewOldestDueAt">
               最早一题已逾期 {{ formatOverdueDays(dashboard.reviewOldestDueAt) }}，本次按到期时间优先处理。
             </template>
+            今日目标：已复习 {{ Math.min(dashboard.reviewCompletedToday ?? 0, 10) }} / 10 题。
           </p>
           <button class="primary" :disabled="reviewCreating" @click="goReview">
             {{ reviewCreating ? '准备复习…' : `复习 ${Math.min(dashboard.reviewDueCount, 10)} 题` }}

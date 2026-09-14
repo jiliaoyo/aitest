@@ -63,6 +63,7 @@ type Dashboard struct {
 	ReviewDueCount          int              `json:"reviewDueCount"`
 	ReviewDueConfirmedCount int              `json:"reviewDueConfirmedCount"`
 	ReviewDueAICount        int              `json:"reviewDueAiCount"`
+	ReviewCompletedToday    int              `json:"reviewCompletedToday"`
 	ReviewOldestDueAt       *string          `json:"reviewOldestDueAt,omitempty"`
 	Memory                  LearningMemory   `json:"memory"`
 }

@@ -163,6 +163,7 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 	d.ReviewDueCount = reviewDue.Total
 	d.ReviewDueConfirmedCount = reviewDue.Confirmed
 	d.ReviewDueAICount = reviewDue.AI
+	d.ReviewCompletedToday = reviewDue.CompletedToday
 	d.ReviewOldestDueAt = reviewDue.OldestDueAt
 
 	weak, err := h.store.WeakKnowledgePoints(ctx, userID, 3)

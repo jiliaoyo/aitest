@@ -554,10 +554,11 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 }
 
 type ReviewDueSummary struct {
-	Total       int
-	Confirmed   int
-	AI          int
-	OldestDueAt *string
+	Total          int
+	Confirmed      int
+	AI             int
+	CompletedToday int
+	OldestDueAt    *string
 }
 
 func (s *Store) DefaultLevelID(ctx context.Context, userID string) (string, error) {
@@ -577,6 +578,17 @@ func (s *Store) DueReviewSummary(ctx context.Context, userID, levelID string) (R
 		SELECT count(*)::int,
 		       count(*) FILTER (WHERE last_result.source = 'deterministic' AND last_result.answer_authority IS NOT NULL)::int,
 		       count(*) FILTER (WHERE NOT (last_result.source = 'deterministic' AND last_result.answer_authority IS NOT NULL))::int,
+		       COALESCE((
+				   SELECT count(*)::int
+				   FROM practice_sessions review_session
+				   JOIN practice_items review_item ON review_item.session_id = review_session.id
+				   JOIN question_versions review_version ON review_version.id = review_item.question_version_id
+				   WHERE review_session.user_id = $1
+				     AND review_session.scope->>'mode' = 'review'
+				     AND review_session.submitted_at >= date_trunc('day', now())
+				     AND review_session.submitted_at < date_trunc('day', now()) + interval '1 day'
+				     AND ($2 = '' OR review_version.level_id::text = $2)
+				 ), 0)::int,
 		       min(r.next_review_at)::text
 		FROM user_question_reviews r
 		JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
@@ -590,7 +602,7 @@ func (s *Store) DueReviewSummary(ctx context.Context, userID, levelID string) (R
 		WHERE r.user_id = $1 AND r.next_review_at <= now()
 		  AND ($2 = '' OR history_version.level_id::text = $2)
 		  AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`, userID, levelID).
-		Scan(&summary.Total, &summary.Confirmed, &summary.AI, &summary.OldestDueAt)
+		Scan(&summary.Total, &summary.Confirmed, &summary.AI, &summary.CompletedToday, &summary.OldestDueAt)
 	return summary, err
 }
 

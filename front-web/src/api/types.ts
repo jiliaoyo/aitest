@@ -297,6 +297,7 @@ export interface DashboardDTO {
   reviewDueCount: number
   reviewDueConfirmedCount: number
   reviewDueAiCount: number
+  reviewCompletedToday: number
   reviewOldestDueAt?: string | null
   memory: LearningMemoryDTO
 }

@@ -1306,6 +1306,7 @@ components:
         reviewDueCount: { type: integer, description: 当前默认级别（未设置时为全部级别）已到期题数量 }
         reviewDueConfirmedCount: { type: integer, description: 权威或人工审核结果的到期题数量 }
         reviewDueAiCount: { type: integer, description: AI 来源结果的到期题数量，可能有误 }
+        reviewCompletedToday: { type: integer, description: 当前范围今天已提交的复习题数量，目标为每日至少 10 题 }
         reviewOldestDueAt: { type: string, nullable: true, description: 当前范围最早到期时间 }
         memory: { $ref: '#/components/schemas/LearningMemory' }
     LearningMemory:
