@@ -8,11 +8,14 @@ import AppStatus from '@/components/AppStatus.vue'
 import FuriganaText from '@/components/FuriganaText.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { formatAIText, formatDateTime, formatPercent } from '@/app/format'
+import { sessionUser } from '@/app/session'
 
 const router = useRouter()
 const dashboard = ref<DashboardDTO | null>(null)
 const state = ref<'loading' | 'ready' | 'error'>('loading')
 const errorBody = ref<ApiError | null>(null)
+const reviewCreating = ref(false)
+const reviewError = ref('')
 
 async function load(): Promise<void> {
   state.value = 'loading'
@@ -55,6 +58,36 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
     })
     await router.push(`/practice/new?${params}`)
     void err
+  }
+}
+
+async function goReview(): Promise<void> {
+  if (!dashboard.value || reviewCreating.value) return
+  const levelId = sessionUser()?.defaultLevelId
+  if (!levelId) {
+    await router.push('/practice/new?mode=review')
+    return
+  }
+  reviewCreating.value = true
+  reviewError.value = ''
+  try {
+    const session = await request<{ id: string }>('/practice-sessions', {
+      method: 'POST',
+      body: {
+        levelId,
+        mode: 'review',
+        count: Math.min(dashboard.value.reviewDueCount, 10),
+      },
+    })
+    await router.push(`/practice/${session.id}`)
+  } catch (err) {
+    if (err instanceof ApiError && (err.code === 'no_due_reviews' || err.code === 'insufficient_questions')) {
+      await router.push(`/practice/new?mode=review&levelId=${encodeURIComponent(levelId)}`)
+      return
+    }
+    reviewError.value = err instanceof ApiError ? err.message : '创建复习练习失败，请重试'
+  } finally {
+    reviewCreating.value = false
   }
 }
 </script>
@@ -125,7 +158,10 @@ async function goPractice(rec: { knowledgePointIds: string[]; suggestedCount: nu
         <h2 id="review-title" style="font-size: 17px">到期复习</h2>
         <div class="card">
           <p class="muted">有 {{ dashboard.reviewDueCount }} 道题到期，包含题库题和你做过的 AI 生成题。</p>
-          <button class="primary" @click="router.push('/practice/new?mode=review')">复习到期题</button>
+          <button class="primary" :disabled="reviewCreating" @click="goReview">
+            {{ reviewCreating ? '准备复习…' : `复习 ${Math.min(dashboard.reviewDueCount, 10)} 题` }}
+          </button>
+          <p v-if="reviewError" class="error-summary" role="alert">{{ reviewError }}</p>
         </div>
       </section>
 
