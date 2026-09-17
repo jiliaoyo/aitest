@@ -21,7 +21,7 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v5"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v6"
 )
 
 //go:embed prompts/practice_grade.v1.md
@@ -30,7 +30,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v5.md
+//go:embed prompts/practice_batch_analysis.v6.md
 var batchAnalysisPrompt string
 
 func aiObjectJSONSchema(properties map[string]any, required []string) map[string]any {
@@ -235,7 +235,7 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		}
 		return err
 	}
-	explanation := strings.TrimSpace(resp.Explanation)
+	explanation := sanitizeAIExplanation(strings.TrimSpace(resp.Explanation))
 	if explanation == "" || len([]rune(explanation)) > 2000 {
 		err := errors.New("AI 判分解析文本缺失或超长")
 		s.markBusinessFailure(ctx, runID, "business_semantic", err)
@@ -338,7 +338,7 @@ func (s *Service) cachedExplanation(row batchAnalysisRow) (string, bool) {
 	if row.CachedExplanation == nil || row.CachedPromptVersion == nil || !validQuestionExplanationPrompt(*row.CachedPromptVersion) {
 		return "", false
 	}
-	return strings.TrimSpace(*row.CachedExplanation), true
+	return sanitizeAIExplanation(strings.TrimSpace(*row.CachedExplanation)), true
 }
 
 func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, bool) {
@@ -351,7 +351,7 @@ func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, boo
 	}
 	text := ""
 	if row.GeneratedExplanation != nil && strings.TrimSpace(*row.GeneratedExplanation) != "" {
-		text = strings.TrimSpace(*row.GeneratedExplanation)
+		text = sanitizeAIExplanation(strings.TrimSpace(*row.GeneratedExplanation))
 	}
 	if len([]rune(text)) > 2000 {
 		text = string([]rune(text)[:2000])
@@ -428,7 +428,7 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 			SourceSection: section, Options: jsonValue(row.Options),
 			MaterialID: jsonValueString(row.MaterialID), UserAnswer: jsonValue(row.UserValue),
 			StandardAnswer: jsonValue(row.StandardAnswer), GeneratedAnswer: jsonValue(row.GeneratedAnswer),
-			GeneratedExplanation: jsonValueString(row.GeneratedExplanation), CorrectAnswer: jsonValue(row.CorrectValue),
+			GeneratedExplanation: sanitizeAIExplanation(jsonValueString(row.GeneratedExplanation)), CorrectAnswer: jsonValue(row.CorrectValue),
 			AnswerAuthority: jsonValueString(row.AnswerAuthority), GradingSource: row.GradingSource,
 			GradingStatus:    row.GradingStatus,
 			NeedsGrading:     row.GradingSource == practice.SourceAI && row.GradingStatus == practice.StatusPending,
@@ -466,6 +466,12 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 			return s.failBatchAnalysis(ctx, req.SessionID, err)
 		}
 		return err
+	}
+	for i := range response.Grades {
+		response.Grades[i].Explanation = sanitizeAIExplanation(strings.TrimSpace(response.Grades[i].Explanation))
+	}
+	for i := range response.Explanations {
+		response.Explanations[i].Text = sanitizeAIExplanation(strings.TrimSpace(response.Explanations[i].Text))
 	}
 	summary := strings.TrimSpace(response.Summary)
 	if summary == "" || len([]rune(summary)) > 4000 {
@@ -648,7 +654,10 @@ func (s *Service) failBatchAnalysis(ctx context.Context, sessionID string, cause
 		if _, err := tx.Exec(ctx,
 			`UPDATE grading_results gr
 			 SET correct_value = aga.value,
-				 explanation = left(NULLIF(aga.explanation, ''), 2000),
+				 explanation = left(regexp_replace(
+				   regexp_replace(aga.explanation,
+				     '(?im)^(知识点：[[:space:]]*)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[[:space:]]*', E'\\1', 'g'),
+				   '(?im)^(知识点：[[:space:]]*)（(.*)）$', E'\\1\\2', 'g'), 2000),
 			     explanation_source = 'ai', updated_at = now()
 			 FROM practice_items pi
 			 JOIN ai_generated_question_answers aga ON aga.question_version_id = pi.question_version_id
@@ -760,7 +769,7 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		s.markBusinessFailure(ctx, runID, "business_structure", err)
 		return err
 	}
-	explanation := strings.TrimSpace(resp.Explanation)
+	explanation := sanitizeAIExplanation(strings.TrimSpace(resp.Explanation))
 	if explanation == "" || len([]rune(explanation)) > 2000 {
 		err := errors.New("AI 解析文本缺失或超长")
 		s.markBusinessFailure(ctx, runID, "business_semantic", err)

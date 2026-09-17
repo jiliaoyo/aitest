@@ -29,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v19"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v19.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v20"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v20.retry"
 
 const questionGenerationRetryInstructions = `上一轮部分或全部候选题没有通过服务端逐题校验。本轮只生成输入 JSON 中 count 指定的剩余题目；请优先修正下面的服务端错误，并再次逐题检查题型、答案结构和解析。`
 
@@ -1162,7 +1162,9 @@ func validateGeneratedQuestions(questions []generatedQuestion, expected int, dif
 	for _, point := range points {
 		allowed[point.ID] = true
 	}
-	for i, question := range questions {
+	for i := range questions {
+		questions[i].Explanation = sanitizeAIExplanation(strings.TrimSpace(questions[i].Explanation))
+		question := questions[i]
 		if !questionTypeMatches(questionType, question.Type) || len([]rune(strings.TrimSpace(question.Stem))) < 2 {
 			return fmt.Errorf("AI 第 %d 题题型或题干不合法", i+1)
 		}
