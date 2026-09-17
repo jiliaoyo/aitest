@@ -3,7 +3,6 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/aishuati/backend/internal/content"
@@ -12,30 +11,18 @@ import (
 const aiTranslationPrefix = "原文翻译："
 const aiAnalysisPrefix = "\n答案依据："
 
-var aiKnowledgePointUUID = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-
-// sanitizeAIExplanation 去掉学习者可见解析中的知识点内部 ID。
+// sanitizeAIExplanation 去掉学习者可见解析中已单独展示的知识点段落。
 func sanitizeAIExplanation(text string) string {
 	lines := strings.Split(text, "\n")
-	for i, line := range lines {
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "知识点：") {
+		if strings.HasPrefix(line, "知识点：") || strings.HasPrefix(line, "知识点:") {
 			continue
 		}
-		value := strings.TrimSpace(strings.TrimPrefix(line, "知识点："))
-		match := aiKnowledgePointUUID.FindStringIndex(value)
-		if match == nil {
-			continue
-		}
-		value = strings.TrimSpace(value[match[1]:])
-		if runes := []rune(value); len(runes) >= 2 {
-			if (runes[0] == '（' && runes[len(runes)-1] == '）') || (runes[0] == '(' && runes[len(runes)-1] == ')') {
-				value = strings.TrimSpace(string(runes[1 : len(runes)-1]))
-			}
-		}
-		lines[i] = "知识点：" + value
+		kept = append(kept, line)
 	}
-	return strings.Join(lines, "\n")
+	return strings.TrimSpace(strings.Join(kept, "\n"))
 }
 
 func validAIExplanation(text string) bool {

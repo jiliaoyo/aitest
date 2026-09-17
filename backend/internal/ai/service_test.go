@@ -36,16 +36,24 @@ func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
 	}
 }
 
-func TestSanitizeAIExplanationRemovesKnowledgePointUUID(t *testing.T) {
+func TestSanitizeAIExplanationRemovesKnowledgePointLine(t *testing.T) {
 	got := sanitizeAIExplanation("原文翻译：测试。\n答案依据：根据题目判断。\n知识点：f60335ec-1d9a-5921-b6b8-f40903a0f030（ば（条件））\n常见误区：误选其他条件表达。")
-	want := "原文翻译：测试。\n答案依据：根据题目判断。\n知识点：ば（条件）\n常见误区：误选其他条件表达。"
+	want := "原文翻译：测试。\n答案依据：根据题目判断。\n常见误区：误选其他条件表达。"
 	if got != want {
 		t.Fatalf("sanitized explanation = %q, want %q", got, want)
 	}
 }
 
+func TestSanitizeAIExplanationRemovesKnowledgePointWithoutUUID(t *testing.T) {
+	text := "原文翻译：测试。\n答案依据：根据题目判断。\n知识点: 条件表达\n常见误区：误选其他条件表达。"
+	want := "原文翻译：测试。\n答案依据：根据题目判断。\n常见误区：误选其他条件表达。"
+	if got := sanitizeAIExplanation(text); got != want {
+		t.Fatalf("knowledge point line was not removed: %q", got)
+	}
+}
+
 func TestSanitizeAIExplanationLeavesOrdinaryText(t *testing.T) {
-	text := "原文翻译：测试。\n答案依据：根据题目判断。\n知识点：条件表达\n常见误区：误选其他条件表达。"
+	text := "原文翻译：测试。\n答案依据：根据题目判断。\n常见误区：误选其他条件表达。"
 	if got := sanitizeAIExplanation(text); got != text {
 		t.Fatalf("ordinary explanation changed: %q", got)
 	}
