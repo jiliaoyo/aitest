@@ -54,11 +54,7 @@
   top: 0;
   z-index: 10;
   background: var(--bg);
-  border-bottom: 1px solid var(--border);
-}
-
-.topbar[data-at-top='true'] {
-  border-bottom-color: transparent;
+  border-bottom: 0;
 }
 
 @supports (backdrop-filter: blur(8px)) {

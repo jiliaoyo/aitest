@@ -1,21 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { sessionUser, isAdmin } from '@/app/session'
 
 const route = useRoute()
-const atTop = ref(true)
-
-function updateScrollState(): void {
-  atTop.value = window.scrollY <= 0
-}
-
-onMounted(() => {
-  updateScrollState()
-  window.addEventListener('scroll', updateScrollState, { passive: true })
-})
-
-onBeforeUnmount(() => window.removeEventListener('scroll', updateScrollState))
 
 const learnerNav = [
   { to: '/', label: '学习概览' },
@@ -50,7 +38,7 @@ function isActive(to: string): boolean {
 
 <template>
   <div>
-    <header class="topbar" :data-at-top="atTop">
+    <header class="topbar">
       <div class="layout-shell topbar-inner">
         <RouterLink class="topbar-brand" to="/">
           AI 刷题<span v-if="isAdminArea" class="tag" data-tone="accent" style="margin-left: 10px">管理端</span>
