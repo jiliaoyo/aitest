@@ -514,7 +514,12 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	}
 	seenGrades := map[string]bool{}
 	for _, grade := range response.Grades {
-		if !allowedGrades[grade.ItemID] || seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || !validAIExplanation(grade.Explanation) {
+		// 模型偶尔会把已经确定性判分或已完成 AI 判分的题也放进 grades；
+		// 这些结果不属于本批待处理范围，忽略即可，不能让整批分析失败。
+		if !allowedGrades[grade.ItemID] {
+			continue
+		}
+		if seenGrades[grade.ItemID] || (grade.Correctness != "correct" && grade.Correctness != "incorrect" && grade.Correctness != "cannot_determine") || !validAIExplanation(grade.Explanation) {
 			err := errors.New("AI 批次判定包含无效题目或结论")
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {
@@ -544,7 +549,11 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 	seenExplanations := map[string]bool{}
 	for _, explanation := range response.Explanations {
 		text := strings.TrimSpace(explanation.Text)
-		if !allowedExplanations[explanation.ItemID] || seenExplanations[explanation.ItemID] || !validAIExplanation(text) {
+		// 只接受 needsExplanation=true 的题目。模型多返回的 AI 题解析不应使整批失败。
+		if !allowedExplanations[explanation.ItemID] {
+			continue
+		}
+		if seenExplanations[explanation.ItemID] || !validAIExplanation(text) {
 			err := errors.New("AI 批次解析包含无效题目或文本")
 			s.markBusinessFailure(ctx, runID, "business_semantic", err)
 			if attempts >= maxAttempts {

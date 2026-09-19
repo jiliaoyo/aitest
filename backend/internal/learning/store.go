@@ -504,6 +504,11 @@ type reviewEventRow struct {
 	Source     string
 }
 
+type reviewMasteryRow struct {
+	QuestionID string
+	MasteredAt *time.Time
+}
+
 // RebuildQuestionReviews 从权威题和账号私有 AI 题的作答事实重建复习计划；重复任务只会得到同一结果。
 func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, userID string) error {
 	return store.WithTx(ctx, pool, func(tx pgx.Tx) error {
@@ -549,14 +554,26 @@ func (s *Store) RebuildQuestionReviews(ctx context.Context, pool *pgxpool.Pool, 
 			})
 		}
 		plans := buildReviewPlans(events)
+		masteryRows, err := store.CollectRows[reviewMasteryRow](ctx, tx,
+			`SELECT question_id::text, mastered_at
+			 FROM user_question_reviews
+			 WHERE user_id = $1 AND mastered_at IS NOT NULL`, userID)
+		if err != nil {
+			return err
+		}
+		masteredAt := make(map[string]*time.Time, len(masteryRows))
+		for _, row := range masteryRows {
+			masteredAt[row.QuestionID] = row.MasteredAt
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM user_question_reviews WHERE user_id = $1`, userID); err != nil {
 			return err
 		}
 		for _, plan := range plans {
+			mastered := masteredAt[plan.QuestionID]
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO user_question_reviews
-				  (user_id, question_id, stage, next_review_at, last_grading_result_id, last_status)
-				VALUES ($1, $2, $3, $4, $5, $6)`, userID, plan.QuestionID, plan.Stage, plan.NextReviewAt, plan.LastResultID, plan.LastStatus); err != nil {
+				  (user_id, question_id, stage, next_review_at, last_grading_result_id, last_status, mastered_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)`, userID, plan.QuestionID, plan.Stage, plan.NextReviewAt, plan.LastResultID, plan.LastStatus, mastered); err != nil {
 				return err
 			}
 		}
@@ -610,7 +627,7 @@ func (s *Store) DueReviewSummary(ctx context.Context, userID, levelID string) (R
 		LEFT JOIN source_sections history_section ON history_section.id = history_version.source_section_id
 		LEFT JOIN sources history_source ON history_source.id = history_section.source_id
 		JOIN questions q ON q.id = r.question_id AND q.retired_at IS NULL
-		WHERE r.user_id = $1 AND r.next_review_at <= now()
+		WHERE r.user_id = $1 AND r.mastered_at IS NULL AND r.next_review_at <= now()
 		  AND ($2 = '' OR history_version.level_id::text = $2)
 		  AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`, userID, levelID).
 		Scan(&summary.Total, &summary.Confirmed, &summary.AI, &summary.CompletedToday, &summary.OldestDueAt)
@@ -620,6 +637,97 @@ func (s *Store) DueReviewSummary(ctx context.Context, userID, levelID string) (R
 func (s *Store) DueReviewCount(ctx context.Context, userID string) (int, error) {
 	summary, err := s.DueReviewSummary(ctx, userID, "")
 	return summary.Total, err
+}
+
+type reviewItemRow struct {
+	QuestionID      string
+	Position        int
+	Type            string
+	Stem            string
+	OptionsText     *string
+	MaterialID      *string
+	MaterialTitle   *string
+	MaterialContent *string
+	KPID            *string
+	KPName          *string
+	LastStatus      string
+	GradingSource   string
+	AnswerAuthority *string
+	Stage           int
+	NextReviewAt    string
+	MasteredAt      *string
+}
+
+// ReviewItems 返回当前账号的待复习或已掌握题目；答案字段不进入列表 DTO。
+func (s *Store) ReviewItems(ctx context.Context, userID, state, levelID string, limit int) ([]reviewItemRow, error) {
+	if limit < 1 || limit > 100 {
+		limit = 100
+	}
+	args := []any{userID}
+	where := `r.user_id = $1 AND q.retired_at IS NULL
+		AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)`
+	if state == "mastered" {
+		where += " AND r.mastered_at IS NOT NULL"
+	} else {
+		where += " AND r.mastered_at IS NULL AND r.next_review_at <= now()"
+	}
+	if levelID != "" {
+		args = append(args, levelID)
+		where += " AND v.level_id::text = $" + strconv.Itoa(len(args))
+	}
+	args = append(args, limit)
+	order := "r.next_review_at ASC, r.question_id"
+	if state == "mastered" {
+		order = "r.mastered_at DESC, r.question_id"
+	}
+	return store.CollectRows[reviewItemRow](ctx, s.db, `
+		SELECT r.question_id::text, history_item.position, v.type, v.stem, v.options::text,
+		       mv.material_id::text, mv.title, mv.content,
+		       kp.id::text, kp.name, r.last_status, last_result.source,
+		       last_result.answer_authority, r.stage, r.next_review_at::text, r.mastered_at::text
+		FROM user_question_reviews r
+		JOIN grading_results last_result ON last_result.id = r.last_grading_result_id
+		JOIN practice_items history_item ON history_item.id = last_result.item_id
+		JOIN practice_sessions history_session
+		  ON history_session.id = history_item.session_id AND history_session.user_id = r.user_id
+		JOIN question_versions v ON v.id = history_item.question_version_id
+		JOIN questions q ON q.id = r.question_id
+		LEFT JOIN source_sections history_section ON history_section.id = v.source_section_id
+		LEFT JOIN sources history_source ON history_source.id = history_section.source_id
+		LEFT JOIN material_versions mv ON mv.id = v.material_version_id
+		LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
+		LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
+		WHERE `+where+`
+		ORDER BY `+order+`
+		LIMIT $`+strconv.Itoa(len(args)), args...)
+}
+
+func (s *Store) MarkQuestionMastered(ctx context.Context, userID, questionID string) error {
+	result, err := s.db.Exec(ctx, `
+		UPDATE user_question_reviews
+		SET mastered_at = now(), updated_at = now()
+		WHERE user_id = $1 AND question_id = $2`, userID, questionID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return httpapi.ErrNotFound
+	}
+	return nil
+}
+
+func (s *Store) UnmarkQuestionMastered(ctx context.Context, userID, questionID string) error {
+	result, err := s.db.Exec(ctx, `
+		UPDATE user_question_reviews
+		SET mastered_at = NULL, next_review_at = now(), updated_at = now()
+		WHERE user_id = $1 AND question_id = $2 AND mastered_at IS NOT NULL`, userID, questionID)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return httpapi.ErrNotFound
+	}
+	return nil
 }
 
 func (s *Store) RebuildUserStatsTx(ctx context.Context, tx pgx.Tx, userID string) error {

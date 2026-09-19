@@ -245,6 +245,7 @@ func (s *Service) GetPreSubmit(ctx context.Context, userID, sessionID string) (P
 	return PreSubmitSession{
 		ID:                   meta.ID,
 		Status:               meta.Status,
+		Mode:                 meta.Mode,
 		AnsweredCount:        answered,
 		TotalCount:           len(items),
 		GenerationCallsUsed:  meta.GenerationCallsUsed,

@@ -69,6 +69,7 @@ type PreSubmitOption struct {
 
 type PreSubmitItem struct {
 	ID                string             `json:"id"`
+	QuestionID        string             `json:"questionId"`
 	Position          int                `json:"position"`
 	Type              string             `json:"type"`
 	Material          *PreSubmitMaterial `json:"material"`
@@ -83,6 +84,7 @@ type PreSubmitItem struct {
 type PreSubmitSession struct {
 	ID                   string          `json:"id"`
 	Status               string          `json:"status"`
+	Mode                 string          `json:"mode,omitempty"`
 	AnsweredCount        int             `json:"answeredCount"`
 	TotalCount           int             `json:"totalCount"`
 	GenerationCallsUsed  int             `json:"generationCallsUsed,omitempty"`

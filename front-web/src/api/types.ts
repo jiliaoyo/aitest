@@ -106,6 +106,7 @@ export type ResultAnswerValue = AnswerValue | { acceptable: string[] } | { refer
 
 export interface PreSubmitItem {
   id: string
+  questionId?: string
   position: number
   type: QuestionType
   material: MaterialDTO | null
@@ -120,6 +121,7 @@ export interface PreSubmitItem {
 export interface PreSubmitSession {
   id: string
   status: SessionStatus
+  mode?: 'comprehensive' | 'knowledge' | 'wrong_items' | 'review' | 'ai_generated'
   answeredCount: number
   totalCount: number
   generationCallsUsed?: number
@@ -334,6 +336,22 @@ export interface WrongItem {
   userAnswer: AnswerValue
   correctAnswer: ResultAnswerValue
   explanation?: ExplanationDTO
+}
+
+export interface ReviewItem {
+  questionId: string
+  position: number
+  type: QuestionType
+  stem: string
+  options: OptionDTO[] | null
+  material?: MaterialDTO
+  knowledgePoints: KPRef[]
+  lastStatus: GradingStatus
+  gradingSource: 'deterministic' | 'ai'
+  answerAuthority?: AnswerAuthority | null
+  stage: number
+  nextReviewAt: string
+  masteredAt?: string | null
 }
 
 // ---- admin ----

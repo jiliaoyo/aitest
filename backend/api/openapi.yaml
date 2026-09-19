@@ -241,6 +241,38 @@ paths:
       responses:
         '204': { description: 已移除 }
         '404': { $ref: '#/components/responses/NotFound' }
+  /review-items:
+    get:
+      tags: [learning]
+      summary: 待复习或已掌握题目列表
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [due, mastered], default: due } }
+        - { name: levelId, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviewItems: { type: array, items: { $ref: '#/components/schemas/ReviewItem' } }
+  /review-items/{questionId}/mastered:
+    post:
+      tags: [learning]
+      summary: 标记题目为已掌握
+      parameters: [{ name: questionId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200': { description: 已标记 }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [learning]
+      summary: 移除已掌握标记并立即放回待复习
+      parameters: [{ name: questionId, in: path, required: true, schema: { type: string } }]
+      responses:
+        '204': { description: 已移除 }
+        '404': { $ref: '#/components/responses/NotFound' }
   /issue-reports:
     post:
       tags: [learning]
@@ -908,6 +940,7 @@ components:
       properties:
         id: { type: string }
         status: { type: string, enum: [generating, active, grading, completed, analysis_failed, generation_failed] }
+        mode: { type: string, enum: [comprehensive, knowledge, wrong_items, review, ai_generated] }
         answeredCount: { type: integer }
         totalCount: { type: integer }
         generationCallsUsed: { type: integer, description: 当前 AI 生成批次已尝试的模型调用次数 }
@@ -919,6 +952,7 @@ components:
             type: object
             properties:
               id: { type: string }
+              questionId: { type: string }
               position: { type: integer }
               type: { type: string, enum: [single_choice, multiple_choice, fill_blank, short_answer] }
               material:
@@ -1291,6 +1325,22 @@ components:
         userAnswer: { $ref: '#/components/schemas/AnswerValue' }
         correctAnswer: { $ref: '#/components/schemas/ResultAnswerValue' }
         explanation: { type: object, nullable: true }
+    ReviewItem:
+      type: object
+      properties:
+        questionId: { type: string }
+        position: { type: integer }
+        type: { type: string }
+        stem: { type: string }
+        options: { type: array, items: { type: object }, nullable: true }
+        material: { type: object, nullable: true }
+        knowledgePoints: { type: array, items: { type: object } }
+        lastStatus: { type: string, enum: [correct, incorrect, unanswered] }
+        gradingSource: { type: string, enum: [deterministic, ai] }
+        answerAuthority: { type: string, nullable: true }
+        stage: { type: integer }
+        nextReviewAt: { type: string }
+        masteredAt: { type: string, nullable: true }
     Dashboard:
       type: object
       properties:

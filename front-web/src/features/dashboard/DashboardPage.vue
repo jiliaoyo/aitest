@@ -178,6 +178,14 @@ async function goReview(): Promise<void> {
         </div>
       </section>
 
+      <section aria-labelledby="review-list-title">
+        <h2 id="review-list-title" style="font-size: 17px">复习题目</h2>
+        <div class="card" style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button class="ghost" type="button" @click="router.push('/review-items')">待复习列表</button>
+          <button class="ghost" type="button" @click="router.push('/mastered-items')">已掌握列表</button>
+        </div>
+      </section>
+
       <section v-if="dashboard.memory" aria-labelledby="memory-title">
         <h2 id="memory-title" style="font-size: 17px">全局做题记忆</h2>
         <div class="card">

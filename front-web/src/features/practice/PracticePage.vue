@@ -26,6 +26,9 @@ const showLocalDraftNote = ref(false)
 const confirmOpen = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
+const masteredQuestionIDs = ref(new Set<string>())
+const masteryError = ref('')
+const markingMastered = ref(false)
 
 const autosave = useAnswerAutosave(sessionID)
 const currentEntry = computed(() => autosave.entryOf(currentItem.value?.id ?? ''))
@@ -38,6 +41,7 @@ const currentItem = computed<PreSubmitItem | null>(() => {
   const item = session.value?.items[currentIndex.value]
   return item ?? null
 })
+const isReviewSession = computed(() => session.value?.mode === 'review')
 
 const answeredCount = computed(
   () => session.value?.items.filter((i) => autosave.entries.get(i.id)?.value != null).length ?? 0,
@@ -137,6 +141,21 @@ function toggleMaterial(): void {
 function materialCollapsed(): boolean {
   const material = currentItem.value?.material
   return material ? collapsedMaterials.value.has(material.id) : false
+}
+
+async function markCurrentMastered(): Promise<void> {
+  const questionID = currentItem.value?.questionId
+  if (!questionID || markingMastered.value) return
+  markingMastered.value = true
+  masteryError.value = ''
+  try {
+    await request(`/review-items/${questionID}/mastered`, { method: 'POST' })
+    masteredQuestionIDs.value = new Set([...masteredQuestionIDs.value, questionID])
+  } catch (err) {
+    masteryError.value = err instanceof ApiError ? err.message : '标记失败，请重试'
+  } finally {
+    markingMastered.value = false
+  }
 }
 
 // ---- 批次提交 ----
@@ -280,6 +299,13 @@ onBeforeUnmount(() => {
 
         <div class="practice-layout" style="margin-top: 18px">
           <div>
+            <div v-if="isReviewSession" class="card" style="margin-bottom: 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap">
+              <span class="muted">复习这道题后，可以直接更新掌握状态。</span>
+              <button class="ghost" type="button" :disabled="markingMastered || !currentItem?.questionId" @click="markCurrentMastered">
+                {{ markingMastered ? '标记中…' : masteredQuestionIDs.has(currentItem?.questionId ?? '') ? '已标记掌握' : '已掌握' }}
+              </button>
+              <p v-if="masteryError" class="error-summary" role="alert" style="flex-basis: 100%; margin: 0">{{ masteryError }}</p>
+            </div>
             <QuestionCard
               v-if="currentItem"
               :item="currentItem"

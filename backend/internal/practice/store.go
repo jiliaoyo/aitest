@@ -79,7 +79,7 @@ func (s *Store) DueReviewItems(ctx context.Context, userID, levelID, subjectID s
 		  LEFT JOIN source_sections history_section ON history_section.id = history_version.source_section_id
 		  LEFT JOIN sources history_source ON history_source.id = history_section.source_id
 		  JOIN questions q ON q.id = r.question_id
-		  WHERE r.user_id = $1 AND r.next_review_at <= now() AND q.retired_at IS NULL
+		  WHERE r.user_id = $1 AND r.mastered_at IS NULL AND r.next_review_at <= now() AND q.retired_at IS NULL
 		    AND (history_source.kind = 'ai_generated' OR q.published_version_id IS NOT NULL)
 		)
 		SELECT due.question_id::text, due.version_id::text
@@ -101,6 +101,7 @@ type SessionMeta struct {
 	ID                   string
 	UserID               string
 	Status               string
+	Mode                 string
 	SubmitKey            *string
 	SubmitHash           *string
 	CreatedAt            string
@@ -117,13 +118,13 @@ type SessionMeta struct {
 func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string) (SessionMeta, error) {
 	var m SessionMeta
 	err := s.db.QueryRow(ctx,
-		`SELECT id::text, user_id::text, status, submit_key, submit_hash,
+		`SELECT id::text, user_id::text, status, scope->>'mode', submit_key, submit_hash,
 		        created_at::text, submitted_at::text, completed_at::text,
 		        ai_summary, ai_summary_status, ai_generation_calls_used,
 		        ai_generation_call_budget, ai_generation_last_error
 		 FROM practice_sessions WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
 		sessionID, userID,
-	).Scan(&m.ID, &m.UserID, &m.Status, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus, &m.GenerationCallsUsed, &m.GenerationCallBudget, &m.GenerationLastError)
+	).Scan(&m.ID, &m.UserID, &m.Status, &m.Mode, &m.SubmitKey, &m.SubmitHash, &m.CreatedAt, &m.SubmittedAt, &m.CompletedAt, &m.AISummary, &m.AISummaryStatus, &m.GenerationCallsUsed, &m.GenerationCallBudget, &m.GenerationLastError)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SessionMeta{}, httpapi.ErrNotFound
 	}
@@ -132,6 +133,7 @@ func (s *Store) SessionMetaForUser(ctx context.Context, sessionID, userID string
 
 type preItemRow struct {
 	ID                string
+	QuestionID        string
 	Position          int
 	Type              string
 	Stem              string
@@ -147,7 +149,7 @@ type preItemRow struct {
 
 func (s *Store) PreSubmitItems(ctx context.Context, sessionID string) ([]PreSubmitItem, int, error) {
 	rows, err := store.CollectRows[preItemRow](ctx, s.db,
-		`SELECT pi.id::text, pi.position, v.type, v.stem, ss.name, v.options::text,
+		`SELECT pi.id::text, pi.question_id::text, pi.position, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.title, mv.content,
 		        ua.value::text, ua.marked_for_review, ua.saved_at::text
 		 FROM practice_items pi
@@ -164,11 +166,12 @@ func (s *Store) PreSubmitItems(ctx context.Context, sessionID string) ([]PreSubm
 	answered := 0
 	for _, r := range rows {
 		item := PreSubmitItem{
-			ID:       r.ID,
-			Position: r.Position,
-			Type:     r.Type,
-			Stem:     r.Stem,
-			Options:  []PreSubmitOption{},
+			ID:         r.ID,
+			QuestionID: r.QuestionID,
+			Position:   r.Position,
+			Type:       r.Type,
+			Stem:       r.Stem,
+			Options:    []PreSubmitOption{},
 		}
 		if r.SourceSectionName != nil {
 			item.SourceSectionName = *r.SourceSectionName

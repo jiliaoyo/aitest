@@ -10,6 +10,8 @@ const learnerNav = [
   { to: '/practice/new', label: '创建练习' },
   { to: '/history', label: '练习历史' },
   { to: '/wrong-items', label: '错题本' },
+  { to: '/review-items', label: '待复习' },
+  { to: '/mastered-items', label: '已掌握' },
   { to: '/knowledge', label: '知识点' },
 ]
 

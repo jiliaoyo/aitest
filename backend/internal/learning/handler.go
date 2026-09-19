@@ -95,6 +95,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux, adminMux *http.ServeMux) {
 		mux.HandleFunc("DELETE /api/v1/learning-memory", h.deleteMemory)
 		mux.HandleFunc("GET /api/v1/wrong-items", h.wrongItems)
 		mux.HandleFunc("DELETE /api/v1/wrong-items/{id}", h.deleteWrongItem)
+		mux.HandleFunc("GET /api/v1/review-items", h.reviewItems)
+		mux.HandleFunc("POST /api/v1/review-items/{questionId}/mastered", h.markQuestionMastered)
+		mux.HandleFunc("DELETE /api/v1/review-items/{questionId}/mastered", h.unmarkQuestionMastered)
 		mux.HandleFunc("POST /api/v1/issue-reports", h.createIssueReport)
 	}
 	if adminMux != nil {
@@ -322,6 +325,75 @@ func (h *Handler) deleteWrongItem(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) reviewItems(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	state := q.Get("state")
+	if state == "" {
+		state = "due"
+	}
+	if state != "due" && state != "mastered" {
+		httpapi.WriteError(w, r, httpapi.ValidationError(map[string]string{"state": "state 只能是 due 或 mastered"}))
+		return
+	}
+	limit, _ := strconv.Atoi(q.Get("limit"))
+	rows, err := h.store.ReviewItems(r.Context(), ctxkeys.UserID(r.Context()), state, q.Get("levelId"), limit)
+	if err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	items := map[string]*reviewItemDTO{}
+	order := []string{}
+	for _, row := range rows {
+		item, ok := items[row.QuestionID]
+		if !ok {
+			item = &reviewItemDTO{
+				QuestionID: row.QuestionID, Position: row.Position, Type: row.Type, Stem: row.Stem,
+				Options: json.RawMessage("null"), LastStatus: row.LastStatus, GradingSource: row.GradingSource,
+				AnswerAuthority: row.AnswerAuthority, Stage: row.Stage, NextReviewAt: row.NextReviewAt, MasteredAt: row.MasteredAt,
+				KnowledgePoints: []kpRef{},
+			}
+			if row.OptionsText != nil && *row.OptionsText != "null" {
+				item.Options = json.RawMessage(*row.OptionsText)
+			}
+			if row.MaterialID != nil {
+				item.Material = &materialDTO{ID: *row.MaterialID}
+				if row.MaterialTitle != nil {
+					item.Material.Title = *row.MaterialTitle
+				}
+				if row.MaterialContent != nil {
+					item.Material.Content = *row.MaterialContent
+				}
+			}
+			items[row.QuestionID] = item
+			order = append(order, row.QuestionID)
+		}
+		if row.KPID != nil {
+			item.KnowledgePoints = append(item.KnowledgePoints, kpRef{ID: *row.KPID, Name: *row.KPName})
+		}
+	}
+	out := make([]*reviewItemDTO, 0, len(order))
+	for _, id := range order {
+		out = append(out, items[id])
+	}
+	httpapi.WriteJSON(w, http.StatusOK, map[string]any{"reviewItems": out})
+}
+
+func (h *Handler) markQuestionMastered(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.MarkQuestionMastered(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("questionId")); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, http.StatusOK, map[string]bool{"mastered": true})
+}
+
+func (h *Handler) unmarkQuestionMastered(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.UnmarkQuestionMastered(r.Context(), ctxkeys.UserID(r.Context()), r.PathValue("questionId")); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) createIssueReport(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		PracticeItemID string `json:"practiceItemId"`
@@ -397,6 +469,22 @@ type wrongItemDTO struct {
 	UserAnswer      json.RawMessage `json:"userAnswer"`
 	CorrectAnswer   json.RawMessage `json:"correctAnswer"`
 	Explanation     *explanationDTO `json:"explanation,omitempty"`
+}
+
+type reviewItemDTO struct {
+	QuestionID      string          `json:"questionId"`
+	Position        int             `json:"position"`
+	Type            string          `json:"type"`
+	Stem            string          `json:"stem"`
+	Options         json.RawMessage `json:"options"`
+	Material        *materialDTO    `json:"material,omitempty"`
+	KnowledgePoints []kpRef         `json:"knowledgePoints"`
+	LastStatus      string          `json:"lastStatus"`
+	GradingSource   string          `json:"gradingSource"`
+	AnswerAuthority *string         `json:"answerAuthority,omitempty"`
+	Stage           int             `json:"stage"`
+	NextReviewAt    string          `json:"nextReviewAt"`
+	MasteredAt      *string         `json:"masteredAt,omitempty"`
 }
 
 type materialDTO struct {
