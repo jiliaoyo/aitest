@@ -57,6 +57,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+.topbar[data-at-top='true'] {
+  border-bottom-color: transparent;
+}
+
 @supports (backdrop-filter: blur(8px)) {
   .topbar {
     background: color-mix(in oklch, var(--bg) 82%, transparent);
