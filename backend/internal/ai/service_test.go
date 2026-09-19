@@ -22,8 +22,11 @@ func TestValidateAICorrectAnswer(t *testing.T) {
 }
 
 func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
-	if !validAIExplanation("原文翻译：这是测试题。\n答案依据：测试。") {
+	if !validAIExplanation("原文翻译：这是测试题。\n答案依据：根据题干判断。") {
 		t.Fatal("explanation with original translation rejected")
+	}
+	if validAIExplanation("原文翻译：这是测试题。\n答案依据：動作が行われる場所を表す時は「で」を使います。") {
+		t.Fatal("Japanese explanation should be rejected")
 	}
 	if validAIExplanation("答案依据：缺少原文翻译。") {
 		t.Fatal("explanation without original translation accepted")
@@ -33,6 +36,21 @@ func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
 	}
 	if validQuestionExplanationPrompt("practice_batch_analysis.v4") {
 		t.Fatal("old cached explanation without translation accepted")
+	}
+	if validQuestionExplanationPrompt("practice_batch_analysis.v6") {
+		t.Fatal("old cached explanation without Chinese-language guarantee accepted")
+	}
+	if !validQuestionExplanationPrompt("practice_batch_analysis.v7") {
+		t.Fatal("current cached explanation prompt rejected")
+	}
+}
+
+func TestHasChineseExplanationAllowsJapaneseTermsInChineseProse(t *testing.T) {
+	if !hasChineseExplanation("根据题干，助词「で」表示动作发生的场所。") {
+		t.Fatal("Chinese explanation with Japanese term was rejected")
+	}
+	if hasChineseExplanation("動作が行われる場所を表す時は「で」を使います。") {
+		t.Fatal("Japanese prose was accepted")
 	}
 }
 

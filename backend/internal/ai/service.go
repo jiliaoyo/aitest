@@ -21,7 +21,7 @@ import (
 const (
 	gradePromptVersion         = "practice_grade.v1"
 	explainPromptVersion       = "practice_explain.v1"
-	batchAnalysisPromptVersion = "practice_batch_analysis.v6"
+	batchAnalysisPromptVersion = "practice_batch_analysis.v7"
 )
 
 //go:embed prompts/practice_grade.v1.md
@@ -30,7 +30,7 @@ var gradePrompt string
 //go:embed prompts/practice_explain.v1.md
 var explainPrompt string
 
-//go:embed prompts/practice_batch_analysis.v6.md
+//go:embed prompts/practice_batch_analysis.v7.md
 var batchAnalysisPrompt string
 
 func aiObjectJSONSchema(properties map[string]any, required []string) map[string]any {
@@ -236,8 +236,8 @@ func (s *Service) handleGrade(ctx context.Context, attempts, maxAttempts int, pa
 		return err
 	}
 	explanation := sanitizeAIExplanation(strings.TrimSpace(resp.Explanation))
-	if explanation == "" || len([]rune(explanation)) > 2000 {
-		err := errors.New("AI 判分解析文本缺失或超长")
+	if explanation == "" || len([]rune(explanation)) > 2000 || !hasChineseExplanation(explanation) {
+		err := errors.New("AI 判分解析文本缺失、语言不符合要求或超长")
 		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		if attempts >= maxAttempts {
 			return s.failGrading(ctx, item.SessionID, item.ItemID, err)
@@ -338,7 +338,11 @@ func (s *Service) cachedExplanation(row batchAnalysisRow) (string, bool) {
 	if row.CachedExplanation == nil || row.CachedPromptVersion == nil || !validQuestionExplanationPrompt(*row.CachedPromptVersion) {
 		return "", false
 	}
-	return sanitizeAIExplanation(strings.TrimSpace(*row.CachedExplanation)), true
+	explanation := sanitizeAIExplanation(strings.TrimSpace(*row.CachedExplanation))
+	if !hasChineseExplanation(explanation) {
+		return "", false
+	}
+	return explanation, true
 }
 
 func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, bool) {
@@ -352,6 +356,9 @@ func generatedAnswerFallback(row batchAnalysisRow) (json.RawMessage, string, boo
 	text := ""
 	if row.GeneratedExplanation != nil && strings.TrimSpace(*row.GeneratedExplanation) != "" {
 		text = sanitizeAIExplanation(strings.TrimSpace(*row.GeneratedExplanation))
+	}
+	if text != "" && !hasChineseExplanation(text) {
+		text = "AI 解析语言异常，暂无法提供可靠的中文解析。"
 	}
 	if len([]rune(text)) > 2000 {
 		text = string([]rune(text)[:2000])
@@ -770,8 +777,8 @@ func (s *Service) handleExplain(ctx context.Context, attempts, maxAttempts int, 
 		return err
 	}
 	explanation := sanitizeAIExplanation(strings.TrimSpace(resp.Explanation))
-	if explanation == "" || len([]rune(explanation)) > 2000 {
-		err := errors.New("AI 解析文本缺失或超长")
+	if explanation == "" || len([]rune(explanation)) > 2000 || !hasChineseExplanation(explanation) {
+		err := errors.New("AI 解析文本缺失、语言不符合要求或超长")
 		s.markBusinessFailure(ctx, runID, "business_semantic", err)
 		return err
 	}

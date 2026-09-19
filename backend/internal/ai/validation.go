@@ -11,6 +11,12 @@ import (
 const aiTranslationPrefix = "原文翻译："
 const aiAnalysisPrefix = "\n答案依据："
 
+var chineseExplanationMarkers = [...]string{
+	"根据", "本题", "题干", "表示", "因为", "所以", "因此", "用于", "误用", "选择", "选项",
+	"语法", "词义", "符合", "不能", "正确", "错误", "这里", "说明", "区别", "意思", "接在", "接续", "解析",
+	"句意", "注意", "场景", "动作", "时间", "地点", "助词", "动词", "形容词", "名词", "连接",
+}
+
 // sanitizeAIExplanation 去掉学习者可见解析中已单独展示的知识点段落。
 func sanitizeAIExplanation(text string) string {
 	lines := strings.Split(text, "\n")
@@ -25,11 +31,22 @@ func sanitizeAIExplanation(text string) string {
 	return strings.TrimSpace(strings.Join(kept, "\n"))
 }
 
+// hasChineseExplanation 用少量中文说明词拦截整段日语；题干、答案词和例句仍可保留日语。
+func hasChineseExplanation(text string) bool {
+	for _, marker := range chineseExplanationMarkers {
+		if strings.Contains(text, marker) {
+			return true
+		}
+	}
+	return false
+}
+
 func validAIExplanation(text string) bool {
 	text = strings.TrimSpace(text)
 	translationEnd := strings.Index(text, aiAnalysisPrefix)
 	return strings.HasPrefix(text, aiTranslationPrefix) && translationEnd > len(aiTranslationPrefix) &&
-		strings.TrimSpace(text[translationEnd+len(aiAnalysisPrefix):]) != "" && len([]rune(text)) <= 2000
+		strings.TrimSpace(text[translationEnd+len(aiAnalysisPrefix):]) != "" &&
+		hasChineseExplanation(text[translationEnd+len(aiAnalysisPrefix):]) && len([]rune(text)) <= 2000
 }
 
 // validateAICorrectAnswer checks the answer's meaning against the immutable question version.

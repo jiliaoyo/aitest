@@ -29,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v20"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v20.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v21"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v21.retry"
 
 const questionGenerationRetryInstructions = `上一轮部分或全部候选题没有通过服务端逐题校验。本轮只生成输入 JSON 中 count 指定的剩余题目；请优先修正下面的服务端错误，并再次逐题检查题型、答案结构和解析。`
 
