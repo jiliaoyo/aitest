@@ -299,13 +299,6 @@ onBeforeUnmount(() => {
 
         <div class="practice-layout" style="margin-top: 18px">
           <div>
-            <div v-if="isReviewSession" class="card" style="margin-bottom: 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap">
-              <span class="muted">复习这道题后，可以直接更新掌握状态。</span>
-              <button class="ghost" type="button" :disabled="markingMastered || !currentItem?.questionId" @click="markCurrentMastered">
-                {{ markingMastered ? '标记中…' : masteredQuestionIDs.has(currentItem?.questionId ?? '') ? '已标记掌握' : '已掌握' }}
-              </button>
-              <p v-if="masteryError" class="error-summary" role="alert" style="flex-basis: 100%; margin: 0">{{ masteryError }}</p>
-            </div>
             <QuestionCard
               v-if="currentItem"
               :item="currentItem"
@@ -316,6 +309,13 @@ onBeforeUnmount(() => {
               @update:marked="setMarked"
               @toggle-material="toggleMaterial"
             />
+            <div v-if="isReviewSession" class="card" style="margin-top: 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap">
+              <span class="muted">复习这道题后，可以直接更新掌握状态。</span>
+              <button class="ghost" type="button" :disabled="markingMastered || !currentItem?.questionId" @click="markCurrentMastered">
+                {{ markingMastered ? '标记中…' : masteredQuestionIDs.has(currentItem?.questionId ?? '') ? '已标记掌握' : '已掌握' }}
+              </button>
+              <p v-if="masteryError" class="error-summary" role="alert" style="flex-basis: 100%; margin: 0">{{ masteryError }}</p>
+            </div>
             <div style="display: flex; justify-content: space-between; margin-top: 14px; gap: 10px">
               <button type="button" :disabled="currentIndex === 0" @click="currentIndex--">上一题</button>
               <button
