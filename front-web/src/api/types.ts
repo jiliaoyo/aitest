@@ -183,6 +183,7 @@ export type AIGenerationCategory =
 
 export interface AIGeneratePracticeRequest {
   levelId?: string
+  subjectIds?: string[]
   subjectId?: string
   knowledgePointIds?: string[]
   count: 10 | 20 | 30
@@ -190,6 +191,7 @@ export interface AIGeneratePracticeRequest {
   generationMode?: AIGenerationMode
   questionType?: AIGenerationQuestionType
   showFurigana?: boolean
+  categories?: AIGenerationCategory[]
   category?: AIGenerationCategory
 }
 

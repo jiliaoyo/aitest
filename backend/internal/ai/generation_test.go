@@ -417,6 +417,27 @@ func TestValidGeneratedCategoryForSubject(t *testing.T) {
 	}
 }
 
+func TestNormalizeGeneratedSelection(t *testing.T) {
+	if got := normalizeStringList([]string{" vocab ", "grammar", "vocab", ""}); len(got) != 2 || got[0] != "grammar" || got[1] != "vocab" {
+		t.Fatalf("normalized subjects = %v", got)
+	}
+	if got := normalizeGeneratedCategories([]string{"grammar_verb", "grammar_verb", " vocabulary_noun "}); len(got) != 2 || got[0] != "grammar_verb" || got[1] != "vocabulary_noun" {
+		t.Fatalf("normalized categories = %v", got)
+	}
+	if got := normalizeGeneratedCategories([]string{"mixed", "grammar_verb"}); len(got) != 0 {
+		t.Fatalf("mixed category should clear the selection: %v", got)
+	}
+}
+
+func TestValidGeneratedCategoryForSubjects(t *testing.T) {
+	if !validGeneratedCategoryForSubjects("grammar_case_particle", []string{"grammar", "vocabulary"}) {
+		t.Fatal("category should match at least one selected subject")
+	}
+	if validGeneratedCategoryForSubjects("reading_logic", []string{"grammar", "vocabulary"}) {
+		t.Fatal("category should be rejected when no selected subject matches")
+	}
+}
+
 func TestCapGeneratedQuestionsDropsOnlyExtraQuestions(t *testing.T) {
 	questions := []generatedQuestion{{Stem: "一"}, {Stem: "二"}, {Stem: "三"}}
 	trimmed := capGeneratedQuestions(questions, 2)

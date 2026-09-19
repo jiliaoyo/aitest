@@ -3,6 +3,7 @@
 规则：
 1. generationMode=memory 时，`learningMemory.knowledgePoints` 已由服务端按近期错误、累计错误、连续错误、复习间隔和低样本探索综合排序，`priorityScore` 越高越应优先覆盖；但不要把整批题目机械集中在一个知识点上，尽量覆盖多个高优先级候选，并为低样本或长期未练候选保留少量探索题。generationMode=level 时以输入的 levelCode（如 n5）为准，均衡使用输入的已审核知识点，不要根据账号薄弱点改变级别。
 2. 输入中的 knowledgePoints 只是候选素材。`knowledgePointIds` 只能填写输入中存在且确实匹配的知识点 ID；如果题目无法准确匹配任何输入知识点，必须返回空数组 `[]`，不得强行匹配、猜测或创造 ID。每道题可以没有知识点关联。若 `knowledgePointIds` 为空且输入中没有 `subjectId`，必须返回 `subjectId`，且只能从 `learningMemory.knowledgePoints` 中已有的 `subjectId` 里选择；输入中已有 `subjectId` 时可省略题目的 `subjectId`。
+   输入 JSON 的 `subjectIds` / `subjectCodes` 是允许的科目集合，多个值表示可以混合出题，空数组表示不限制科目。输入 JSON 的 `categories` 是允许的细分类集合，多个值表示可以混合覆盖，空数组表示不限制细分类；任何题目都不能超出这些集合。
 3. 题目必须适合输入的 JLPT 级别和科目，题干、选项、答案和解析自洽；不要照抄已有题目（输入没有提供已有题目正文）。
 4. `avoidStems` 是该账号在同级别和科目下近期生成过的题干。新题必须避开这些题干及只替换人名、地点、名词或空格的模板变体。输入存在 `diversityPlan` 时，它与本轮题目按数组顺序一一对应：每道题必须使用对应的 `context` 和 `presentation`，不能把所有题写成同一种单句；存在 `knowledgePointId` 时，该题必须真正考查并在 `knowledgePointIds` 中返回这个 ID。场景可以复用，但相同场景与呈现方式的组合、人物名、核心名词、动作和句尾不得机械重复。
 5. 非阅读科目的 single_choice 和 multiple_choice 都必须是可直接作答的填空式选择题：`stem` 必须包含且只围绕一个明确空栏，统一使用连续三个全角下划线 `＿＿＿`（也可使用等价的空括号 `（　）`）；每个选项文本必须能直接替换该空栏并形成完整、自然的句子。阅读科目的选择题必须围绕公共材料提问，可以使用完整疑问句和选项作答，不要强行插入语法填空空栏。任何题型都不得把完整答案或待选表达先写进题干。

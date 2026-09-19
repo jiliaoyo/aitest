@@ -29,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const questionGenerationPromptVersion = "practice_question_generation.v21"
-const questionGenerationRetryPromptVersion = "practice_question_generation.v21.retry"
+const questionGenerationPromptVersion = "practice_question_generation.v22"
+const questionGenerationRetryPromptVersion = "practice_question_generation.v22.retry"
 
 const questionGenerationRetryInstructions = `上一轮部分或全部候选题没有通过服务端逐题校验。本轮只生成输入 JSON 中 count 指定的剩余题目；请优先修正下面的服务端错误，并再次逐题检查题型、答案结构和解析。`
 
@@ -43,6 +43,7 @@ const questionGenerationPromptAddendum = `
 4. 题目中的干扰项也必须属于当前级别和科目；不能用高等级句型充当错误选项。
 5. short_answer 的 correctAnswer 必须严格是 {"reference":"非空字符串"}；fill_blank 必须严格是 {"acceptable":["非空字符串"]}，不要使用 text、null、数组对象或其他结构。
 6. 当 subjectCode=reading，或 category 以 reading_ 开头时，生成 2～6 篇彼此独立的公共阅读材料；20 道题优先生成 4 篇、每篇约 5 道小题，10 道题约 2 篇，30 道题约 6 篇。材料对应题量不要求完全均匀，但每篇至少对应 2 道题，任何一篇不要承载超过整批约 60% 的题目。同一篇材料的所有题必须逐字复用相同的 material.title 和 material.content；不要让整批题目只共用一篇材料，也不要每道题单独生成一篇材料。每道题仍必须输出 material，题干必须围绕对应材料。阅读选择题是材料理解题，可以使用完整疑问句和选项回答，不要强行插入语法填空空栏。
+7. 当输入 JSON 的 subjectIds/subjectCodes 或 categories 包含多个值时，题目可以在这些科目和分类之间混合，但不得超出集合；尽量让整批题目覆盖多个已选范围。集合为空表示不限制科目或细分类。
 `
 
 //go:embed prompts/practice_question_generation.v12.md
@@ -82,6 +83,7 @@ var generatedCategories = map[string]struct{}{
 
 type AIGenerateRequest struct {
 	LevelID           string   `json:"levelId"`
+	SubjectIDs        []string `json:"subjectIds"`
 	SubjectID         string   `json:"subjectId"`
 	KnowledgePointIDs []string `json:"knowledgePointIds"`
 	Count             int      `json:"count"`
@@ -89,6 +91,7 @@ type AIGenerateRequest struct {
 	GenerationMode    string   `json:"generationMode"`
 	QuestionType      string   `json:"questionType"`
 	ShowFurigana      bool     `json:"showFurigana"`
+	Categories        []string `json:"categories"`
 	Category          string   `json:"category"`
 }
 
@@ -119,6 +122,24 @@ func (s *Service) createGeneratedSession(w http.ResponseWriter, r *http.Request)
 func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req AIGenerateRequest) (AIGeneratedSession, error) {
 	if !s.client.Configured() {
 		return AIGeneratedSession{}, httpapi.E(http.StatusServiceUnavailable, "ai_unavailable", "AI 出题服务暂不可用")
+	}
+	req.SubjectIDs = normalizeStringList(req.SubjectIDs)
+	if len(req.SubjectIDs) == 0 && req.SubjectID != "" {
+		req.SubjectIDs = []string{req.SubjectID}
+	}
+	if len(req.SubjectIDs) == 1 {
+		req.SubjectID = req.SubjectIDs[0]
+	} else {
+		req.SubjectID = ""
+	}
+	req.Categories = normalizeGeneratedCategories(req.Categories)
+	if len(req.Categories) == 0 && req.Category != "" && req.Category != generatedCategoryMixed {
+		req.Categories = []string{req.Category}
+	}
+	if len(req.Categories) == 1 {
+		req.Category = req.Categories[0]
+	} else {
+		req.Category = generatedCategoryMixed
 	}
 	if req.Count == 0 {
 		req.Count = 20
@@ -167,12 +188,14 @@ func (s *Service) CreateGeneratedSession(ctx context.Context, userID string, req
 	}
 	scope, _ := json.Marshal(map[string]any{
 		"mode":              "ai_generated",
+		"subjectIds":        req.SubjectIDs,
 		"subjectId":         req.SubjectID,
 		"knowledgePointIds": req.KnowledgePointIDs,
 		"difficulty":        req.Difficulty,
 		"generationMode":    req.GenerationMode,
 		"questionType":      req.QuestionType,
 		"showFurigana":      req.ShowFurigana,
+		"categories":        req.Categories,
 		"category":          req.Category,
 	})
 	var out AIGeneratedSession
@@ -252,6 +275,39 @@ func normalizeKnowledgePointIDs(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func normalizeStringList(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func normalizeGeneratedCategories(values []string) []string {
+	filtered := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == generatedCategoryMixed {
+			return []string{}
+		}
+		filtered = append(filtered, value)
+	}
+	return normalizeStringList(filtered)
 }
 
 func validGeneratedDifficulty(difficulty string) bool {
@@ -383,6 +439,18 @@ func validGeneratedCategoryForSubject(category, subjectCode string) bool {
 	return category == generatedCategoryMixed || subjectCode == "" || strings.HasPrefix(category, subjectCode+"_")
 }
 
+func validGeneratedCategoryForSubjects(category string, subjectCodes []string) bool {
+	if category == generatedCategoryMixed || len(subjectCodes) == 0 {
+		return true
+	}
+	for _, subjectCode := range subjectCodes {
+		if validGeneratedCategoryForSubject(category, subjectCode) {
+			return true
+		}
+	}
+	return false
+}
+
 type generationCurriculum struct {
 	Scope          string
 	ForbiddenForms []string
@@ -489,22 +557,26 @@ func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateReq
 		}
 		return err
 	}
-	if !validGeneratedCategoryForLevel(req.Category, levelCode) {
-		return httpapi.ValidationError(map[string]string{"category": fmt.Sprintf("%s 不适用于 %s 级别，请选择当前级别支持的分类", req.Category, strings.ToUpper(levelCode))})
-	}
-	if req.SubjectID != "" {
+	subjectCodes := make([]string, 0, len(req.SubjectIDs))
+	for _, subjectID := range req.SubjectIDs {
 		var subjectCode string
 		if err := s.pool.QueryRow(ctx,
 			`SELECT sub.code
 			 FROM exam_levels l JOIN subjects sub ON sub.exam_id = l.exam_id
-			 WHERE l.id::text = $1 AND sub.id::text = $2`, req.LevelID, req.SubjectID).Scan(&subjectCode); err != nil {
+			 WHERE l.id::text = $1 AND sub.id::text = $2`, req.LevelID, subjectID).Scan(&subjectCode); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return httpapi.ErrNotFound
 			}
 			return err
 		}
-		if !validGeneratedCategoryForSubject(req.Category, subjectCode) {
-			return httpapi.ValidationError(map[string]string{"category": "出题分类与所选科目不一致"})
+		subjectCodes = append(subjectCodes, subjectCode)
+	}
+	for _, category := range req.Categories {
+		if !validGeneratedCategoryForLevel(category, levelCode) {
+			return httpapi.ValidationError(map[string]string{"categories": fmt.Sprintf("%s 不适用于 %s 级别，请选择当前级别支持的分类", category, strings.ToUpper(levelCode))})
+		}
+		if !validGeneratedCategoryForSubjects(category, subjectCodes) {
+			return httpapi.ValidationError(map[string]string{"categories": "出题分类与所选科目不一致"})
 		}
 	}
 	if len(req.KnowledgePointIDs) > 0 {
@@ -512,8 +584,8 @@ func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateReq
 		if err := s.pool.QueryRow(ctx,
 			`SELECT count(*) FROM knowledge_points
 			 WHERE id::text = ANY($1::text[]) AND status = 'published'
-			   AND level_id::text = $2 AND ($3 = '' OR subject_id::text = $3)`,
-			req.KnowledgePointIDs, req.LevelID, req.SubjectID).Scan(&count); err != nil {
+			   AND level_id::text = $2 AND ($3::text[] = '{}' OR subject_id::text = ANY($3::text[]))`,
+			req.KnowledgePointIDs, req.LevelID, req.SubjectIDs).Scan(&count); err != nil {
 			return err
 		}
 		if count != len(uniqueStrings(req.KnowledgePointIDs)) {
@@ -524,8 +596,8 @@ func (s *Service) validateGenerationScope(ctx context.Context, req AIGenerateReq
 	var count int
 	if err := s.pool.QueryRow(ctx,
 		`SELECT count(*) FROM knowledge_points
-		 WHERE status = 'published' AND level_id::text = $1 AND ($2 = '' OR subject_id::text = $2)`,
-		req.LevelID, req.SubjectID).Scan(&count); err != nil {
+		 WHERE status = 'published' AND level_id::text = $1 AND ($2::text[] = '{}' OR subject_id::text = ANY($2::text[]))`,
+		req.LevelID, req.SubjectIDs).Scan(&count); err != nil {
 		return err
 	}
 	if count == 0 {
@@ -550,12 +622,15 @@ type questionGenerationInput struct {
 	Count            int                         `json:"count"`
 	LevelID          string                      `json:"levelId"`
 	LevelCode        string                      `json:"levelCode"`
+	SubjectIDs       []string                    `json:"subjectIds,omitempty"`
+	SubjectCodes     []string                    `json:"subjectCodes,omitempty"`
 	SubjectID        string                      `json:"subjectId,omitempty"`
 	SubjectCode      string                      `json:"subjectCode,omitempty"`
 	Difficulty       string                      `json:"difficulty"`
 	GenerationMode   string                      `json:"generationMode"`
 	QuestionType     string                      `json:"questionType"`
 	ShowFurigana     bool                        `json:"showFurigana"`
+	Categories       []string                    `json:"categories,omitempty"`
 	Category         string                      `json:"category"`
 	RandomSeed       string                      `json:"randomSeed"`
 	RetryFeedback    string                      `json:"retryFeedback,omitempty"`
@@ -836,21 +911,44 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	}
 	var scope struct {
 		Mode              string   `json:"mode"`
+		SubjectIDs        []string `json:"subjectIds"`
 		SubjectID         string   `json:"subjectId"`
 		KnowledgePointIDs []string `json:"knowledgePointIds"`
 		Difficulty        string   `json:"difficulty"`
 		GenerationMode    string   `json:"generationMode"`
 		QuestionType      string   `json:"questionType"`
 		ShowFurigana      bool     `json:"showFurigana"`
+		Categories        []string `json:"categories"`
 		Category          string   `json:"category"`
 		Script            string   `json:"script"`
 	}
 	if err := strictDecode([]byte(row.Scope), &scope); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("解析 AI 出题范围失败: %w", err))
 	}
+	subjectIDs := normalizeStringList(scope.SubjectIDs)
+	if len(subjectIDs) == 0 && row.SubjectID != nil {
+		subjectIDs = []string{*row.SubjectID}
+	}
 	subjectID := ""
-	if row.SubjectID != nil {
-		subjectID = *row.SubjectID
+	if len(subjectIDs) == 1 {
+		subjectID = subjectIDs[0]
+	}
+	subjectCodes := make([]string, 0, len(subjectIDs))
+	if len(subjectIDs) == 1 && row.SubjectCode != "" {
+		subjectCodes = append(subjectCodes, row.SubjectCode)
+	} else {
+		for _, selectedSubjectID := range subjectIDs {
+			var subjectCode string
+			if err := s.pool.QueryRow(ctx,
+				`SELECT code FROM subjects WHERE id::text = $1`, selectedSubjectID).Scan(&subjectCode); err != nil {
+				return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取 AI 科目失败: %w", err))
+			}
+			subjectCodes = append(subjectCodes, subjectCode)
+		}
+	}
+	subjectCode := ""
+	if len(subjectCodes) == 1 {
+		subjectCode = subjectCodes[0]
 	}
 	difficulty := scope.Difficulty
 	if difficulty == "" {
@@ -873,14 +971,20 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if !validGeneratedQuestionType(questionType) {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 题型不合法"))
 	}
-	category := scope.Category
-	if category == "" {
-		category = generatedCategoryMixed
+	categories := normalizeGeneratedCategories(scope.Categories)
+	if len(categories) == 0 && scope.Category != "" && scope.Category != generatedCategoryMixed {
+		categories = []string{scope.Category}
 	}
-	if !validGeneratedCategory(category) {
-		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 出题分类不合法"))
+	category := generatedCategoryMixed
+	if len(categories) == 1 {
+		category = categories[0]
 	}
-	memory, err := learning.NewStore(s.pool).GenerationMemoryForAI(ctx, row.UserID, row.LevelID, subjectID, scope.KnowledgePointIDs, generationMode)
+	for _, selectedCategory := range categories {
+		if !validGeneratedCategory(selectedCategory) || !validGeneratedCategoryForLevel(selectedCategory, row.LevelCode) || !validGeneratedCategoryForSubjects(selectedCategory, subjectCodes) {
+			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, errors.New("AI 出题分类不合法"))
+		}
+	}
+	memory, err := learning.NewStore(s.pool).GenerationMemoryForAISubjects(ctx, row.UserID, row.LevelID, subjectIDs, scope.KnowledgePointIDs, generationMode)
 	if err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, fmt.Errorf("读取 AI 出题记忆失败: %w", err))
 	}
@@ -913,7 +1017,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 		}
 		var diversityPlan []generatedDiversitySlot
-		if !isReadingGeneration(row.SubjectCode, category) {
+		if !isReadingGeneration(subjectCode, category) {
 			diversityPlan = generatedDiversityPlan(remaining, len(generatedQuestions), seed, memory.KnowledgePoints,
 				category == generatedCategoryMixed)
 		}
@@ -934,8 +1038,8 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 			}
 		}
 		inputJSON, _ := json.Marshal(questionGenerationInput{
-			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectID: subjectID, SubjectCode: row.SubjectCode, Difficulty: difficulty,
-			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Category: category,
+			Count: remaining, LevelID: row.LevelID, LevelCode: row.LevelCode, SubjectIDs: subjectIDs, SubjectCodes: subjectCodes, SubjectID: subjectID, SubjectCode: subjectCode, Difficulty: difficulty,
+			GenerationMode: generationMode, QuestionType: questionType, ShowFurigana: scope.ShowFurigana, Categories: categories, Category: category,
 			RandomSeed: seed, RetryFeedback: feedback, AvoidStems: avoidStems, QuestionTypePlan: questionTypePlan, DiversityPlan: diversityPlan,
 			CurriculumScope: generationCurriculumScope(row.LevelCode), LearningMemory: memory,
 		})
@@ -973,12 +1077,12 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 		}
 		questions := capGeneratedQuestions(response.Questions, remaining)
 		questions, candidateValidationErr := validateGeneratedQuestionCandidates(questions, remaining, difficulty, questionType,
-			memory.KnowledgePoints, row.LevelCode, row.SubjectCode, category, diversityPlan, questionTypePlan)
+			memory.KnowledgePoints, row.LevelCode, subjectCode, category, diversityPlan, questionTypePlan)
 		// 阅读材料的数量、复用和题量分布是跨题约束，无法安全地逐题拆开。
-		if isReadingGeneration(row.SubjectCode, category) && candidateValidationErr == nil {
-			candidateValidationErr = validateGeneratedReadingQuestions(row.SubjectCode, category, questions)
+		if isReadingGeneration(subjectCode, category) && candidateValidationErr == nil {
+			candidateValidationErr = validateGeneratedReadingQuestions(subjectCode, category, questions)
 		}
-		if len(questions) == 0 || (isReadingGeneration(row.SubjectCode, category) && candidateValidationErr != nil) {
+		if len(questions) == 0 || (isReadingGeneration(subjectCode, category) && candidateValidationErr != nil) {
 			if candidateValidationErr == nil {
 				candidateValidationErr = errors.New("AI 本轮没有返回可验收的题目")
 			}
@@ -1031,7 +1135,7 @@ func (s *Service) handleGenerate(ctx context.Context, attempts, maxAttempts int,
 	if err := validateGeneratedQuestionTypePlan(generatedQuestions, questionType, mixedQuestionTypePlan(row.RequestedCount)); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
-	if err := validateGeneratedReadingQuestions(row.SubjectCode, category, generatedQuestions); err != nil {
+	if err := validateGeneratedReadingQuestions(subjectCode, category, generatedQuestions); err != nil {
 		return s.generationRetry(ctx, req.SessionID, attempts, maxAttempts, err)
 	}
 	if err := shuffleGeneratedChoiceOptions(generatedQuestions); err != nil {

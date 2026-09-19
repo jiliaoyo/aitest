@@ -114,6 +114,23 @@ export function aiCategoryGroupsForSubject(subjectCode: string, levelCode = ''):
   return [{ ...group, options: group.options.filter((option) => allowed.includes(option.value)) }]
 }
 
+export function aiCategoryGroupsForSubjects(subjectCodes: string[], levelCode = ''): AIGenerationCategoryGroup[] {
+  const codes = subjectCodes.length ? subjectCodes : Object.keys(categoryGroups)
+  const groups: AIGenerationCategoryGroup[] = []
+  const seen = new Set<AIGenerationCategory>()
+  for (const code of codes) {
+    for (const group of aiCategoryGroupsForSubject(code, levelCode)) {
+      const options = group.options.filter((option) => {
+        if (seen.has(option.value)) return false
+        seen.add(option.value)
+        return option.value !== 'mixed'
+      })
+      if (options.length) groups.push({ label: group.label, options })
+    }
+  }
+  return groups
+}
+
 export function aiSubjectCode(subjectName: string): string {
   if (subjectName === '语法') return 'grammar'
   if (subjectName === '文字词汇') return 'vocabulary'

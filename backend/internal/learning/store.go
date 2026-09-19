@@ -248,7 +248,18 @@ func (s *Store) MemorySnapshotForAI(ctx context.Context, userID string) (AIMemor
 // GenerationMemoryForAI 返回当前级别的已审核知识点；memory 模式按多项学习信号排序，level 模式不读取账号统计。
 // ponytail: 固定权重和 90 天线性复习间隔；积累真实复习效果后再校准为遗忘曲线模型。
 func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subjectID string, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
+	subjectIDs := []string{}
+	if subjectID != "" {
+		subjectIDs = []string{subjectID}
+	}
+	return s.GenerationMemoryForAISubjects(ctx, userID, levelID, subjectIDs, knowledgePointIDs, generationMode)
+}
+
+func (s *Store) GenerationMemoryForAISubjects(ctx context.Context, userID, levelID string, subjectIDs, knowledgePointIDs []string, generationMode string) (AIGenerationMemory, error) {
 	var memory AIGenerationMemory
+	if subjectIDs == nil {
+		subjectIDs = []string{}
+	}
 	if generationMode == "memory" {
 		totals, err := s.accountTotals(ctx, userID)
 		if err != nil {
@@ -284,7 +295,7 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 			  ON st.knowledge_point_id = kp.id AND st.user_id = $1 AND $5 = 'memory'
 			WHERE kp.status = 'published'
 			  AND kp.level_id::text = $2
-			  AND ($3 = '' OR kp.subject_id::text = $3)
+			  AND ($3::text[] = '{}' OR kp.subject_id::text = ANY($3::text[]))
 			  AND ($4::uuid[] = '{}' OR kp.id = ANY($4::uuid[]))
 			  AND ($4::uuid[] <> '{}' OR kp.parent_id IS NOT NULL)
 			  AND ($4::uuid[] <> '{}' OR l.code NOT IN ('n4', 'n5') OR parent.name IS NULL OR parent.name NOT LIKE 'AI 生成候选（%')
@@ -314,7 +325,7 @@ func (s *Store) GenerationMemoryForAI(ctx context.Context, userID, levelID, subj
 		ORDER BY CASE WHEN $5 = 'level' THEN random() END,
 		         CASE WHEN $5 = 'memory' THEN priority_score END DESC,
 		         random()
-		LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 8 ELSE 20 END`, userID, levelID, subjectID, knowledgePointIDs, generationMode)
+		LIMIT CASE WHEN $4::uuid[] = '{}' AND $5 = 'memory' THEN 8 ELSE 20 END`, userID, levelID, subjectIDs, knowledgePointIDs, generationMode)
 	if err != nil {
 		return memory, err
 	}

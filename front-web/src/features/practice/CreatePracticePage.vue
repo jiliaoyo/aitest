@@ -6,7 +6,7 @@ import type { AIGeneratePracticeRequest, AIGeneratedSession, AIGenerationCategor
 import AppShell from '@/components/AppShell.vue'
 import AppStatus from '@/components/AppStatus.vue'
 import { sessionUser } from '@/app/session'
-import { aiCategoryGroupsForSubject } from '@/app/aiGeneration'
+import { aiCategoryGroupsForSubjects } from '@/app/aiGeneration'
 
 const router = useRouter()
 const route = useRoute()
@@ -36,9 +36,9 @@ const generateAIError = ref('')
 const aiDifficulty = ref<AIGenerationDifficulty>('mixed')
 const aiGenerationMode = ref<AIGenerationMode>('memory')
 const aiQuestionType = ref<AIGenerationQuestionType>('mixed')
-const aiSubjectId = ref('')
+const aiSubjectIds = ref<string[]>([])
 const aiShowFurigana = ref(false)
-const aiCategory = ref<AIGenerationCategory>('mixed')
+const aiCategories = ref<AIGenerationCategory[]>([])
 
 const aiGenerationModeOptions: { value: AIGenerationMode; label: string }[] = [
   { value: 'memory', label: '根据我的记忆' },
@@ -95,8 +95,23 @@ const subjects = computed(() => exams.value.flatMap((e) => e.subjects))
 const targetAILevelId = computed(() => aiGenerationMode.value === 'level' ? aiLevelId.value : levelId.value)
 const selectedLevelName = computed(() => levels.value.find((level) => level.id === targetAILevelId.value)?.name ?? '指定级别')
 const selectedAILevelCode = computed(() => levels.value.find((level) => level.id === targetAILevelId.value)?.code ?? '')
-const selectedAISubjectCode = computed(() => subjects.value.find((subject) => subject.id === aiSubjectId.value)?.code ?? '')
-const aiCategoryGroups = computed(() => aiCategoryGroupsForSubject(selectedAISubjectCode.value, selectedAILevelCode.value))
+const selectedAISubjectCodes = computed(() => subjects.value
+  .filter((subject) => aiSubjectIds.value.includes(subject.id))
+  .map((subject) => subject.code))
+const aiCategoryGroups = computed(() => aiCategoryGroupsForSubjects(selectedAISubjectCodes.value, selectedAILevelCode.value))
+
+function clearAISubjects(): void {
+  aiSubjectIds.value = []
+}
+
+function clearAICategories(): void {
+  aiCategories.value = []
+}
+
+watch(aiCategoryGroups, (groups) => {
+  const allowed = new Set(groups.flatMap((group) => group.options.map((option) => option.value)))
+  aiCategories.value = aiCategories.value.filter((category) => allowed.has(category))
+})
 
 watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], async () => {
   await refreshAvailability()
@@ -106,12 +121,6 @@ watch([levelId, subjectId, mode, selectionOrder, sourceId, sourceSectionId], asy
 }, { deep: true })
 
 watch(knowledgePointIds, () => void refreshAvailability(), { deep: true })
-
-watch(aiSubjectId, () => {
-  if (!aiCategoryGroups.value.some((group) => group.options.some((option) => option.value === aiCategory.value))) {
-    aiCategory.value = 'mixed'
-  }
-})
 
 let sourceSequence = 0
 watch([levelId, subjectId], async () => {
@@ -268,14 +277,14 @@ async function generateAIPractice(): Promise<void> {
   try {
     const body: AIGeneratePracticeRequest = {
       levelId: targetLevelId,
-      subjectId: aiSubjectId.value,
-      knowledgePointIds: aiGenerationMode.value === 'memory' && (!aiSubjectId.value || aiSubjectId.value === subjectId.value) ? knowledgePointIds.value : [],
+      subjectIds: aiSubjectIds.value,
+      knowledgePointIds: aiGenerationMode.value === 'memory' && (aiSubjectIds.value.length === 0 || (aiSubjectIds.value.length === 1 && aiSubjectIds.value[0] === subjectId.value)) ? knowledgePointIds.value : [],
       count: aiCount.value,
       difficulty: aiDifficulty.value,
       generationMode: aiGenerationMode.value,
       questionType: aiQuestionType.value,
       showFurigana: aiShowFurigana.value,
-      category: aiCategory.value,
+      categories: aiCategories.value,
     }
     const session = await request<AIGeneratedSession>('/ai-practice-sessions', {
       method: 'POST',
@@ -468,21 +477,37 @@ async function generateAIPractice(): Promise<void> {
             <option :value="30">30 题</option>
           </select>
         </div>
-        <div class="field" style="max-width: 280px">
-          <label for="ai-subject">题目科目</label>
-          <select id="ai-subject" v-model="aiSubjectId" :disabled="generatingAI">
-            <option value="">混合科目</option>
-            <option v-for="subject in subjects" :key="subject.id" :value="subject.id">{{ subject.name }}</option>
-          </select>
-        </div>
-        <div class="field" style="max-width: 280px">
-          <label for="ai-category">出题分类</label>
-          <select id="ai-category" v-model="aiCategory" :disabled="generatingAI">
-            <optgroup v-for="group in aiCategoryGroups" :key="group.label" :label="group.label">
-              <option v-for="option in group.options" :key="option.value" :value="option.value">{{ option.label }}</option>
-            </optgroup>
-          </select>
-        </div>
+        <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
+          <legend style="font-weight: 600; margin-bottom: 6px">题目科目（可多选）</legend>
+          <label class="option-row" style="margin-bottom: 10px">
+            <input type="checkbox" :checked="aiSubjectIds.length === 0" :disabled="generatingAI" @change="clearAISubjects" />
+            <span>混合科目（全部）</span>
+          </label>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label v-for="subject in subjects" :key="subject.id" class="option-row" style="margin-bottom: 0">
+              <input v-model="aiSubjectIds" type="checkbox" :value="subject.id" :disabled="generatingAI" />
+              <span>{{ subject.name }}</span>
+            </label>
+          </div>
+          <p class="muted" style="margin: 6px 0 0">不选择具体科目时，AI 会混合生成。</p>
+        </fieldset>
+        <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
+          <legend style="font-weight: 600; margin-bottom: 6px">出题分类（可多选）</legend>
+          <label class="option-row" style="margin-bottom: 10px">
+            <input type="checkbox" :checked="aiCategories.length === 0" :disabled="generatingAI" @change="clearAICategories" />
+            <span>全部分类</span>
+          </label>
+          <div v-for="group in aiCategoryGroups" :key="group.label" style="margin-bottom: 10px">
+            <p class="muted" style="margin: 0 0 6px">{{ group.label }}</p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap">
+              <label v-for="option in group.options" :key="option.value" class="option-row" style="margin-bottom: 0">
+                <input v-model="aiCategories" type="checkbox" :value="option.value" :disabled="generatingAI" />
+                <span>{{ option.label }}</span>
+              </label>
+            </div>
+          </div>
+          <p class="muted" style="margin: 6px 0 0">不选择具体分类时，AI 会混合生成。</p>
+        </fieldset>
         <fieldset class="field" style="border: 0; padding: 0; margin: 0 0 14px">
           <legend style="font-weight: 600; margin-bottom: 6px">题型</legend>
           <div style="display: flex; gap: 10px; flex-wrap: wrap">
