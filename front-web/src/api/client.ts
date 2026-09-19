@@ -34,8 +34,25 @@ interface RequestOptions {
   headers?: Record<string, string>
 }
 
-// request 是唯一的 HTTP 入口：统一 Cookie、错误结构与 401 处理。
-export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+let refreshPromise: Promise<boolean> | null = null
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
+
+// request 是唯一的 HTTP 入口：统一 Cookie、错误结构与 access/refresh 续期。
+export async function request<T>(path: string, opts: RequestOptions = {}, retry = true): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${BASE}${path}`, {
@@ -59,6 +76,11 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
     })
   }
 
+	if (res.status === 401 && retry && !path.startsWith('/auth/')) {
+		if (await refreshAccessToken()) {
+			return request<T>(path, opts, false)
+		}
+	}
 	return readResponse<T>(res)
 }
 

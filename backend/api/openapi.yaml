@@ -6,7 +6,7 @@ info:
     首版接口契约（可靠刷题闭环 + 学习档案 + 管理端内容维护与题库导入）。
     - 前缀 /api/v1；JSON 字段 camelCase，枚举值小写 snake_case。
     - 时间为 UTC RFC 3339；列表使用游标分页 ?cursor=&limit=（默认 20，最大 100）。
-    - 认证：HttpOnly Cookie（session）；写请求校验 Origin。
+    - 认证：短期 access_token 与长期 refresh_token 均为 HttpOnly Cookie；写请求校验 Origin。
     - 错误统一结构：{"error": {"code", "message", "requestId"}}；前端分支只依赖稳定 code。
     - 核心边界：提交前接口永不返回答案、解析或判分字段；answer_keys 仅判分与管理端可读。
 servers:
@@ -54,6 +54,13 @@ paths:
         '200': { $ref: '#/components/responses/MeResponse' }
         '401': { description: 凭证错误 invalid_credentials }
         '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: 使用 refresh token 轮换 access token
+      responses:
+        '200': { $ref: '#/components/responses/MeResponse' }
+        '401': { description: refresh token 无效或已过期 }
   /auth/logout:
     post:
       tags: [auth]

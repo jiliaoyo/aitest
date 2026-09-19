@@ -25,6 +25,8 @@ services:
       HTTP_ADDR: :8080
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
       DATABASE_URL: postgres://ai_shuati:${POSTGRES_PASSWORD}@postgres:5432/ai_shuati?sslmode=disable
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
       RUN_WORKER: "false"
       WORKER_ID: api
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
@@ -61,6 +63,8 @@ services:
       APP_ENV: prod
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
       DATABASE_URL: postgres://ai_shuati:${POSTGRES_PASSWORD}@postgres:5432/ai_shuati?sslmode=disable
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-720h}
       WORKER_ID: ${WORKER_ID:-worker-1}
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
       UPLOAD_DIR: /app/data/uploads

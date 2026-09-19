@@ -70,6 +70,15 @@ func (s *Store) CreateSession(ctx context.Context, userID, tokenHash string, ttl
 	return err
 }
 
+func (s *Store) CreateSessionPair(ctx context.Context, userID, accessHash, refreshHash string, accessTTL, refreshTTL time.Duration) error {
+	_, err := s.db.Exec(ctx,
+		`INSERT INTO auth_sessions
+		   (user_id, token_hash, expires_at, refresh_token_hash, refresh_expires_at)
+		 VALUES ($1, $2, $3, $4, $5)`,
+		userID, accessHash, time.Now().Add(accessTTL), refreshHash, time.Now().Add(refreshTTL))
+	return err
+}
+
 // SessionUser 通过 token 哈希查回用户；过期或已撤销的 session 一律视为不存在。
 func (s *Store) SessionUser(ctx context.Context, tokenHash string) (User, error) {
 	var u User
@@ -87,6 +96,38 @@ func (s *Store) RevokeSession(ctx context.Context, tokenHash string) error {
 		`UPDATE auth_sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL`,
 		tokenHash)
 	return err
+}
+
+func (s *Store) RevokeRefreshSession(ctx context.Context, tokenHash string) error {
+	_, err := s.db.Exec(ctx,
+		`UPDATE auth_sessions SET revoked_at = now()
+		 WHERE refresh_token_hash = $1 AND revoked_at IS NULL`, tokenHash)
+	return err
+}
+
+func (s *Store) RotateSessionTx(ctx context.Context, db store.DBTx, refreshHash, accessHash, nextRefreshHash string, accessExpiresAt, refreshExpiresAt time.Time) (User, error) {
+	var u User
+	err := db.QueryRow(ctx,
+		`SELECT u.id, u.email, u.role, u.default_level_id, u.show_furigana, u.furigana_size
+		 FROM auth_sessions s
+		 JOIN users u ON u.id = s.user_id
+		 WHERE s.refresh_token_hash = $1
+		   AND s.revoked_at IS NULL
+		   AND s.refresh_expires_at > now()
+		 FOR UPDATE OF s`, refreshHash,
+	).Scan(&u.ID, &u.Email, &u.Role, &u.DefaultLevelID, &u.ShowFurigana, &u.FuriganaSize)
+	if err != nil {
+		return User{}, err
+	}
+	if _, err := db.Exec(ctx,
+		`UPDATE auth_sessions
+		 SET token_hash = $2, expires_at = $3,
+		     refresh_token_hash = $4, refresh_expires_at = $5
+		 WHERE refresh_token_hash = $1 AND revoked_at IS NULL`,
+		refreshHash, accessHash, accessExpiresAt, nextRefreshHash, refreshExpiresAt); err != nil {
+		return User{}, err
+	}
+	return u, nil
 }
 
 func (s *Store) CreatePasswordResetToken(ctx context.Context, userID, tokenHash string, ttl time.Duration) error {

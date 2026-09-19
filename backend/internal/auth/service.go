@@ -19,23 +19,41 @@ import (
 )
 
 const (
-	minPasswordLen  = 8
-	maxPasswordByte = 72
-	resetTokenTTL   = time.Hour
-	loginRateLimit  = 10
-	resetRateLimit  = 5
-	rateLimitWindow = 15 * time.Minute
+	minPasswordLen         = 8
+	maxPasswordByte        = 72
+	resetTokenTTL          = time.Hour
+	defaultAccessTokenTTL  = 15 * time.Minute
+	defaultRefreshTokenTTL = 720 * time.Hour
+	loginRateLimit         = 10
+	resetRateLimit         = 5
+	rateLimitWindow        = 15 * time.Minute
 )
 
 type Service struct {
-	store      *Store
-	pool       *pgxpool.Pool
-	logger     *slog.Logger
-	sessionTTL time.Duration
+	store           *Store
+	pool            *pgxpool.Pool
+	logger          *slog.Logger
+	sessionTTL      time.Duration
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
 }
 
-func NewService(store *Store, pool *pgxpool.Pool, logger *slog.Logger, sessionTTL time.Duration) *Service {
-	return &Service{store: store, pool: pool, logger: logger, sessionTTL: sessionTTL}
+func NewService(store *Store, pool *pgxpool.Pool, logger *slog.Logger, sessionTTL time.Duration, tokenTTLs ...time.Duration) *Service {
+	accessTTL, refreshTTL := defaultAccessTokenTTL, defaultRefreshTokenTTL
+	if len(tokenTTLs) > 0 && tokenTTLs[0] > 0 {
+		accessTTL = tokenTTLs[0]
+	}
+	if len(tokenTTLs) > 1 && tokenTTLs[1] > 0 {
+		refreshTTL = tokenTTLs[1]
+	} else if sessionTTL > 0 {
+		refreshTTL = sessionTTL
+	}
+	return &Service{store: store, pool: pool, logger: logger, sessionTTL: sessionTTL, accessTokenTTL: accessTTL, refreshTokenTTL: refreshTTL}
+}
+
+type Tokens struct {
+	AccessToken  string
+	RefreshToken string
 }
 
 func HashToken(token string) string {
@@ -63,7 +81,7 @@ func (s *Service) ValidateSession(ctx context.Context, token string) (User, bool
 	return u, true
 }
 
-func (s *Service) Register(ctx context.Context, email, password string) (User, string, error) {
+func (s *Service) Register(ctx context.Context, email, password string) (User, Tokens, error) {
 	normalized := NormalizeEmail(email)
 	fields := map[string]string{}
 	if !ValidEmail(normalized) {
@@ -73,64 +91,91 @@ func (s *Service) Register(ctx context.Context, email, password string) (User, s
 		fields["password"] = err.Message
 	}
 	if len(fields) > 0 {
-		return User{}, "", httpapi.ValidationError(fields)
+		return User{}, Tokens{}, httpapi.ValidationError(fields)
 	}
 	if ok, err := s.store.HitRateLimit(ctx, "register:"+normalized, 5, rateLimitWindow); err != nil {
-		return User{}, "", fmt.Errorf("记录限流计数失败: %w", err)
+		return User{}, Tokens{}, fmt.Errorf("记录限流计数失败: %w", err)
 	} else if !ok {
-		return User{}, "", httpapi.ErrRateLimited
+		return User{}, Tokens{}, httpapi.ErrRateLimited
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return User{}, "", fmt.Errorf("密码哈希失败: %w", err)
+		return User{}, Tokens{}, fmt.Errorf("密码哈希失败: %w", err)
 	}
 	u, err := s.store.CreateUser(ctx, email, normalized, string(hash), RoleLearner)
 	if err != nil {
 		if isUniqueViolation(err) {
-			return User{}, "", httpapi.ValidationError(map[string]string{"email": "该邮箱已注册"})
+			return User{}, Tokens{}, httpapi.ValidationError(map[string]string{"email": "该邮箱已注册"})
 		}
-		return User{}, "", fmt.Errorf("创建用户失败: %w", err)
+		return User{}, Tokens{}, fmt.Errorf("创建用户失败: %w", err)
 	}
-	token, err := s.issueSession(ctx, u.ID)
+	tokens, err := s.issueSession(ctx, u.ID)
 	if err != nil {
-		return User{}, "", err
+		return User{}, Tokens{}, err
 	}
-	return u, token, nil
+	return u, tokens, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password, ip string) (User, string, error) {
+func (s *Service) Login(ctx context.Context, email, password, ip string) (User, Tokens, error) {
 	normalized := NormalizeEmail(email)
 	if !ValidEmail(normalized) || password == "" {
-		return User{}, "", httpapi.ValidationError(map[string]string{"email": "请输入邮箱和密码"})
+		return User{}, Tokens{}, httpapi.ValidationError(map[string]string{"email": "请输入邮箱和密码"})
 	}
 	for _, key := range []string{"login:ip:" + ip, "login:email:" + normalized} {
 		ok, err := s.store.HitRateLimit(ctx, key, loginRateLimit, rateLimitWindow)
 		if err != nil {
-			return User{}, "", fmt.Errorf("记录限流计数失败: %w", err)
+			return User{}, Tokens{}, fmt.Errorf("记录限流计数失败: %w", err)
 		}
 		if !ok {
-			return User{}, "", httpapi.ErrRateLimited
+			return User{}, Tokens{}, httpapi.ErrRateLimited
 		}
 	}
 	id, hash, _, err := s.store.UserByEmail(ctx, normalized)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, "", EInvalidCredentials()
+		return User{}, Tokens{}, EInvalidCredentials()
 	}
 	if err != nil {
-		return User{}, "", fmt.Errorf("查询用户失败: %w", err)
+		return User{}, Tokens{}, fmt.Errorf("查询用户失败: %w", err)
 	}
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
-		return User{}, "", EInvalidCredentials()
+		return User{}, Tokens{}, EInvalidCredentials()
 	}
 	u, err := s.store.UserByID(ctx, id)
 	if err != nil {
-		return User{}, "", fmt.Errorf("读取用户失败: %w", err)
+		return User{}, Tokens{}, fmt.Errorf("读取用户失败: %w", err)
 	}
-	token, err := s.issueSession(ctx, u.ID)
+	tokens, err := s.issueSession(ctx, u.ID)
 	if err != nil {
-		return User{}, "", err
+		return User{}, Tokens{}, err
 	}
-	return u, token, nil
+	return u, tokens, nil
+}
+
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (User, Tokens, error) {
+	if refreshToken == "" {
+		return User{}, Tokens{}, httpapi.ErrUnauthorized
+	}
+	accessToken, err := NewToken()
+	if err != nil {
+		return User{}, Tokens{}, err
+	}
+	nextRefreshToken, err := NewToken()
+	if err != nil {
+		return User{}, Tokens{}, err
+	}
+	var u User
+	err = store.WithTx(ctx, s.pool, func(tx pgx.Tx) error {
+		var err error
+		u, err = s.store.With(tx).RotateSessionTx(ctx, tx, HashToken(refreshToken), HashToken(accessToken), HashToken(nextRefreshToken), time.Now().Add(s.accessTokenTTL), time.Now().Add(s.refreshTokenTTL))
+		return err
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, Tokens{}, httpapi.ErrUnauthorized
+	}
+	if err != nil {
+		return User{}, Tokens{}, fmt.Errorf("刷新登录令牌失败: %w", err)
+	}
+	return u, Tokens{AccessToken: accessToken, RefreshToken: nextRefreshToken}, nil
 }
 
 func (s *Service) Logout(ctx context.Context, token string) error {
@@ -138,6 +183,16 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 		return nil
 	}
 	return s.store.RevokeSession(ctx, HashToken(token))
+}
+
+func (s *Service) LogoutTokens(ctx context.Context, accessToken, refreshToken string) error {
+	if err := s.Logout(ctx, accessToken); err != nil {
+		return err
+	}
+	if refreshToken != "" {
+		return s.store.RevokeRefreshSession(ctx, HashToken(refreshToken))
+	}
+	return nil
 }
 
 func validFuriganaSize(size int) bool { return size >= 50 && size <= 100 }
@@ -252,15 +307,19 @@ func validatePassword(password string) *httpapi.APIError {
 	return nil
 }
 
-func (s *Service) issueSession(ctx context.Context, userID string) (string, error) {
-	token, err := NewToken()
+func (s *Service) issueSession(ctx context.Context, userID string) (Tokens, error) {
+	accessToken, err := NewToken()
 	if err != nil {
-		return "", err
+		return Tokens{}, err
 	}
-	if err := s.store.CreateSession(ctx, userID, HashToken(token), s.sessionTTL); err != nil {
-		return "", fmt.Errorf("创建会话失败: %w", err)
+	refreshToken, err := NewToken()
+	if err != nil {
+		return Tokens{}, err
 	}
-	return token, nil
+	if err := s.store.CreateSessionPair(ctx, userID, HashToken(accessToken), HashToken(refreshToken), s.accessTokenTTL, s.refreshTokenTTL); err != nil {
+		return Tokens{}, fmt.Errorf("创建会话失败: %w", err)
+	}
+	return Tokens{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
 
 func EInvalidCredentials() *httpapi.APIError {

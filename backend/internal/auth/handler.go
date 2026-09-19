@@ -9,7 +9,11 @@ import (
 	"github.com/aishuati/backend/internal/httpapi/ctxkeys"
 )
 
-const sessionCookie = "session"
+const (
+	accessCookie  = "access_token"
+	refreshCookie = "refresh_token"
+	legacyCookie  = "session"
+)
 
 type Handler struct {
 	service           *Service
@@ -26,6 +30,7 @@ func NewHandler(service *Service, appEnv string, secureCookie bool, trustedProxy
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/auth/register", h.register)
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
+	mux.HandleFunc("POST /api/v1/auth/refresh", h.refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.logout)
 	mux.HandleFunc("POST /api/v1/auth/change-password", h.changePassword)
 	mux.HandleFunc("POST /api/v1/auth/password-reset/request", h.requestReset)
@@ -34,22 +39,40 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/me", h.updateMe)
 }
 
-func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
+func (h *Handler) setAuthCookies(w http.ResponseWriter, tokens Tokens) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionCookie,
-		Value:    token,
+		Name:     accessCookie,
+		Value:    tokens.AccessToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   h.secure,
 		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(h.service.accessTokenTTL.Seconds()),
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     refreshCookie,
+		Value:    tokens.RefreshToken,
+		Path:     "/api/v1/auth",
+		HttpOnly: true,
+		Secure:   h.secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(h.service.refreshTokenTTL.Seconds()),
+	})
+	// 兼容旧版 session Cookie；新登录后立即清除，避免两套令牌并存。
+	h.clearCookie(w, legacyCookie, "/")
+}
+
+func (h *Handler) clearCookie(w http.ResponseWriter, name, path string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: name, Value: "", Path: path, HttpOnly: true,
+		Secure: h.secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
 }
 
-func (h *Handler) clearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookie, Value: "", Path: "/", HttpOnly: true,
-		Secure: h.secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
-	})
+func (h *Handler) clearAuthCookies(w http.ResponseWriter) {
+	h.clearCookie(w, accessCookie, "/")
+	h.clearCookie(w, refreshCookie, "/api/v1/auth")
+	h.clearCookie(w, legacyCookie, "/")
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -61,12 +84,12 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	u, token, err := h.service.Register(r.Context(), req.Email, req.Password)
+	u, tokens, err := h.service.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	h.setSessionCookie(w, token)
+	h.setAuthCookies(w, tokens)
 	httpapi.WriteJSON(w, http.StatusCreated, meResponse{u})
 }
 
@@ -79,23 +102,32 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	u, token, err := h.service.Login(r.Context(), req.Email, req.Password, clientIP(r, h.trustedProxyCIDRs))
+	u, tokens, err := h.service.Login(r.Context(), req.Email, req.Password, clientIP(r, h.trustedProxyCIDRs))
 	if err != nil {
 		httpapi.WriteError(w, r, err)
 		return
 	}
-	h.setSessionCookie(w, token)
+	h.setAuthCookies(w, tokens)
+	httpapi.WriteJSON(w, http.StatusOK, meResponse{u})
+}
+
+func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
+	u, tokens, err := h.service.Refresh(r.Context(), RefreshToken(r))
+	if err != nil {
+		h.clearAuthCookies(w)
+		httpapi.WriteError(w, r, httpapi.ErrUnauthorized)
+		return
+	}
+	h.setAuthCookies(w, tokens)
 	httpapi.WriteJSON(w, http.StatusOK, meResponse{u})
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(sessionCookie); err == nil {
-		if err := h.service.Logout(r.Context(), c.Value); err != nil {
-			httpapi.WriteError(w, r, err)
-			return
-		}
+	if err := h.service.LogoutTokens(r.Context(), Token(r), RefreshToken(r)); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
 	}
-	h.clearSessionCookie(w)
+	h.clearAuthCookies(w)
 	httpapi.WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -234,7 +266,16 @@ func isTrustedProxy(remoteIP netip.Addr, trustedProxyCIDRs []netip.Prefix) bool 
 
 // Token 从请求中读取 session token，供鉴权中间件调用。
 func Token(r *http.Request) string {
-	c, err := r.Cookie(sessionCookie)
+	for _, name := range []string{accessCookie, legacyCookie} {
+		if c, err := r.Cookie(name); err == nil {
+			return c.Value
+		}
+	}
+	return ""
+}
+
+func RefreshToken(r *http.Request) string {
+	c, err := r.Cookie(refreshCookie)
 	if err != nil {
 		return ""
 	}

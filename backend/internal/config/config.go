@@ -24,6 +24,8 @@ type Config struct {
 	TrustedProxyCIDRs []netip.Prefix
 	DatabaseURL       string
 	SessionTTL        time.Duration
+	AccessTokenTTL    time.Duration
+	RefreshTokenTTL   time.Duration
 	UploadDir         string
 	UploadMaxBytes    int64
 	RunWorker         bool
@@ -74,6 +76,22 @@ func Load() (Config, error) {
 		return c, fmt.Errorf("SESSION_TTL 无效: %w", err)
 	}
 	c.SessionTTL = ttl
+	accessTTL, err := time.ParseDuration(getenv("ACCESS_TOKEN_TTL", "15m"))
+	if err != nil {
+		return c, fmt.Errorf("ACCESS_TOKEN_TTL 无效: %w", err)
+	}
+	if accessTTL <= 0 {
+		return c, fmt.Errorf("ACCESS_TOKEN_TTL 必须大于 0")
+	}
+	c.AccessTokenTTL = accessTTL
+	refreshTTL, err := time.ParseDuration(getenv("REFRESH_TOKEN_TTL", "720h"))
+	if err != nil {
+		return c, fmt.Errorf("REFRESH_TOKEN_TTL 无效: %w", err)
+	}
+	if refreshTTL <= 0 {
+		return c, fmt.Errorf("REFRESH_TOKEN_TTL 必须大于 0")
+	}
+	c.RefreshTokenTTL = refreshTTL
 
 	maxBytes, err := strconv.ParseInt(getenv("UPLOAD_MAX_BYTES", "10485760"), 10, 64)
 	if err != nil {

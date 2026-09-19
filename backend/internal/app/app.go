@@ -72,7 +72,7 @@ func Run(ctx context.Context) error {
 func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, logger *slog.Logger) http.Handler {
 	// 各领域模块
 	authStore := auth.NewStore(pool)
-	authService := auth.NewService(authStore, pool, logger, cfg.SessionTTL)
+	authService := auth.NewService(authStore, pool, logger, cfg.SessionTTL, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
 	authHandler := auth.NewHandler(authService, cfg.AppEnv, cfg.SecureCookie(), cfg.TrustedProxyCIDRs)
 
 	catalogStore := catalog.NewStore(pool)
@@ -142,6 +142,7 @@ func newHTTPHandler(ctx context.Context, cfg config.Config, pool *pgxpool.Pool, 
 	// 公开路由：认证入口与健康检查
 	rootMux.Handle("POST /api/v1/auth/register", authed)
 	rootMux.Handle("POST /api/v1/auth/login", authed)
+	rootMux.Handle("POST /api/v1/auth/refresh", authed)
 	rootMux.Handle("POST /api/v1/auth/logout", authed)
 	rootMux.Handle("POST /api/v1/auth/password-reset/request", authed)
 	rootMux.Handle("POST /api/v1/auth/password-reset/confirm", authed)
