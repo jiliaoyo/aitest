@@ -69,7 +69,7 @@ textarea {
 }
 
 input[type='date'] {
-  color-scheme: light;
+  color-scheme: inherit;
   accent-color: var(--accent);
 }
 

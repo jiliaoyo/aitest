@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --bg: oklch(99% 0.002 240);
   --surface: oklch(100% 0 0);
   --fg: oklch(18% 0.012 250);
@@ -19,4 +20,19 @@
   --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   --font-japanese-serif: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: oklch(16% 0.012 250);
+    --surface: oklch(21% 0.014 250);
+    --fg: oklch(93% 0.008 250);
+    --muted: oklch(70% 0.012 250);
+    --border: oklch(34% 0.012 250);
+    --accent: oklch(67% 0.16 255);
+    --success: oklch(70% 0.13 150);
+    --warning: oklch(77% 0.14 75);
+    --danger: oklch(70% 0.16 25);
+  }
 }
