@@ -481,7 +481,9 @@ func (s *Store) HasPendingAIJobs(ctx context.Context, sessionID string) (bool, e
 func (s *Store) SetAISummary(ctx context.Context, sessionID, status, summary string) error {
 	_, err := s.db.Exec(ctx,
 		`UPDATE practice_sessions
-		 SET ai_summary_status = $2, ai_summary = $3, updated_at = now()
+		 SET status = CASE WHEN $2 = 'completed' AND status IN ('grading', 'analysis_failed') THEN 'completed' ELSE status END,
+		     completed_at = CASE WHEN $2 = 'completed' AND status IN ('grading', 'analysis_failed') THEN COALESCE(completed_at, now()) ELSE completed_at END,
+		     ai_summary_status = $2, ai_summary = $3, updated_at = now()
 		 WHERE id = $1`, sessionID, status, summary)
 	return err
 }
