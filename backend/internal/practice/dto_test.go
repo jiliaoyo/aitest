@@ -45,7 +45,7 @@ func TestPreSubmitDTOLeak(t *testing.T) {
 func TestResultDTOLayering(t *testing.T) {
 	acc := 0.7778
 	item := ResultItem{
-		ID: "i1", GradingStatus: "incorrect",
+		ID: "i1", QuestionID: "q1", MasteryAvailable: true, Mastered: true, GradingStatus: "incorrect",
 		GradingSource: strPtr("deterministic"), AnswerAuthority: strPtr("human_verified"),
 		CorrectAnswer: json.RawMessage(`{"optionIds":["c"]}`),
 		Explanation:   &Explanation{Text: "…", Source: "ai"},
@@ -65,7 +65,7 @@ func TestResultDTOLayering(t *testing.T) {
 	s := string(data)
 	for _, required := range []string{
 		`"confirmed"`, `"ai"`, `"accuracy"`, `"gradingStatus"`, `"gradingSource"`,
-		`"answerAuthority"`, `"correctAnswer"`, `"explanation"`,
+		`"answerAuthority"`, `"correctAnswer"`, `"explanation"`, `"questionId"`, `"masteryAvailable"`, `"mastered"`,
 	} {
 		if !strings.Contains(s, required) {
 			t.Errorf("结果 DTO 缺少字段 %s", required)

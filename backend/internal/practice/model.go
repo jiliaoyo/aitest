@@ -109,6 +109,7 @@ type Explanation struct {
 
 type ResultItem struct {
 	ID                string                 `json:"id"`
+	QuestionID        string                 `json:"questionId"`
 	Position          int                    `json:"position"`
 	Type              string                 `json:"type"`
 	Material          *ResultMaterial        `json:"material"`
@@ -122,6 +123,8 @@ type ResultItem struct {
 	AnswerAuthority   *string                `json:"answerAuthority"`
 	CorrectAnswer     json.RawMessage        `json:"correctAnswer"`
 	Explanation       *Explanation           `json:"explanation"`
+	MasteryAvailable  bool                   `json:"masteryAvailable"`
+	Mastered          bool                   `json:"mastered"`
 }
 
 type ConfirmedSummary struct {

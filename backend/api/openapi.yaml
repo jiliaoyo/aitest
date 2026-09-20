@@ -1006,6 +1006,7 @@ components:
             type: object
             properties:
               id: { type: string }
+              questionId: { type: string }
               position: { type: integer }
               type: { type: string }
               material: { type: object, nullable: true }
@@ -1022,6 +1023,8 @@ components:
               gradingSource: { type: string, enum: [deterministic, ai], nullable: true }
               answerAuthority: { type: string, enum: [official, human_verified], nullable: true }
               correctAnswer: { $ref: '#/components/schemas/ResultAnswerValue' }
+              masteryAvailable: { type: boolean, description: 是否存在当前账号的掌握记录 }
+              mastered: { type: boolean, description: 当前账号是否已标记为掌握 }
               explanation:
                 nullable: true
                 type: object

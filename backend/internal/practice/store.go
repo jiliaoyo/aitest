@@ -408,6 +408,9 @@ func (s *Store) CompleteIfDone(ctx context.Context, tx pgx.Tx, sessionID string)
 
 type resultItemRow struct {
 	ID                string
+	QuestionID        string
+	MasteryAvailable  bool
+	Mastered          bool
 	Position          int
 	Type              string
 	Stem              string
@@ -429,17 +432,20 @@ type resultItemRow struct {
 
 func (s *Store) ResultRows(ctx context.Context, sessionID string) ([]resultItemRow, error) {
 	return store.CollectRows[resultItemRow](ctx, s.db,
-		`SELECT pi.id::text, pi.position, v.type, v.stem, ss.name, v.options::text,
+		`SELECT pi.id::text, pi.question_id::text, uqr.question_id IS NOT NULL, uqr.mastered_at IS NOT NULL,
+		        pi.position, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.title, mv.content,
 		        kp.id::text, kp.name,
 		        gr.source, gr.status, gr.answer_authority,
 		        gr.correct_value::text, gr.user_value::text, gr.explanation, gr.explanation_source
 		 FROM practice_items pi
+		 JOIN practice_sessions ps ON ps.id = pi.session_id
 		 JOIN question_versions v ON v.id = pi.question_version_id
 		 LEFT JOIN source_sections ss ON ss.id = v.source_section_id
 		 LEFT JOIN material_versions mv ON mv.id = v.material_version_id
 		 LEFT JOIN question_version_knowledge_points qvkp ON qvkp.question_version_id = v.id
 		 LEFT JOIN knowledge_points kp ON kp.id = qvkp.knowledge_point_id
+		 LEFT JOIN user_question_reviews uqr ON uqr.user_id = ps.user_id AND uqr.question_id = pi.question_id
 		 JOIN grading_results gr ON gr.item_id = pi.id
 		 WHERE pi.session_id = $1
 		 ORDER BY pi.position`, sessionID)

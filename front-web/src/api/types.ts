@@ -216,6 +216,7 @@ export interface KPRef {
 
 export interface ResultItem {
   id: string
+  questionId?: string
   position: number
   type: QuestionType
   material: MaterialDTO | null
@@ -229,6 +230,8 @@ export interface ResultItem {
   answerAuthority: AnswerAuthority | null
   correctAnswer: ResultAnswerValue
   explanation: ExplanationDTO | null
+  masteryAvailable?: boolean
+  mastered?: boolean
 }
 
 export interface ResultSummary {

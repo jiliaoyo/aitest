@@ -130,4 +130,21 @@ describe('结果分层展示', () => {
     expect(short.text()).toContain('AI 参考答案')
     expect(short.text()).toContain('参考となる回答')
   })
+
+  it('结果题目可切换已掌握并支持撤回', async () => {
+    const wrapper = mount(ResultItem, {
+      props: {
+        item: { ...baseItem, questionId: 'question-1', masteryAvailable: true, mastered: false },
+      },
+    })
+    const toggle = wrapper.findAll('button').find((button) => button.text() === '已掌握')
+    expect(toggle).toBeDefined()
+    await toggle!.trigger('click')
+    expect(wrapper.emitted('toggle-mastered')).toHaveLength(1)
+
+    await wrapper.setProps({
+      item: { ...baseItem, questionId: 'question-1', masteryAvailable: true, mastered: true },
+    })
+    expect(wrapper.text()).toContain('移除已掌握')
+  })
 })

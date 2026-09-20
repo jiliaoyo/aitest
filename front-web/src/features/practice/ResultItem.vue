@@ -6,7 +6,8 @@ import ReportDialog from '@/features/issues/ReportDialog.vue'
 import FuriganaText from '@/components/FuriganaText.vue'
 
 // 逐题解析：正式分层（确定性）与 AI 判定分开呈现，来源标签始终可见。
-const props = defineProps<{ item: ResultItemDTO }>()
+const props = defineProps<{ item: ResultItemDTO; masteryUpdating?: boolean }>()
+const emit = defineEmits<{ 'toggle-mastered': [] }>()
 
 const userText = computed(() => formatAnswerValue(props.item.userAnswer, props.item.options))
 const hasGeneratedFallback = computed(() => props.item.gradingStatus === 'failed' && props.item.correctAnswer !== null)
@@ -90,7 +91,17 @@ const reportItemID = computed(() => props.item.id)
       分析失败，稍后可重试；确定性成绩不受影响。
     </p>
 
-    <footer style="margin-top: 12px">
+    <footer style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap">
+      <button
+        v-if="item.questionId && item.masteryAvailable !== false"
+        class="ghost"
+        :class="{ danger: item.mastered }"
+        type="button"
+        :disabled="masteryUpdating"
+        @click="emit('toggle-mastered')"
+      >
+        {{ masteryUpdating ? (item.mastered ? '移除中…' : '标记中…') : item.mastered ? '移除已掌握' : '已掌握' }}
+      </button>
       <ReportDialog :practice-item-id="reportItemID" />
     </footer>
   </article>

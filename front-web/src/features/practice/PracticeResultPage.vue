@@ -20,6 +20,8 @@ const requestID = ref('')
 const retrying = ref(false)
 const retryError = ref('')
 const pollingError = ref('')
+const masteryUpdatingID = ref('')
+const masteryError = ref('')
 
 let timer: ReturnType<typeof setInterval> | null = null
 let requestSequence = 0
@@ -116,6 +118,21 @@ async function retryAnalysis(): Promise<void> {
   }
 }
 
+async function toggleMastered(item: ResultSession['items'][number]): Promise<void> {
+  if (!item.questionId || item.masteryAvailable === false || masteryUpdatingID.value) return
+  const mastered = item.mastered !== true
+  masteryUpdatingID.value = item.id
+  masteryError.value = ''
+  try {
+    await request(`/review-items/${item.questionId}/mastered`, { method: mastered ? 'POST' : 'DELETE' })
+    item.mastered = mastered
+  } catch (err) {
+    masteryError.value = err instanceof ApiError ? err.message : '更新掌握状态失败，请重试'
+  } finally {
+    masteryUpdatingID.value = ''
+  }
+}
+
 onMounted(() => {
   void load()
   document.addEventListener('visibilitychange', onVisibility)
@@ -199,7 +216,14 @@ const retryButtonLabel = computed(() => {
       </section>
 
       <section aria-label="逐题解析" style="display: flex; flex-direction: column; gap: 18px">
-        <ResultItem v-for="item in result.items" :key="item.id" :item="item" />
+        <p v-if="masteryError" class="error-summary" role="alert">{{ masteryError }}</p>
+        <ResultItem
+          v-for="item in result.items"
+          :key="item.id"
+          :item="item"
+          :mastery-updating="masteryUpdatingID === item.id"
+          @toggle-mastered="toggleMastered(item)"
+        />
       </section>
 
       <section class="card" aria-labelledby="next-practice-title">

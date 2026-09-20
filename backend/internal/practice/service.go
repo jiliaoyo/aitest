@@ -534,9 +534,9 @@ func (s *Service) GetResult(ctx context.Context, userID, sessionID string) (Resu
 		item, ok := items[r.ID]
 		if !ok {
 			item = &ResultItem{
-				ID: r.ID, Position: r.Position, Type: r.Type, Stem: r.Stem,
+				ID: r.ID, QuestionID: r.QuestionID, Position: r.Position, Type: r.Type, Stem: r.Stem,
 				Options: []PreSubmitOption{}, KnowledgePoints: []ResultKnowledgePoint{},
-				GradingStatus: r.Status,
+				GradingStatus: r.Status, MasteryAvailable: r.MasteryAvailable, Mastered: r.Mastered,
 			}
 			if r.SourceSectionName != nil {
 				item.SourceSectionName = *r.SourceSectionName
