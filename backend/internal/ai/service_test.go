@@ -45,6 +45,15 @@ func TestValidAIExplanationRequiresOriginalTranslation(t *testing.T) {
 	}
 }
 
+func TestRetryableAIExplanation(t *testing.T) {
+	if !retryableAIExplanation("AI 解析语言异常，已留待重新分析。") {
+		t.Fatal("language-failure marker should be retryable")
+	}
+	if retryableAIExplanation("原文翻译：测试。\n答案依据：根据题干判断。") {
+		t.Fatal("valid explanation should not be retryable")
+	}
+}
+
 func TestHasChineseExplanationAllowsJapaneseTermsInChineseProse(t *testing.T) {
 	if !hasChineseExplanation("根据题干，助词「で」表示动作发生的场所。") {
 		t.Fatal("Chinese explanation with Japanese term was rejected")

@@ -31,6 +31,10 @@ func sanitizeAIExplanation(text string) string {
 	return strings.TrimSpace(strings.Join(kept, "\n"))
 }
 
+func retryableAIExplanation(text string) bool {
+	return strings.HasPrefix(strings.TrimSpace(text), "AI 解析语言异常")
+}
+
 // hasChineseExplanation 用少量中文说明词拦截整段日语；题干、答案词和例句仍可保留日语。
 func hasChineseExplanation(text string) bool {
 	for _, marker := range chineseExplanationMarkers {

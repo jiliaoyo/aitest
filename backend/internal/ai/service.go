@@ -158,6 +158,7 @@ type batchAnalysisRow struct {
 	GradingSource        string
 	GradingStatus        string
 	CorrectValue         *string
+	Explanation          *string
 	ExplanationSource    *string
 	CachedExplanation    *string
 	CachedPromptVersion  *string
@@ -181,7 +182,7 @@ func (s *Service) loadBatch(ctx context.Context, sessionID string) ([]batchAnaly
 		`SELECT pi.id::text, pi.position, v.id::text, v.type, v.stem, ss.name, v.options::text,
 		        mv.material_id::text, mv.content, ua.value::text,
 		        ak.value::text, ak.authority, aga.value::text, aga.explanation,
-		        gr.source, gr.status, gr.correct_value::text, gr.explanation_source,
+		        gr.source, gr.status, gr.correct_value::text, gr.explanation, gr.explanation_source,
 		        qae.explanation, qae.prompt_version
 		 FROM practice_items pi
 		 JOIN question_versions v ON v.id = pi.question_version_id
@@ -325,6 +326,9 @@ type batchAnalysisInput struct {
 }
 
 func (s *Service) needsExplanation(row batchAnalysisRow) bool {
+	if row.Explanation != nil && retryableAIExplanation(*row.Explanation) {
+		return true
+	}
 	if row.GradingSource != practice.SourceDeterministic || row.AnswerAuthority == nil {
 		return false
 	}
@@ -621,8 +625,9 @@ func (s *Service) handleBatchAnalysis(ctx context.Context, attempts, maxAttempts
 			if _, err := tx.Exec(ctx,
 				`UPDATE grading_results
 				 SET explanation = $3, explanation_source = 'ai', updated_at = now()
-				 WHERE session_id = $1 AND item_id = $2 AND source = 'deterministic'
-				   AND (explanation IS NULL OR explanation = '')`,
+				 WHERE session_id = $1 AND item_id = $2
+				   AND ((source = 'deterministic' AND (explanation IS NULL OR explanation = ''))
+				     OR (source = 'ai' AND explanation LIKE 'AI 解析语言异常%'))`,
 				req.SessionID, explanation.ItemID, strings.TrimSpace(explanation.Text)); err != nil {
 				return err
 			}

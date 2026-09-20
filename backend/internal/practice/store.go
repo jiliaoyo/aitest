@@ -354,6 +354,14 @@ func (s *Store) HasActiveBatchAnalysisJob(ctx context.Context, tx pgx.Tx, sessio
 		 LIMIT 1`, sessionID)
 }
 
+func (s *Store) HasRetryableBatchAnalysisItems(ctx context.Context, tx pgx.Tx, sessionID string) (bool, error) {
+	return store.Exists(ctx, tx,
+		`SELECT true FROM grading_results
+		 WHERE session_id = $1 AND source = 'ai'
+		   AND explanation LIKE 'AI 解析语言异常%'
+		 LIMIT 1`, sessionID)
+}
+
 func (s *Store) ResetAIAnalysisForRetry(ctx context.Context, tx pgx.Tx, sessionID string) error {
 	if _, err := tx.Exec(ctx,
 		`UPDATE grading_results

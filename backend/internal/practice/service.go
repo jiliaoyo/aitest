@@ -624,10 +624,14 @@ func (s *Service) RetryAnalysis(ctx context.Context, userID, sessionID string) (
 		if active {
 			return nil
 		}
+		retryableItems, err := st.HasRetryableBatchAnalysisItems(ctx, tx, sessionID)
+		if err != nil {
+			return err
+		}
 		if meta.Status == "active" {
 			return httpapi.E(http.StatusConflict, "practice_not_submitted", "练习尚未提交")
 		}
-		if meta.Status != "analysis_failed" && meta.AISummaryStatus != "failed" {
+		if meta.Status != "analysis_failed" && meta.AISummaryStatus != "failed" && !retryableItems {
 			return httpapi.E(http.StatusConflict, "analysis_not_failed", "当前批次没有可重试的 AI 分析")
 		}
 		if err := st.ResetAIAnalysisForRetry(ctx, tx, sessionID); err != nil {

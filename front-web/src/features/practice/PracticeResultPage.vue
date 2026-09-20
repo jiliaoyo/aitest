@@ -103,7 +103,7 @@ watch(sessionID, (next, previous) => {
 async function retryAnalysis(): Promise<void> {
   const aiStatus = result.value?.aiAnalysis.status
   const failedCount = result.value?.summary.ai.failed ?? 0
-  if (retrying.value || aiStatus === 'pending' || (aiStatus !== 'failed' && failedCount === 0)) return
+  if (retrying.value || aiStatus === 'pending' || (aiStatus !== 'failed' && failedCount === 0 && retryableExplanationCount.value === 0)) return
   retrying.value = true
   retryError.value = ''
   try {
@@ -131,10 +131,12 @@ const summary = computed(() => result.value?.summary)
 const confirmedAccuracy = computed(() => summary.value?.confirmed.accuracy ?? null)
 const aiDone = computed(() => (summary.value?.ai.completed ?? 0) + (summary.value?.ai.pending ?? 0) + (summary.value?.ai.failed ?? 0))
 const failedAI = computed(() => summary.value?.ai.failed ?? 0)
-const showRetryButton = computed(() => result.value?.aiAnalysis.status === 'failed' || result.value?.aiAnalysis.status === 'pending' || failedAI.value > 0)
+const retryableExplanationCount = computed(() => result.value?.items.filter((item) => item.explanation?.source === 'ai' && item.explanation.text.startsWith('AI 解析语言异常')).length ?? 0)
+const showRetryButton = computed(() => result.value?.aiAnalysis.status === 'failed' || result.value?.aiAnalysis.status === 'pending' || failedAI.value > 0 || retryableExplanationCount.value > 0)
 const retryButtonLabel = computed(() => {
   if (retrying.value || result.value?.aiAnalysis.status === 'pending') return '重试中…'
-  return failedAI.value > 0 ? '重试失败题目' : '重新分析'
+  if (failedAI.value > 0) return '重试失败题目'
+  return retryableExplanationCount.value > 0 ? '重试失败解析' : '重新分析'
 })
 </script>
 
@@ -184,6 +186,9 @@ const retryButtonLabel = computed(() => {
           </button>
         </div>
         <p v-if="retryError" class="error" role="alert">{{ retryError }}</p>
+        <p v-if="retryableExplanationCount > 0 && result.aiAnalysis.status !== 'pending'" class="muted" style="margin: 12px 0 0">
+          有 {{ retryableExplanationCount }} 条解析语言异常，可重新请求 AI 分析。
+        </p>
         <p v-if="result.aiAnalysis.status === 'pending'" class="muted" style="margin: 12px 0 0">
           正在根据整批作答情况整理表现、薄弱点和下一步建议…
         </p>
