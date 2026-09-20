@@ -42,8 +42,8 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <span>
-    <button v-if="!done" type="button" class="ghost" style="min-height: 32px; padding: 0 8px; font-size: 13px" @click="open = true">
+  <span style="display: inline-flex; align-items: center">
+    <button v-if="!done" type="button" class="ghost" style="padding: 0 8px; font-size: 13px" @click="open = true">
       举报本题问题
     </button>
     <span v-else class="tag">已提交反馈</span>

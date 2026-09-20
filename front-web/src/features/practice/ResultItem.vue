@@ -91,7 +91,7 @@ const reportItemID = computed(() => props.item.id)
       分析失败，稍后可重试；确定性成绩不受影响。
     </p>
 
-    <footer style="margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap">
+    <footer style="margin-top: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap">
       <button
         v-if="item.questionId && item.masteryAvailable !== false"
         class="ghost"
